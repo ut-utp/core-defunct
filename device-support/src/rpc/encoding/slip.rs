@@ -2,8 +2,11 @@
 //https://github.com/thvdveld/slippers v0.1.3
 //Making a custom copy here in order to modify the encoding/decoding format to add
 //an END frame byte at the start of a frame too. This variant of SLIP allows more
-//robust frame delimiting and checking in the form aof a state machine.
+//robust frame delimiting and decoding in the form of a state machine.
 //Also doing the utp Encoding/Decoding trait implementations here
+//TODO: 1) Update the tests below to reflect this modified slip format
+//      2) Add a MAX FRAME LENGTH check and throw error if the decoding process exceeds it
+            //Also have a max length bound on encoder side
 
 // Copyright (c) 2022 Thibaut Vandervelden
 
@@ -118,10 +121,18 @@ impl<'a> SlipDecoder<'a> {
             return Err(SlipError::ReachedEnd);
         }
 
-        let mut slip_state = SlipState::None;
+        let mut slip_state = SlipState::Start;
         while !self.buffer.is_empty() {
             let c = self.buffer[0];
+
             match slip_state {
+                SlipState::Start => match c {
+                    slip_values::END => {
+                        self.buffer = &self.buffer[1..];
+                        slip_state = SlipState::None;
+                    }
+                    _ => return Err(SlipError::UnexpectedStartByte),
+                }
                 SlipState::None => match c {
                     slip_values::ESC => {
                         self.buffer = &self.buffer[1..];
@@ -147,7 +158,12 @@ impl<'a> SlipDecoder<'a> {
         {
             Err(SlipError::ReachedEnd)
         } else {
-            Ok(SlipDecoder::new(self.buffer))
+            if(self.buffer[0] == slip_values::END){ //check valid start byte of start of next frame
+                Ok(SlipDecoder::new(self.buffer))
+            }
+            else{
+                return Err(SlipError::UnexpectedStartByte)
+            }
         }
     }
 
@@ -173,6 +189,16 @@ impl<'a> Iterator for SlipDecoderIterator<'a> {
         } else {
             let c = self.buffer[0];
             match self.state {
+                SlipState::Start => match c{
+                    slip_values::END => {
+                        self.buffer = &self.buffer[1..];
+                        self.state = SlipState::None;
+                        self.next()
+                    }
+                    _ => None, //case where there are corrupted bytes before start of packet.
+                               // return a None and the slip state machine is still in reset (start)
+                               // Ready to handle a resend of packet/new packet
+                }
                 SlipState::None => match c {
                     slip_values::ESC => {
                         self.buffer = &self.buffer[1..];
@@ -211,7 +237,7 @@ impl<'a> From<&'a [u8]> for SlipDecoderIterator<'a> {
     fn from(val: &'a [u8]) -> Self {
         SlipDecoderIterator {
             buffer: val,
-            state: SlipState::None,
+            state: SlipState::Start,
         }
     }
 }
@@ -219,9 +245,13 @@ impl<'a> From<&'a [u8]> for SlipDecoderIterator<'a> {
 /// Checks if the encoded package contains errors.
 /// _Note_: it only checks until the end of the first encoded frame.
 pub fn check_for_errors(buffer: &[u8]) -> Result<(), SlipError> {
-    let mut state = SlipState::None;
+    let mut state = SlipState::Start;
     for b in buffer {
         match state {
+            SlipState::Start => match *b {
+                slip_values::END => (),
+                _ => return Err(SlipError::UnexpectedStartByte),
+            }
             SlipState::None => match *b {
                 slip_values::ESC => state = SlipState::Escaped,
                 slip_values::END => break,
@@ -249,12 +279,21 @@ pub fn decode_in_place(
         return Ok((&[], None));
     }
 
-    let mut state = SlipState::None;
+    let mut state = SlipState::Start;
     let mut i = 0;
     let mut ctr = 0;
 
     while ctr < buffer.len() {
         match state {
+            SlipState::Start => match buffer[ctr]{
+                slip_values::END => {
+                    buffer[i] = buffer[ctr];
+                    ctr += 1;
+                    i += 1;
+                    state = SlipState::None;
+                }
+                _ => return Err(SlipError::UnexpectedStartByte),
+            }
             SlipState::None => match buffer[ctr] {
                 slip_values::END => {
                     ctr += 1;
@@ -342,6 +381,7 @@ impl<'a> SlipEncoder<'a> {
 pub struct SlipEncoderIterator<'a> {
     buffer: &'a [u8],
     escaped: Option<u8>,
+    start: bool,
     done: bool,
 }
 
@@ -349,7 +389,11 @@ impl<'a> Iterator for SlipEncoderIterator<'a> {
     type Item = u8;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.done {
+        if self.start{
+            self.start = false;
+            Some(slip_values::END)
+        }
+        else if self.done {
             None
         } else if self.buffer.is_empty() {
             self.done = true;
@@ -389,6 +433,7 @@ impl<'a> From<&'a [u8]> for SlipEncoderIterator<'a> {
         SlipEncoderIterator {
             buffer: val,
             escaped: None,
+            start: true,
             done: false,
         }
     }
@@ -403,6 +448,7 @@ pub(crate) mod slip_values {
 
 #[derive(Debug, Copy, Clone)]
 enum SlipState {
+    Start,
     None,
     Escaped,
 }
@@ -411,6 +457,7 @@ enum SlipState {
 pub enum SlipError {
     UnexpectedAfterEscaped,
     ReachedEnd,
+    UnexpectedStartByte,
 }
 
 #[cfg(test)]
