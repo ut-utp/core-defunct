@@ -1,4 +1,5 @@
 mod postcard;
+mod slip;
 
 pub use self::postcard::PostcardEncode;
 pub use self::postcard::PostcardDecode;
