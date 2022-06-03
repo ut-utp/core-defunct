@@ -68,6 +68,7 @@ where
 
     fn get(&self) -> Result<Fifo<u8>, Option<R::Error>> {
         let mut read = self.read.borrow_mut();
+        let mut write = self.write.borrow_mut();
         let mut buf = self.internal_buffer.borrow_mut();
 
         use nb::Error::*;
@@ -75,6 +76,7 @@ where
         loop {
             match read.read() {
                 Ok(word) => {
+                   // write.write(word & 0xFF);
                     if word == 0 {
                         // 0 is the sentinel!
                         break Ok(core::mem::replace(&mut buf, Fifo::new()))

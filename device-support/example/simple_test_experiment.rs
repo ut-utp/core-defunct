@@ -23,13 +23,15 @@ use std::cell::RefCell;
 use std::time::Duration;
 use std::ffi::OsStr;
 
+use lc3_device_support::rpc::encoding::{PostcardEncode, PostcardDecode, Cobs};
+
 // TODO: Debug impl
-pub struct HostUartTransport {
+pub struct HostUartTransportAlternate {
     serial: RefCell<Box<dyn SerialPort>>,
     internal_buffer: RefCell<Fifo<u8>>,
 }
 
-impl HostUartTransport {
+impl HostUartTransportAlternate {
     pub fn new<P: AsRef<Path>>(path: P, baud_rate: u32) -> IoResult<Self> {
         let settings = SerialPortSettings {
             baud_rate: baud_rate,
@@ -55,7 +57,7 @@ impl HostUartTransport {
 
 // TODO: on std especially we don't need to pass around buffers; we can be
 // zero-copy...
-impl Transport<Fifo<u8>, Fifo<u8>> for HostUartTransport {
+impl Transport<Fifo<u8>, Fifo<u8>> for HostUartTransportAlternate {
     type RecvErr = Error;
     type SendErr = Error;
 
@@ -69,12 +71,18 @@ impl Transport<Fifo<u8>, Fifo<u8>> for HostUartTransport {
     };
 
     fn send(&self, message: Fifo<u8>) -> IoResult<()> {
-        let mut serial = self.serial.borrow_mut();
-        let string = "hello! this is a very long string test. Infact this is even longer";
-        let mut serial_buf: Vec<u8> = vec![0; 1000];
-                match serial.write(message.as_slice()) {
+            let mut serial = self.serial.borrow_mut();
+            // let string = "hello! this is a very long string test. Infact this is even longer\0";
+            // let string_small = "small string\0";
+            // let mut long_fifo = Fifo::new();
+            // for i in 1..250 {
+            //     long_fifo.push(65);
+            // }
+            //long_fifo.push(0);
+            let mut serial_buf: Vec<u8> = vec![0; 1000];
+                    match serial.write(message.as_slice()) {
                     Ok(_) => {
-                        //print!("{}", &string);
+                        print!("sending {:?} num bytes = {:?}", message, message.length());
                         std::io::stdout().flush().unwrap();
                     }
                     Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => (),
@@ -93,7 +101,8 @@ impl Transport<Fifo<u8>, Fifo<u8>> for HostUartTransport {
                 for i in 0..t {
                     fifo.push(serial_buf[i]);
                 }
-                //std::io::stdout().write_all(&serial_buf[..t]).unwrap()
+                println!("{:?}", fifo);
+                std::io::stdout().write_all(&serial_buf[..t]).unwrap();
             },
             Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => (),
             Err(e) => eprintln!("{:?}", e),
@@ -143,7 +152,7 @@ use lc3_traits::control::Control;
     }
 
 
-        struct transport_unit(HostUartTransport);
+        struct transport_unit(HostUartTransportAlternate);
     
     impl Transport<RequestMessage, ResponseMessage> for transport_unit {
         type RecvErr = u32;
@@ -171,21 +180,73 @@ use lc3_traits::control::Control;
     }
 
 
-
+type Cont<'ss, EncFunc: FnMut() -> Cobs<Fifo<u8>>> = Controller<
+    'ss,
+    HostUartTransportAlternate,
+    SyncEventFutureSharedState,
+    RequestMessage,
+    ResponseMessage,
+    PostcardEncode<RequestMessage, Cobs<Fifo<u8>>, EncFunc>,
+    PostcardDecode<ResponseMessage, Cobs<Fifo<u8>>>,
+>;
 
 fn main(){
-    let x = SyncEventFutureSharedState::new();
+    let x = SyncEventFutureSharedState::new();    
     let y = Transparent::<RequestMessage>::default();
     let z = Transparent::<ResponseMessage>::default();
-    let mut t2 = HostUartTransport::new("/dev/ttyACM0", 115200).unwrap();
-    let t = transport_unit(t2);
-    let mut host_controller = 
-        Controller::<
-            transport_unit,
-            SyncEventFutureSharedState,
-        >::new(y, z, t, &x);
-    host_controller.get_pc();
-    //println!("Hello");
+
+
+    let mut t2 = HostUartTransportAlternate::new("/dev/ttyACM0", 115200).unwrap();
+    //let t = transport_unit(t2);
+
+        let func: Box<dyn FnMut() -> Cobs<Fifo<u8>>> = Box::new(|| Cobs::try_new(Fifo::new()).unwrap());
+
+        let mut controller: Cont<Box<dyn FnMut() -> Cobs<Fifo<u8>>>>  = Controller::new(
+            PostcardEncode::new(func),
+            PostcardDecode::new(),
+            t2,
+            &x
+        );
+
+    // let mut host_controller = 
+    //     Controller::<
+    //         PostcardEncode::<ResponseMessage, _, _>,
+    //         PostcardDecode::<RequesteMessage, Cobs<Fifo<u8>>>,
+    //         transport_unit,
+    //         SyncEventFutureSharedState,
+    //     >::new(enc, dec, t, &x);
+    //controller.transport.send(controller.enc.borrow_mut().encode(RequestMessage::GetPc.into())).unwrap();
+    //controller.transport.get();
+    controller.set_pc(1004);
+    let mut pc = controller.get_pc();
+    assert_eq!(pc, 1004);
+
+    use lc3_isa::{Reg};
+    controller.set_register(Reg::R0, 42);
+    let mut r0 = controller.get_register(Reg::R0);
+    assert_eq!(r0, 42);
+
+    let get_registers_psr_and_pc = controller.get_registers_psr_and_pc();
+
+    use lc3_traits::control::load::*;
+
+    //controller.start_page_write(LoadApiSession<PageWriteStart>::new(0), hash_page());
+    //controller.send_page_chunk(&mut self, offset: LoadApiSession<Offset>, chunk: [Word; CHUNK_SIZE_IN_WORDS as usize]);
+    //controller.finish_page_write(&mut self, page: LoadApiSession<PageIndex>);
+
+    for i in 0..1000 {
+        controller.write_word(i, i as u16);
+        let addr0 = controller.read_word(i);
+        println!("Addr {:?} = {:?}", i, addr0);
+        assert_eq!(i, addr0);
+    }
+
+
+
+
+    println!("R0 = {:?}", r0);
+    println!("PC = {:?}", pc);
+    
 
     //println!("{:?} {:?}", example, decoded);
 }

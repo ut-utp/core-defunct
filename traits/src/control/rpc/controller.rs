@@ -148,6 +148,7 @@ where
     fn tick(&self) -> TickAttempt<ResponseMessage, D::Err, T::RecvErr> {
         let encoded_message = self.transport.get()
             .map_err(|e| e.map(|inner| TickError::TransportError(inner)))?;
+        //println!("host controller received {:?}", encoded_message);
 
         let message = self.dec.borrow_mut()
             .decode(&encoded_message)
@@ -179,6 +180,8 @@ macro_rules! ctrl {
         use RequestMessage::*;
         use ResponseMessage as R;
         let m = $req.into();
+
+       // log::trace!("host controller sending {:?}", $s.enc.borrow_mut().encode(&m));
 
         $s.transport.send($s.enc.borrow_mut().encode(&m)).unwrap(); // TODO: don't panic? not sure how we'd realistically deal with any transport errors..
 
@@ -231,7 +234,12 @@ where
 {
     type EventFuture = EventFuture<'a, S>;
 
-    fn get_pc(&self) -> Addr { ctrl!(self, GetPc, R::GetPc(addr), addr) }
+    fn get_pc(&self) -> Addr { 
+        ctrl!(self, GetPc, R::GetPc(addr), addr) 
+        //    self.transport.send(self.enc.borrow_mut().encode(&RequestMessage::GetPc.into())).unwrap();
+        //    self.transport.get();
+        //    0
+    }
     fn set_pc(&mut self, addr: Addr) { ctrl!(self, SetPc { addr }, R::SetPc) }
 
     fn get_register(&self, reg: Reg) -> Word { ctrl!(self, GetRegister { reg }, R::GetRegister(word), word) }
