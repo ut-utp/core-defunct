@@ -8,4 +8,4 @@ edition = "2018"
 
 [dependencies]
 tokio-serial = "4.3.3"
-tokio = { version = "0.2.6", features = [ "io-util", "macros" ] }
+tokio = { version = "1.8.4", features = [ "io-util", "macros" ] }
