@@ -190,13 +190,15 @@ type Cont<'ss, EncFunc: FnMut() -> Cobs<Fifo<u8>>> = Controller<
     PostcardDecode<ResponseMessage, Cobs<Fifo<u8>>>,
 >;
 
+use lc3_isa::{Addr, Word};
+use std::convert::TryInto;
 fn main(){
     let x = SyncEventFutureSharedState::new();    
     let y = Transparent::<RequestMessage>::default();
     let z = Transparent::<ResponseMessage>::default();
 
 
-    let mut t2 = HostUartTransportAlternate::new("/dev/ttyACM0", 115200).unwrap();
+    let mut t2 = HostUartTransportAlternate::new("/dev/ttyACM0", 1500000).unwrap();
     //let t = transport_unit(t2);
 
         let func: Box<dyn FnMut() -> Cobs<Fifo<u8>>> = Box::new(|| Cobs::try_new(Fifo::new()).unwrap());
@@ -221,31 +223,144 @@ fn main(){
     let mut pc = controller.get_pc();
     assert_eq!(pc, 1004);
 
+
     use lc3_isa::{Reg};
     controller.set_register(Reg::R0, 42);
     let mut r0 = controller.get_register(Reg::R0);
     assert_eq!(r0, 42);
 
-    let get_registers_psr_and_pc = controller.get_registers_psr_and_pc();
-
-    use lc3_traits::control::load::*;
-
-    //controller.start_page_write(LoadApiSession<PageWriteStart>::new(0), hash_page());
-    //controller.send_page_chunk(&mut self, offset: LoadApiSession<Offset>, chunk: [Word; CHUNK_SIZE_IN_WORDS as usize]);
-    //controller.finish_page_write(&mut self, page: LoadApiSession<PageIndex>);
-
-    for i in 0..1000 {
-        controller.write_word(i, i as u16);
-        let addr0 = controller.read_word(i);
-        println!("Addr {:?} = {:?}", i, addr0);
-        assert_eq!(i, addr0);
-    }
 
 
 
 
-    println!("R0 = {:?}", r0);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // let get_registers_psr_and_pc = controller.get_registers_psr_and_pc();
+
+     use lc3_traits::control::load::*;
+
+    // //controller.start_page_write(LoadApiSession<PageWriteStart>::new(0), hash_page());
+    // //controller.send_page_chunk(&mut self, offset: LoadApiSession<Offset>, chunk: [Word; CHUNK_SIZE_IN_WORDS as usize]);
+    // //controller.finish_page_write(&mut self, page: LoadApiSession<PageIndex>);
+
+    // for i in 0..1000 {
+    //     controller.write_word(i, i as u16);
+    //     let addr0 = controller.read_word(i);
+    //     println!("Addr {:?} = {:?}", i, addr0);
+    //     assert_eq!(i, addr0);
+    // }
+
+    //     // macro_rules! p {
+    //     //     ($p:ident -> $($all:tt)*) => { if let Some($p) = progress { $($all)* }};
+    //     // }
+
+
+        let data: [Word; 256] = [4; 256];
+
+        let page = &data;
+        let p_idx = 0;
+        let checksum = hash_page(page); // We'll use a hash of the page as our checksum for now.
+
+        loop {
+            // Start the page write:
+            let token = /*loop*/ {
+                // (this is safe; see the blurb at the top of this function)
+                #[allow(unsafe_code)]
+                let page = unsafe { LoadApiSession::new(p_idx as PageIndex) }.unwrap();
+
+               // p!(p -> p.page_attempt());
+                match controller.start_page_write(page, checksum) {
+                    Ok(token) => token,
+                    Err(StartPageWriteError::InvalidPage { .. }) => unreachable!(),
+                    Err(StartPageWriteError::UnfinishedSessionExists { unfinished_page }) => {
+                        // Bail:
+                        panic!()
+                    }
+                }
+            };
+
+            let mut non_empty_pages = 0;
+
+            // Now try to go write all the (non-empty) pages:
+            for (idx, chunk) in page.chunks_exact(CHUNK_SIZE_IN_WORDS as usize).enumerate() {
+                if chunk.iter().any(|w| *w != 0) {
+                    non_empty_pages += 1;
+
+                    let offset = token.with_offset(Index(p_idx as PageIndex).with_offset(idx as PageOffset * CHUNK_SIZE_IN_WORDS)).unwrap();
+                    let chunk = chunk.try_into().unwrap();
+
+                //    p!(p -> p.chunk_attempt());
+                    match controller.send_page_chunk(offset, chunk) {
+                        Ok(()) => { },
+                        Err(PageChunkError::ChunkCrossesPageBoundary { .. }) |
+                        Err(PageChunkError::NoCurrentSession) |
+                        Err(PageChunkError::WrongPage { .. }) => unreachable!(),
+                    }
+                }
+            }
+
+            // Finally, finish the page:
+            match controller.finish_page_write(token) {
+                Ok(()) => {  break; }
+                Err(FinishPageWriteError::NoCurrentSession) |
+                Err(FinishPageWriteError::SessionMismatch { .. }) => unreachable!(),
+                Err(FinishPageWriteError::ChecksumMismatch { page, given_checksum, computed_checksum }) => {
+                    assert_eq!(page, p_idx as u8);
+                    assert_eq!(checksum, given_checksum);
+                    assert_ne!(checksum, computed_checksum);
+
+                    // We'll try again...
+                }
+            }
+        }
+
+
+        let addrj = controller.read_word(0);
+        assert_eq!(4, addrj);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     println!("PC = {:?}", pc);
+    println!("R0 = {:?}", r0);
     
 
     //println!("{:?} {:?}", example, decoded);
