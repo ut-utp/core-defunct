@@ -192,6 +192,7 @@ macro_rules! ctrl {
                     if let $resp = m {
                         break $($ret)?
                     } else {
+                        println!("came here got {:?}", m);
                         panic!("Incorrect response for message!")
                     }
                 },
@@ -275,7 +276,7 @@ where
         ctrl!(self, SetMemoryWatchpoint { addr }, R::SetMemoryWatchpoint(r), r)
     }
     fn unset_memory_watchpoint(&mut self, idx: Idx) -> Result<(), ()> {
-        ctrl!(self, UnsetMemoryWatchpoint { idx }, R::UnsetBreakpoint(r), r)
+        ctrl!(self, UnsetMemoryWatchpoint { idx }, R::UnsetMemoryWatchpoint(r), r)
     }
     fn get_memory_watchpoints(&self) -> [Option<(Addr, Word)>; MAX_MEMORY_WATCHPOINTS] { ctrl!(self, GetMemoryWatchpoints, R::GetMemoryWatchpoints(r), r) }
     fn get_max_memory_watchpoints(&self) -> Idx { ctrl!(self, GetMaxMemoryWatchpoints, R::GetMaxMemoryWatchpoints(r), r) }
