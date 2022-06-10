@@ -22,7 +22,7 @@ extern crate static_assertions as sa;
 // the end of this page. The idea here is to minimize the number of pages that
 // get modified (i.e. are dirty).
 
-pub const USER_PROG_START_ADDR: lc3_isa::Addr = 0x0600;
+pub const USER_PROG_START_ADDR_SETTING_ADDR: lc3_isa::Addr = 0x0600;
 pub const ERROR_ON_ACV_SETTING_ADDR: lc3_isa::Addr = 0x0601;
 pub const OS_STARTING_SP_ADDR: lc3_isa::Addr = 0x0602;
 
