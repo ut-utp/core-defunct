@@ -18,7 +18,7 @@ macro_rules! single_test {
         $name:ident,
         $(prefill: { $($addr_p:literal: $val_p:expr),* $(,)?} $(,)?)?
         $(prefill_expr: { $(($addr_expr:expr): $val_expr:expr),* $(,)?} $(,)?)?
-        insns: [ $({ $($insn:tt)* }),* $(,)?] $(,)?
+        insns $(starting at { $starting_addr:expr })?: [ $({ $($insn:tt)* }),* $(,)?] $(,)?
         $(steps: $steps:expr,)?
         $(regs: { $($r:tt: $v:expr),* $(,)?} $(,)?)?
         $(memory: { $($addr:literal: $val:expr),* $(,)?} $(,)?)?
@@ -26,6 +26,7 @@ macro_rules! single_test {
         $(with custom peripherals: $custom_per:block -> [$custom_per_ty:tt] $(,)?)?
         $(pre: |$peripherals_s:ident| $setup:block $(,)?)?
         $(post: |$peripherals_t:ident| $teardown:block $(,)?)?
+        $(with default os $($default_os:literal)? $(,)?)?
         $(with os { $os:expr } @ $os_addr:expr $(,)?)?
     ) => {
     $(#[doc = $panics] #[should_panic])?
@@ -34,7 +35,7 @@ macro_rules! single_test {
         $crate::single_test_inner!(
             $(prefill: { $($addr_p: $val_p),* },)?
             $(prefill_expr: { $(($addr_expr): $val_expr),* },)?
-            insns: [ $({ $($insn)* }),* ],
+            insns $(starting at { $starting_addr })?: [ $({ $($insn)* }),* ],
             $(steps: $steps,)?
             $(regs: { $($r: $v),* },)?
             $(memory: { $($addr: $val),* },)?
@@ -42,6 +43,7 @@ macro_rules! single_test {
             $(with custom peripherals: $custom_per -> [$custom_per_ty],)?
             $(pre: |$peripherals_s| $setup,)?
             $(post: |$peripherals_t| $teardown,)?
+            $(with default os $($default_os)?,)?
             $(with os { $os } @ $os_addr,)?
         ));
     }};
@@ -61,7 +63,7 @@ macro_rules! __perip_type {
 macro_rules! single_test_inner {
     (   $(prefill: { $($addr_p:literal: $val_p:expr),* $(,)?} $(,)?)?
         $(prefill_expr: { $(($addr_expr:expr): $val_expr:expr),* $(,)?} $(,)?)?
-        insns: [ $({ $($insn:tt)* }),* $(,)?]  $(,)?
+        insns $(starting at { $starting_addr:expr })?: [ $({ $($insn:tt)* }),* $(,)?]  $(,)?
         $(steps: $steps:expr,)?
         $(regs: { $($r:tt: $v:expr),* $(,)?} $(,)?)?
         $(memory: { $($addr:literal: $val:expr),* $(,)?} $(,)?)?
@@ -69,16 +71,18 @@ macro_rules! single_test_inner {
         $(with custom peripherals: $custom_per:block -> [$custom_per_ty:tt] $(,)?)?
         $(pre: |$peripherals_s:ident| $setup:block $(,)?)?
         $(post: |$peripherals_t:ident| $teardown:block $(,)?)?
+        $(with default os $($default_os:literal)? $(,)?)?
         $(with os { $os:expr } @ $os_addr:expr $(,)?)?
     ) => {{
-        #[allow(unused_imports)]
-        use super::*;
+        // #[allow(unused_imports)]
+        // use super::*;
 
         #[allow(unused_imports)]
         use $crate::{
             Addr, Word, Reg, Instruction, insn, Reg::*,
             ShareablePeripheralsShim, MemoryShim, SourceShim, new_shim_peripherals_set,
             PeripheralInterruptFlags, Interpreter, InstructionInterpreterPeripheralAccess,
+            USER_PROGRAM_START_ADDR, OS_START_ADDR, OS_IMAGE, USER_PROG_START_ADDR_SETTING_ADDR
         };
 
         #[allow(unused_imports)]
@@ -105,6 +109,20 @@ macro_rules! single_test_inner {
         $($(prefill.push(($addr_p, $val_p));)*)?
         $($(prefill.push(($addr_expr, $val_expr));)*)?
 
+        #[allow(unused, unused_mut)]
+        let mut instruction_starting_addr = USER_PROGRAM_START_ADDR;
+        #[allow(unused, unused_mut)]
+        let mut starting_pc = USER_PROGRAM_START_ADDR;
+
+        // If we have an different instruction stream starting
+        // address, use it as the starting PC as well:
+        $(
+            #[allow(unused_mut)]
+            let mut instruction_starting_addr: Word = $starting_addr;
+            #[allow(unused_mut)]
+            let mut starting_pc: Word = $starting_addr;
+        )?
+
         #[allow(unused_mut)]
         let mut insns: Vec<Instruction> = Vec::new();
         $(insns.push(insn!($($insn)*));)*
@@ -114,8 +132,30 @@ macro_rules! single_test_inner {
         $(let steps: Option<usize> = Some($steps);)?
 
         #[allow(unused)]
-        let os: Option<(MemoryShim, Addr)> = None;
-        $(let os = Some(($os, $os_addr));)?
+        let mut os: Option<(MemoryShim, Addr)> = None;
+        // The default OS has lower precedence so process that first:
+        $(
+            #[cfg(___disable____)]
+            let _ = 1 $(+ $default_os)?;
+            let mut os = Some((MemoryShim::new(**OS_IMAGE), OS_START_ADDR));
+        )?
+        // Note that the above is not marked with `#[allow(unused)]`; this
+        // is intentional, we want to warn users that the `default os` option
+        // is being overriden.
+        $(
+            let mut os = Some(($os, $os_addr));
+        )?
+
+        // If we have an OS, use it as the starting adddress:
+        if let Some((ref mut image, ref os_start_addr)) = os {
+            // Modify the OS's memory image so it knows to jump to
+            // our instruction stream:
+            image[USER_PROG_START_ADDR_SETTING_ADDR] = starting_pc;
+            image.flush();
+
+            // And then change the starting PC to run the OS:
+            starting_pc = *os_start_addr;
+        }
 
         #[allow(unused)]
         let custom_peripherals: Option<Per<'_, '_>> = None;
@@ -158,7 +198,9 @@ macro_rules! single_test_inner {
 
         $crate::interp_test_runner::<'_, MemoryShim, Per<'_, '_>, _, _>(
             prefill,
+            instruction_starting_addr,
             insns,
+            starting_pc,
             steps,
             regs,
             None,
@@ -283,7 +325,7 @@ mod smoke_tests {
         single_test_inner! {
             prefill: { 0x3000: 2_109 * 1, }
             prefill_expr: { (0x3000 + 1): 'f' as Word, }
-            insns: [ { AND R0, R0, #0 }, { ADD R0, R0, #0b01 }, { STI R0, #0xD } ]
+            insns starting at { 0x3000 }: [ { AND R0, R0, #0 }, { ADD R0, R0, #0b01 }, { STI R0, #0xD } ]
             steps: 890 * 0x789,
             regs: { R0: 0 * 7 + 3, R1: 1 }
             memory: { 0x3000: 2343 - 234 }

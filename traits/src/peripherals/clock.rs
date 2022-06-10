@@ -69,7 +69,7 @@ peripheral_trait! {clock,
 ///
 /// [`Clock`]: Clock
 /// [`Timers`]: super::Timers
-pub trait Clock: Default {
+pub trait Clock {
     fn get_milliseconds(&self) -> Word;
 
     fn set_milliseconds(&mut self, ms: Word);

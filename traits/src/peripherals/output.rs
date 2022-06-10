@@ -7,7 +7,7 @@ use core::fmt::{self, Display};
 use serde::{Deserialize, Serialize};
 
 peripheral_trait! {output,
-pub trait Output<'a>: Default {
+pub trait Output<'a> {
     fn write_data(&mut self, c: u8) -> Result<(), OutputError>;
 
     // Gets set to high automagically when more data can be taken.

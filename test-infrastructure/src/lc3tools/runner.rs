@@ -27,8 +27,7 @@ pub struct MemEntry {
     word: Word,
 }
 
-// TODO: make this attempt to _install_ lc3tools? Not sure but we should do
-// better than the below.
+// TODO: modify this to use `lc3tools-sys`!
 
 // TODO: ditch the bash script for sending things through pipes straight into
 // a `Child`.
@@ -50,7 +49,7 @@ macro_rules! d {
     };
 }
 
-pub fn lc3tools_tester<'flags, M: Memory + Default + Clone, P: Peripherals<'flags>>
+pub fn lc3tools_tester<'flags, M: Memory + Default + Clone, P: Peripherals<'flags> + Default>
 (
     insns: Vec<Instruction>,
     flags: &'flags PeripheralInterruptFlags,

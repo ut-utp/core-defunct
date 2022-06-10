@@ -571,7 +571,7 @@ mod errors {
         prefill: { 0x3010: G0DR_ADDR },
         insns: [ { STI R0, #0xF } ],
         steps: 1,
-        post: |i| { eq!(Error::from(GpioWriteError((G0, Disabled))), InstructionInterpreter::get_error(i).unwrap()); }
+        post: |i| { eq!(Error::from(GpioWriteError::IsDisabled), InstructionInterpreter::get_error(i).unwrap()); }
     }
 
     single_test! {
@@ -580,7 +580,7 @@ mod errors {
         insns: [ { AND R0, R0, #0 }, { ADD R0, R0, #0b10 }, { STI R0, #0xD }, { STI R0, #0xD } ],
         steps: 4,
         regs: { R0: 0b10 },
-        post: |i| { eq!(Error::from(GpioWriteError((G0, Input))), InstructionInterpreter::get_error(i).unwrap()); }
+        post: |i| { eq!(Error::from(GpioWriteError::IsInInputMode), InstructionInterpreter::get_error(i).unwrap()); }
     }
 
     single_test! {
@@ -588,7 +588,7 @@ mod errors {
         prefill: { 0x3010: G0DR_ADDR },
         insns: [ { LDI R0, #0xF } ],
         steps: 1,
-        post: |i| { eq!(Error::from(GpioReadError((G0, Disabled))), InstructionInterpreter::get_error(i).unwrap()); }
+        post: |i| { eq!(Error::from(GpioReadError::IsDisabled), InstructionInterpreter::get_error(i).unwrap()); }
     }
 
     single_test! {
@@ -597,6 +597,6 @@ mod errors {
         insns: [ { AND R0, R0, #0 }, { ADD R0, R0, #0b01 }, { STI R0, #0xD }, { LDI R0, #0xD } ],
         steps: 4,
         regs: { R0: 0x8000 },
-        post: |i| { eq!(Error::from(GpioReadError((G0, Output))), InstructionInterpreter::get_error(i).unwrap()); }
+        post: |i| { eq!(Error::from(GpioReadError::IsInOutputMode), InstructionInterpreter::get_error(i).unwrap()); }
     }
 }

@@ -15,7 +15,15 @@ mod single_instructions {
     // Test that the unimplemented instructions do <something>
 
     macro_rules! sequence {
-        ($(|$panics:literal|)? $name:ident, insns: [ $({ $($insn:tt)* }),* ], steps: $steps:expr, ending_pc: $pc:literal, regs: { $($r:tt: $v:expr),* }, memory: { $($addr:literal: $val:expr),* }) => {
+        ($(
+            |$panics:literal|)?
+            $name:ident,
+            insns: [ $({ $($insn:tt)* }),* ],
+            steps: $steps:expr,
+            ending_pc: $pc:literal,
+            regs: { $($r:tt: $v:expr),* },
+            memory: { $($addr:literal: $val:expr),* $(,)? } $(,)?
+        ) => {
         $(#[doc = $panics] #[should_panic])?
         #[test]
         fn $name() { with_larger_stack(/*Some(stringify!($name).to_string())*/ None, || {
@@ -36,7 +44,9 @@ mod single_instructions {
 
             interp_test_runner::<MemoryShim, PeripheralsShim, _, _>(
                 Vec::new(),
+                lc3_isa::USER_PROGRAM_START_ADDR,
                 insns,
+                lc3_isa::USER_PROGRAM_START_ADDR,
                 $steps,
                 regs,
                 Some($pc),
@@ -663,7 +673,9 @@ mod single_instructions {
             steps: Some(5),
             ending_pc: 0x2fff,
             regs: {R6: 12},
-            memory: {}
+            memory: {
+                0x14: 0x2fff,
+            }
         }
     }
 

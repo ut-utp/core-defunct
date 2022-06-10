@@ -158,21 +158,31 @@ impl<'a> Gpio<'a> for GpioShim<'a> {
     fn read(&self, pin: GpioPin) -> Result<bool, GpioReadError> {
         use State::*;
 
-        if let Input(b) | Interrupt(b) = self[pin] {
-            Ok(b)
-        } else {
-            Err(GpioReadError((pin, self[pin].into())))
+        match self[pin] {
+            Input(b) | Interrupt(b) => Ok(b),
+            Disabled => Err(GpioReadError::IsDisabled),
+            Output(_) => Err(GpioReadError::IsInOutputMode),
         }
+
+        // if let Input(b) | Interrupt(b) = self[pin] {
+        //     Ok(b)
+        // } else {
+        //     // Err(GpioReadError((pin, self[pin].into())))
+        //     Err(GpioReadError((pin, self[pin].into())))
+        // }
     }
 
     fn write(&mut self, pin: GpioPin, bit: bool) -> Result<(), GpioWriteError> {
         use State::*;
 
-        if let Output(_) = self[pin] {
-            self[pin] = Output(bit);
-            Ok(())
-        } else {
-            Err(GpioWriteError((pin, self[pin].into())))
+        match self[pin] {
+            Output(ref mut b) => {
+                *b = bit;
+                Ok(())
+            },
+            Input(_) => Err(GpioWriteError::IsInInputMode),
+            Interrupt(_) => Err(GpioWriteError::IsInInterruptMode),
+            Disabled => Err(GpioWriteError::IsDisabled),
         }
     }
 
@@ -247,7 +257,7 @@ mod tests {
     fn read_disabled() {
         let shim = GpioShim::new();
         let val = shim.read(G0);
-        assert_eq!(val, Err(GpioReadError((G0, gpio::GpioState::Disabled))));
+        assert_eq!(val, Err(GpioReadError::IsDisabled));
     }
 
     // covers read for output
@@ -258,7 +268,7 @@ mod tests {
         assert_eq!(res, Ok(()));
         shim.write(G0, true).unwrap();
         let val = shim.read(G0);
-        assert_eq!(val, Err(GpioReadError((G0, gpio::GpioState::Output))));
+        assert_eq!(val, Err(GpioReadError::IsInOutputMode));
     }
 
     // covers read for output
@@ -268,6 +278,6 @@ mod tests {
         let res = shim.set_state(G0, gpio::GpioState::Input);
         assert_eq!(res, Ok(()));
         let result = shim.write(G0, true);
-        assert_eq!(result, Err(GpioWriteError((G0, gpio::GpioState::Input))));
+        assert_eq!(result, Err(GpioWriteError::IsInInputMode));
     }
 }

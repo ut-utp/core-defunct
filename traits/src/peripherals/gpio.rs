@@ -14,10 +14,10 @@ use serde::{Deserialize, Serialize};
 // referring to invalid/non-existent pin numbers isn't an error that peripheral
 // trait implementations have to deal with.
 //
-// This seems to make more since, if you consider that the peripherals are
-// exposed through a memory-mapped interface an invalid pin number isn't really
-// an error that can happen (you either hit a memory address that corresponds
-// to a peripheral or you hit an invalid memory address).
+// This seems to make more sense; consider that the peripherals are exposed
+// through a memory-mapped interface an invalid pin number isn't really an error
+// that can happen (you either hit a memory address that corresponds to a
+// peripheral or you hit an invalid memory address).
 //
 // This is currently a little wonky, but it'll be better once we write the macro
 // described in `control.rs`.
@@ -113,22 +113,58 @@ impl<T> IndexMut<GpioPin> for GpioPinArr<T> {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct GpioMiscError;
 
-type GpioStateMismatch = (GpioPin, GpioState);
+// Can't implement `From` because we want `GpioMiscError` to implement `Debug`.
+//
+// This is okay though; user code doesn't really generate these errors.
+impl GpioMiscError {
+    pub fn from_source<D: core::fmt::Debug>(_source: D) -> Self {
+        // TODO: log!(T)..
+        // on the device this can maybe send to the console, idk
+
+        // TODO: on the tm4c, register an env logger that sends stuff to the
+        // console!
+        GpioMiscError
+    }
+}
+// type GpioStateMismatch = (GpioPin, GpioState);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct GpioReadError(pub GpioStateMismatch);
+pub enum GpioReadError {
+    IsDisabled,
+    IsInOutputMode,
+    Other(GpioMiscError),
+}
+
+impl From<GpioMiscError> for GpioReadError {
+    fn from(misc: GpioMiscError) -> Self {
+        GpioReadError::Other(misc)
+    }
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct GpioWriteError(pub GpioStateMismatch);
+pub enum GpioWriteError {
+    IsDisabled,
+    IsInInputMode,
+    IsInInterruptMode,
+    Other(GpioMiscError),
+}
 
-pub type GpioStateMismatches = GpioPinArr<Option<GpioStateMismatch>>; // [Option<GpioStateMismatch>; NUM_GPIO_PINS as usize];
-impl Copy for GpioStateMismatches { }
+impl From<GpioMiscError> for GpioWriteError {
+    fn from(misc: GpioMiscError) -> Self {
+        GpioWriteError::Other(misc)
+    }
+}
+
+// pub type GpioStateMismatches = GpioPinArr<Option<GpioStateMismatch>>; // [Option<GpioStateMismatch>; NUM_GPIO_PINS as usize];
+impl<T: Copy> Copy for GpioPinArr<T> { }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct GpioReadErrors(pub GpioStateMismatches);
+pub struct GpioReadErrors(pub GpioPinArr<Option<GpioReadError>>); // TODO: display impl
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct GpioWriteErrors(pub GpioStateMismatches);
+pub struct GpioWriteErrors(pub GpioPinArr<Option<GpioWriteError>>); // TODO: display impl
+
+// TODO: conditional (on std) Error impls
 
 // #[derive(Copy, Clone)]
 // pub struct GpioInterruptRegisterError(GpioStateMismatch); // See comments below
@@ -138,16 +174,21 @@ pub struct GpioWriteErrors(pub GpioStateMismatches);
 // Once a pin is set to output but before a write the pin is? 0? unknown? implementation defined?
 // Write to the register in input mode? Ignored
 // Read from the register in output mode? 0s? or do we cache the last written value?
+//
+// current approach:
+//  - pins are set to 0 on transition to output
+//  - writes to the register in input/interrupt mode error
+//  - reads from the output mode return the last written value
 peripheral_trait! {gpio,
-/// GPIO access trait.
+/// GPIO access trait. todo: rewrite all of this
 ///
 /// Implementations of this trait must provide digital read, digital write, and rising
 /// edge trigger interrupt functionality for 8 GPIO pins which we'll call G0 - G7.
 ///
-/// Additionally, implementors of this trait must also provide an implementation of
-/// [`Default`](core::default::Default). Implementors are also free (and encouraged!) to
-/// provide inherent methods on their implementation that allow for configuration of the
-/// peripheral.
+/// Implementors of this trait are encouraged to provide an implementation of
+/// [`Default`](core::default::Default), if possible. Implementors are also free
+/// (and encouraged!) to provide inherent methods on their implementation that
+/// allow for configuration of the peripheral.
 ///
 /// ### State
 /// The interpreter (user of this trait) will set the states of all the pins to
@@ -158,7 +199,7 @@ peripheral_trait! {gpio,
 /// ([`get_state`](Gpio::get_state)) should be an infallible operation.
 ///
 /// Setting pin state ([`set_state`](Gpio::set_state)) is not infallible as
-/// implementations may change need to actually change the state of hardware peripherals
+/// implementations may need to actually change the state of hardware peripherals
 /// in order to, for example, register a rising-edge interrupt for a particular pin.
 /// Though implementors are encouraged to make this operation infallible if possible, we
 /// realize this isn't always possible and in the event that it isn't, we'd rather have
@@ -173,7 +214,7 @@ peripheral_trait! {gpio,
 /// in input ([`GpioState::Input`]) or interrupt ([`GpioState::Interrupt`]) mode.
 ///
 /// ### Interrupts
-/// TODO: OUT OF DATE.
+/// TODO: OUT OF DATE. !!
 /// Registering interrupts (i.e. calling
 /// [`register_interrupt`](Gpio::register_interrupt)) does not automatically put a pin
 /// in [`interrupt`](GpioState::Interrupt) mode. Instead, this only updates the handler
@@ -211,7 +252,7 @@ peripheral_trait! {gpio,
 /// There are [tests for this trait](crate::tests::gpio) in the [tests
 /// module](crate::tests) to help ensure that your implementation of this trait follows
 /// the rules above. (TODO: this isn't true anymore?)
-pub trait Gpio<'a>: Default {
+pub trait Gpio<'a> {
 
     fn set_state(&mut self, pin: GpioPin, state: GpioState) -> Result<(), GpioMiscError>; // should probably be infallible
     fn get_state(&self, pin: GpioPin) -> GpioState;
@@ -264,14 +305,42 @@ pub trait Gpio<'a>: Default {
     }
 
     fn register_interrupt_flags(&mut self, flags: &'a GpioPinArr<AtomicBool>);
+
+    // should we have the interpreter track this state (i.e. when an interrupt is pending)?
+    //
+    // i think not; it's _conceivable_ that hardware would _want_ to do something
+    // weird here (even though the most likely desired behavior is just "interrupt pending
+    // until handled")
+    //
+    // we also don't want to have to deal with duplicated state, etc.
+    //
+    // we should, however, specify behavior for edge cases like "what happens if there's a pending interrupt
+    // that's not handled isn't handled before the user switches the mode to not-Interrupt mode?"
+    // (the answer is: `interrupt_occurred` should now return false).
+    //
+    //
+    // I actually think we should maybe update this interface to reflect that this is the behavior..
     fn interrupt_occurred(&self, pin: GpioPin) -> bool;
     fn reset_interrupt_flag(&mut self, pin: GpioPin);
+
+    // TODO: is there a reason why this method exists?
+    //
+    // I think we initially were reticient to bake in `AtomicBool` as the interrupt
+    // signaling mechanism but... I think it's fine to, actually.
+    //
+    // concern is the cortex-m0 I guess (and other weirder platforms..)
     #[inline]
     fn interrupts_enabled(&self, pin: GpioPin) -> bool {
         matches!(self.get_state(pin), GpioState::Interrupt)
     }
 }}
 
+// why funnel the interrupt flags through the interpreter instead of just having
+// peripheral impls handle it themselves?
+//
+// TODO: remove `register_interrupt_flags`!
+
+// TODO: is `TryFrom` the best way to expose this functionality?
 impl TryFrom<GpioPinArr<Result<bool, GpioReadError>>> for GpioReadErrors {
     type Error = ();
 
@@ -281,7 +350,7 @@ impl TryFrom<GpioPinArr<Result<bool, GpioReadError>>> for GpioReadErrors {
         if read_errors.iter().all(|r| r.is_ok()) {
             Err(()) // No error!
         } else {
-            let mut errors: GpioStateMismatches = GpioPinArr([None; GpioPin::NUM_PINS]);
+            let mut errors = GpioPinArr([None; GpioPin::NUM_PINS]);
 
             read_errors
                 .iter()
@@ -290,7 +359,7 @@ impl TryFrom<GpioPinArr<Result<bool, GpioReadError>>> for GpioReadErrors {
                     res.map_err(|gpio_read_error| (idx, gpio_read_error)).err()
                 })
                 .for_each(|(idx, gpio_read_error)| {
-                    errors.0[idx] = Some(gpio_read_error.0);
+                    errors.0[idx] = Some(gpio_read_error);
                 });
 
             Ok(GpioReadErrors(errors))
@@ -308,7 +377,7 @@ impl TryFrom<GpioPinArr<Result<(), GpioWriteError>>> for GpioWriteErrors {
             // None
             Err(())
         } else {
-            let mut errors: GpioStateMismatches = GpioPinArr([None; GpioPin::NUM_PINS]);
+            let mut errors = GpioPinArr([None; GpioPin::NUM_PINS]);
 
             write_errors
                 .iter()
@@ -318,7 +387,7 @@ impl TryFrom<GpioPinArr<Result<(), GpioWriteError>>> for GpioWriteErrors {
                         .err()
                 })
                 .for_each(|(idx, gpio_write_error)| {
-                    errors.0[idx] = Some(gpio_write_error.0);
+                    errors.0[idx] = Some(gpio_write_error);
                 });
 
             // Some(GpioWriteErrors(errors))

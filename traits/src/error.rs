@@ -45,11 +45,13 @@ impl Display for Error {
         use Error::*;
 
         match self {
-            InvalidGpioWrite(err) =>
-                write!(f, "Attempted to write to {} when in {} mode", (err.0).0, (err.0).1),
+            InvalidGpioWrite(_err) =>
+                // write!(f, "Attempted to write to {} when in {} mode", (err.0).0, (err.0).1),
+                todo!(), // leverage Display impl..., introduce other type to add pin information?
             InvalidGpioWrites(_) => todo!(),
-            InvalidGpioRead(err) =>
-                write!(f, "Attempted to read from {} when in {} mode", (err.0).0, (err.0).1),
+            InvalidGpioRead(_err) =>
+                // write!(f, "Attempted to read from {} when in {} mode", (err.0).0, (err.0).1),
+                todo!(), // leverage Display impl..., introduce other type to add pin information?
             InvalidGpioReads(_) => todo!(),
             GpioMiscError(_) => todo!(),
             InvalidAdcRead(err) =>

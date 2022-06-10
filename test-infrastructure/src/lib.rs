@@ -42,7 +42,8 @@
 
 #[doc(no_inline)]
 pub use {
-    lc3_isa::{insn, Addr, Instruction, Reg, Word},
+    lc3_isa::{insn, Addr, Instruction, Reg, Word, USER_PROGRAM_START_ADDR, OS_START_ADDR},
+    lc3_os::{OS_IMAGE, USER_PROG_START_ADDR_SETTING_ADDR},
     lc3_shims::{
         memory::MemoryShim,
         peripherals::{
@@ -71,3 +72,5 @@ mod misc;
 
 pub use runner::*;
 pub use misc::*;
+
+// TODO: figure out how to suppress "halting the LC-3"!

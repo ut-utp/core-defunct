@@ -9,6 +9,8 @@ use lc3_baseline_sim::mem_mapped::{
 use GpioState::*;
 use GpioPin::*;
 
+use lc3_os::traps::gpio as g;
+
 mod states {
     use super::*;
 
@@ -16,28 +18,28 @@ mod states {
         input,
         insns: [
             { AND R0, R0, #0 },
-            { TRAP #0x30 },
-            { TRAP #0x25 },
+            { TRAP #g::INPUT },
+            { TRAP #HALT },
         ],
         post: |i| {
             let p = i.get_peripherals();
             eq!(Gpio::get_state(p, G0), Input);
         },
-        with os { MemoryShim::new(**OS_IMAGE) } @ OS_START_ADDR
+        with default os,
     }
 
     single_test! {
         output,
         insns: [
             { AND R0, R0, #0 },
-            { TRAP #0x31 },
-            { TRAP #0x25 },
+            { TRAP #g::OUTPUT },
+            { TRAP #HALT },
         ],
         post: |i| {
             let p = i.get_peripherals();
             eq!(Gpio::get_state(p, G0), Output);
         },
-        with os { MemoryShim::new(**OS_IMAGE) } @ OS_START_ADDR
+        with default os,
     }
 
     // TODO: TRAP x32 -- INTERRUPT (requires triggering Gpio interrupt externally)
@@ -46,15 +48,15 @@ mod states {
         disabled,
         insns: [
             { AND R0, R0, #0 },
-            { TRAP #0x33 },
-            { TRAP #0x25 },
+            { TRAP #g::DISABLED },
+            { TRAP #HALT },
         ],
         pre: |p| { Gpio::set_state(p, G0, Output); },
         post: |i| {
             let p = i.get_peripherals();
             eq!(Gpio::get_state(p, G0), Disabled);
         },
-        with os { MemoryShim::new(**OS_IMAGE) } @ OS_START_ADDR
+        with default os,
     }
 
     single_test! {
@@ -62,12 +64,15 @@ mod states {
         prefill: { 0x3004: 0 },
         insns: [
             { AND R0, R0, #0 },
-            { TRAP #0x34 },
+            { TRAP #g::GET_MODE },
             { ST R0, #1 },
-            { TRAP #0x25 },
+            { TRAP #HALT },
         ],
         pre: |p| { Gpio::set_state(p, G0, Output); },
         post: |i| { eq!(i.get_word_unchecked(0x3004), 1); },
-        with os { MemoryShim::new(**OS_IMAGE) } @ OS_START_ADDR
+        with default os,
     }
+
+    // TODO: TRAP x35 (write)
+    // TODO: TRAP x36 (read)
 }

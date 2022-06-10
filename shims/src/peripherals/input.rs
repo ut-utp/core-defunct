@@ -47,6 +47,17 @@ impl SourceShim {
     }
     pub fn push(&self, c: char) {
         if c.is_ascii() {
+
+            // TODO: as per the book the behavior is actually that
+            // new key presses are rejected until the previous input is read.
+            // we should not unconditionally replace `last_char` here but
+            // instead only set `last_char` if `last_char` is None.
+
+            // TODO: add a test for this behavior!
+            // TODO: check against lc3tools
+
+            // TODO: log dropped chars here!
+
             let mut last_char = self.last_char.lock().unwrap();
             last_char.replace(c as u8);
         } else {
@@ -159,10 +170,10 @@ impl<'inp, 'int> Input<'int> for InputShim<'inp, 'int> {
     }
 
     fn reset_interrupt_flag(&mut self) {
-        match self.flag {
-            Some(flag) => flag.store(false, Ordering::SeqCst),
-            None => unreachable!(),
-        }
+        // match self.flag {
+        //     Some(flag) => flag.store(false, Ordering::SeqCst),
+        //     None => unreachable!(),
+        // }
     }
 
     fn set_interrupt_enable_bit(&mut self, bit: bool) {

@@ -11,7 +11,7 @@ use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex};
 
 /// A trait for [`Input`] Peripherals that lets us, a controller, supply the
-/// inputs to the peripheral.
+/// input data to the peripheral.
 ///
 /// This is useful for virtual input peripherals like the [`InputShim`] and for
 /// other situations where the input peripheral is designed to behave like a
@@ -130,13 +130,19 @@ impl OutputSource for Mutex<Vec<u8>> {
     fn get_chars(&self) -> Option<String> {
         let mut v = self.lock().unwrap();
 
+        if v.is_empty() {
+            return None;
+        }
+
         // Unlike the impl above, this will throw away any non-Unicode
         // characters along with everything else that's currently in the `Vec`.
         // TODO: maybe handle non-utf8 characters differently or at least be
         // consistent with the impl above.
-        let s = v.drain(..).collect();
+        let len = v.len();
+        let s = core::mem::replace(&mut *v, Vec::with_capacity(len));
 
-        String::from_utf8(s).ok().filter(|s| s.len() > 0)
+        String::from_utf8(s)
+            .ok()
 
         // let s: String = v.drain(..)
         //     .collect::<Option<String>>()

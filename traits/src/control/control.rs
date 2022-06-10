@@ -41,18 +41,18 @@ sa::const_assert!(MAX_CALL_STACK_DEPTH <= (Idx::max_value() as usize));
 sa::const_assert!(core::mem::size_of::<Idx>() <= core::mem::size_of::<usize>());
 
 pub enum DebugStep {
-    STEP_OVER(usize),
-    STEP_IN(usize),
-    STEP_OUT(usize),
+    StepOver(usize),
+    StepIn(usize),
+    StepOut(usize),
 }
 
 use DebugStep::*;
 impl Into<UnifiedRange<usize>> for DebugStep {
     fn into(self) -> UnifiedRange<usize> {
         match self {
-            STEP_OVER(cur_depth) => (..=cur_depth).into(),
-            STEP_IN(cur_depth) => (cur_depth..).into(),
-            STEP_OUT(cur_depth) => (..cur_depth).into(),
+            StepOver(cur_depth) => (..=cur_depth).into(),
+            StepIn(cur_depth) => (cur_depth..).into(),
+            StepOut(cur_depth) => (..cur_depth).into(),
         }
     }
 }
@@ -112,6 +112,7 @@ pub trait Control {
         (regs, self.read_word(PSR), self.get_pc())
     }
 
+    // TODO: clarify interaction with mmapped I/O, ACVs, fallibility, etc.
     fn read_word(&self, addr: Addr) -> Word;
     fn write_word(&mut self, addr: Addr, word: Word);
 

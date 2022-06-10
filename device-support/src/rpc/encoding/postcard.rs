@@ -2,10 +2,10 @@
 
 use crate::util::Fifo;
 
-use lc3_traits::control::rpc::{Encode, Decode, RequestMessage, ResponseMessage};
+use lc3_traits::control::rpc::{Encode, Decode};
 
 use serde::{Serialize, Deserialize};
-use postcard::flavors::{SerFlavor, Cobs, Slice};
+use postcard::flavors::{SerFlavor, Cobs};
 use postcard::serialize_with_flavor;
 use postcard::take_from_bytes_cobs;
 

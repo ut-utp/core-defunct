@@ -67,12 +67,14 @@ where
     }
 
     fn reset_peripherals(&mut self) {
-        use lc3_traits::peripherals::gpio::{GPIO_PINS, GpioPin, GpioState};
-        use lc3_traits::peripherals::adc::{Adc, ADC_PINS, AdcPin, AdcState};
-        use lc3_traits::peripherals::pwm::{Pwm, PWM_PINS, PwmPin, PwmState};
-        use lc3_traits::peripherals::timers::{TIMERS, TimerId, TimerMode, TimerState};
+        use lc3_traits::peripherals::gpio::{GPIO_PINS, GpioState};
+        use lc3_traits::peripherals::adc::{Adc, ADC_PINS,  AdcState};
+        use lc3_traits::peripherals::pwm::{Pwm, PWM_PINS,  PwmState};
+        use lc3_traits::peripherals::timers::{TIMERS, TimerMode, TimerState};
         use lc3_traits::peripherals::clock::Clock;
 
+        // TODO: thread the errors through here?? (i.e. call set_error)
+        // or not?
         for pin in GPIO_PINS.iter() {
             Gpio::set_state(self.get_peripherals_mut(), *pin, GpioState::Disabled);
             Gpio::reset_interrupt_flag(self.get_peripherals_mut(), *pin);
@@ -171,13 +173,13 @@ impl Default for MachineState {
 
 #[derive(Debug)]
 pub struct PeripheralInterruptFlags {
-    gpio: GpioPinArr<AtomicBool>, // No payload; just tell us if a rising edge has happened
+    pub gpio: GpioPinArr<AtomicBool>, // No payload; just tell us if a rising edge has happened
     // adc: AdcPinArr<bool>, // We're not going to have Adc Interrupts
     // pwm: PwmPinArr<bool>, // No Pwm Interrupts
-    timers: TimerArr<AtomicBool>, // No payload; timers don't actually expose counts anyways
+    pub timers: TimerArr<AtomicBool>, // No payload; timers don't actually expose counts anyways
     // clock: bool, // No Clock Interrupt
-    input: AtomicBool, // No payload; check KBDR for the current character
-    output: AtomicBool, // Technically this has an interrupt, but I have no idea why; UPDATE: it interrupts when it's ready to accept more data
+    pub input: AtomicBool, // No payload; check KBDR for the current character
+    pub output: AtomicBool, // Technically this has an interrupt, but I have no idea why; UPDATE: it interrupts when it's ready to accept more data
                         // display: bool, // Unless we're exposing vsync/hsync or something, this doesn't need an interrupt
 }
 
@@ -312,7 +314,7 @@ pub struct Interpreter<'per, M: Memory, P: Peripherals<'per>> {
     call_stack: CallStack,
 }
 
-impl<'a, M: Memory + Default, P: Peripherals<'a>> Default for Interpreter<'a, M, P> {
+impl<'a, M: Memory + Default, P: Peripherals<'a> + Default> Default for Interpreter<'a, M, P> {
     fn default() -> Self {
         InterpreterBuilder::new()
             .with_defaults()
@@ -406,7 +408,7 @@ where
 impl<'a, M: Memory + Default, P, Mem, Perip, Flags, Regs, Pc, State>
     InterpreterBuilder<'a, M, P, Mem, Perip, Flags, Regs, Pc, State>
 where
-    P: Peripherals<'a>,
+    P: Default + Peripherals<'a>,
 {
     pub fn with_defaults(self) -> InterpreterBuilder<'a, M, P, Set, Set, Set, Set, Set, Set> {
         InterpreterBuilder::with_data(InterpreterBuilderData {
@@ -468,7 +470,7 @@ where
 
     pub fn with_default_peripherals(
         self,
-    ) -> InterpreterBuilder<'a, M, P, Mem, Set, Flags, Regs, Pc, State> {
+    ) -> InterpreterBuilder<'a, M, P, Mem, Set, Flags, Regs, Pc, State> where P: Default {
         self.with_peripherals(Default::default())
     }
 }
@@ -634,7 +636,7 @@ impl<'a, M: Memory, P: Peripherals<'a>> Interpreter<'a, M, P> {
         } else {
             // warn!("unsupported, sorry!");
             // TODO: let's just do this instead of using OwnedOrRef.
-            // at some point we should just strip out all of the OwnedOrRef stuff.
+            // at some point we should just strip out all of the OwnedOrRef stuff. !!
             static INTERNAL_INACCESSIBLE_PERIPHERAL_FLAGS: PeripheralInterruptFlags = PeripheralInterruptFlags::new();
             interp.init(&INTERNAL_INACCESSIBLE_PERIPHERAL_FLAGS);
         }
@@ -846,6 +848,10 @@ impl<'a, M: Memory, P: Peripherals<'a>> Interpreter<'a, M, P> {
                     if <$dev>::PRIORITY <= cur_priority { return false; }
                     else if <$dev as Interrupt>::interrupt(self) {
                         <$dev as Interrupt>::reset_interrupt_flag(self);
+                        // TODO: only reset the interrupt flag if we actually handled the interrupt!
+                        //
+                        // this is actually guaranteed because of the priority check above but still;
+                        // better to have this be explicit and obvious.
                         return self.handle_interrupt(<$dev>::INT_VEC, <$dev>::PRIORITY);
                     }
                 )*
@@ -1072,7 +1078,7 @@ impl<'a, M: Memory, P: Peripherals<'a>> InstructionInterpreter for Interpreter<'
         }
 
         // Increment PC (state 18):
-        let mut current_pc = self.get_pc();
+        let current_pc = self.get_pc();
         self.set_pc(current_pc.wrapping_add(1)); // TODO: ???
 
         if self.check_interrupts() {

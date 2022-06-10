@@ -191,7 +191,7 @@ pub fn raw_io_program(num_elements: u64) -> AssembledProgram {
 
         // We're going to access the memory mapped locations directly so we
         // don't want to be in user mode:
-        .ORIG #lc3_os::USER_PROG_START_ADDR;
+        .ORIG #lc3_os::USER_PROG_START_ADDR_SETTING_ADDR;
         .FILL #0x1000;
 
         // In protected space!

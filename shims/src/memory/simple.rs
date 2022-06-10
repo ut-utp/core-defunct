@@ -82,6 +82,12 @@ impl MemoryShim {
 
         Ok(())
     }
+
+    // TODO: better name?
+    // TODO: explain; esp on the doc comment for `MemoryShim`.
+    pub fn flush(&mut self) {
+        self.mem = self.current.clone();
+    }
 }}
 
 impl From<MemoryShim> for MemoryDump {

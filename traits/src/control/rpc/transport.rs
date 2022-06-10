@@ -2,7 +2,7 @@
 //!
 //! TODO!
 
-use crate::control::{Identifier, Version, version_from_crate};
+use crate::control::{Identifier, Version};
 
 use core::fmt::Debug;
 
@@ -47,7 +47,7 @@ using_std! {
         type SendErr = SendError<Send>;
 
         const ID: Identifier = Identifier::new_from_str_that_crashes_on_invalid_inputs("MPSC");
-        const VER: Version = version_from_crate!();
+        const VER: Version = crate::version_from_crate!();
 
         fn send(&self, message: Send) -> Result<(), Self::SendErr> {
             log::trace!("SENT: {:?}", message);

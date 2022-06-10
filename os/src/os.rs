@@ -1,6 +1,6 @@
 //! (TODO!)
 
-use super::{ERROR_ON_ACV_SETTING_ADDR, USER_PROG_START_ADDR, traps as t};
+use super::{ERROR_ON_ACV_SETTING_ADDR, USER_PROG_START_ADDR_SETTING_ADDR, traps as t};
 use super::{OS_DEFAULT_STARTING_SP, OS_STARTING_SP_ADDR};
 
 use lc3_isa::util::{AssembledProgram, MemoryDump};
@@ -607,7 +607,7 @@ fn os() -> AssembledProgram {
 
             // First we get the user prog starting address and compare it to the access
             // control boundary.
-            LDI R0, @USER_PROG_START_ADDR_PTR; // Fetch the starting address of the program.
+            LDI R0, @USER_PROG_START_ADDR_SETTING_ADDR_PTR; // Fetch the starting address of the program.
 
             // If the address is below the boundary (0x3000), we're going to use an
             // alternate PSR that doesn't switch the system to user mode.
@@ -648,7 +648,7 @@ fn os() -> AssembledProgram {
         @OS_START_MSG // ""
             .FILL #('\0' as Word);
 
-        @USER_PROG_START_ADDR_PTR .FILL #USER_PROG_START_ADDR;
+        @USER_PROG_START_ADDR_SETTING_ADDR_PTR .FILL #USER_PROG_START_ADDR_SETTING_ADDR;
 
         @OS_STARTING_SP_PTR .FILL #OS_STARTING_SP_ADDR;
 
@@ -1804,7 +1804,7 @@ fn os() -> AssembledProgram {
         //// Configuration 'variables' ////
         // (binaries can override these)
 
-        .ORIG #USER_PROG_START_ADDR;
+        .ORIG #USER_PROG_START_ADDR_SETTING_ADDR;
         .FILL #lc3_isa::USER_PROGRAM_START_ADDR;
 
         .ORIG #ERROR_ON_ACV_SETTING_ADDR;

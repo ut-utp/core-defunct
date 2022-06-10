@@ -110,7 +110,7 @@ use lc3_isa::{Addr, Bits, SignedWord, Word, MCR as MCR_ADDR, PSR as PSR_ADDR, WO
 use lc3_traits::peripherals::Peripherals;
 use lc3_traits::error::Error;
 
-use crate::interp::{Acv, InstructionInterpreter, WriteAttempt};
+use crate::interp::{Acv, WriteAttempt};
 
 pub trait MemMapped: Deref<Target = Word> + Sized {
     const ADDR: Addr;
@@ -179,7 +179,7 @@ pub trait MemMappedSpecial: MemMapped {
 }
 
 pub trait Interrupt: MemMapped {
-    const INT_VEC: u8;
+    const INT_VEC: u8; // TODO: assert that this is in 0x180..0x200
     const PRIORITY: u8; // Must be a 3 bit number
 
     /// Returns true if:
@@ -253,6 +253,8 @@ macro_rules! mem_mapped {
         $(#[doc=$extra_comment])?
         #[derive(Copy, Clone, Debug, PartialEq)]
         pub struct $name(Word);
+
+        // TODO: impl Display as `$name( {:#4X?} ({:#160b?}) )
 
         impl Deref for $name {
             type Target = Word;
@@ -354,7 +356,7 @@ impl MemMapped for KBDR {
         Ok(Self::with_value(data))
     }
 
-    fn set<'a, I>(interp: &mut I, value: Word) -> WriteAttempt
+    fn set<'a, I>(_interp: &mut I, _value: Word) -> WriteAttempt
     where
         I: InstructionInterpreterPeripheralAccess<'a>,
         <I as Deref>::Target: Peripherals<'a>,
@@ -536,12 +538,12 @@ impl MemMapped for DDR {
         Self(value)
     }
 
-    fn from<'a, I>(interp: &I) -> Result<Self, Acv>
+    fn from<'a, I>(_interp: &I) -> Result<Self, Acv>
     where
         I: InstructionInterpreterPeripheralAccess<'a>,
         <I as Deref>::Target: Peripherals<'a>,
     {
-        Ok(Self::with_value(0 as Word))
+        Ok(Self::with_value(0 as Word)) // TODO: explain this
     }
 
     fn set<'a, I>(interp: &mut I, value: Word) -> WriteAttempt
@@ -549,6 +551,7 @@ impl MemMapped for DDR {
         I: InstructionInterpreterPeripheralAccess<'a>,
         <I as Deref>::Target: Peripherals<'a>,
     {
+        // TODO: thread the error through here??
         Output::write_data(interp.get_peripherals_mut(), value as u8);
         Ok(())
     }
@@ -667,7 +670,7 @@ macro_rules! gpio_mem_mapped {
                 I: InstructionInterpreterPeripheralAccess<'a>,
                 <I as Deref>::Target: Peripherals<'a>,
             {
-                use lc3_traits::peripherals::gpio::GpioState::*;
+                // use lc3_traits::peripherals::gpio::GpioState::*;
 
                 let word = match Gpio::read(interp.get_peripherals(), $pin) {
                     Ok(val) => val as Word,
@@ -685,7 +688,7 @@ macro_rules! gpio_mem_mapped {
                 I: InstructionInterpreterPeripheralAccess<'a>,
                 <I as Deref>::Target: Peripherals<'a>,
             {
-                use lc3_traits::peripherals::gpio::GpioState::*;
+                // use lc3_traits::peripherals::gpio::GpioState::*;
 
                 let bit: bool = value.bit(0);
                 match Gpio::write(interp.get_peripherals_mut(), $pin, bit) {
@@ -859,7 +862,7 @@ macro_rules! adc_mem_mapped {
                 I: InstructionInterpreterPeripheralAccess<'a>,
                 <I as Deref>::Target: Peripherals<'a>,
             {
-                use lc3_traits::peripherals::adc::AdcState::*;
+                // use lc3_traits::peripherals::adc::AdcState::*;
 
                 let word = match Adc::read(interp.get_peripherals(), $pin) {
                     Ok(val) => val as Word,
@@ -872,7 +875,7 @@ macro_rules! adc_mem_mapped {
                 Ok(Self::with_value(word))
             }
 
-            fn set<'a, I>(interp: &mut I, value: Word) -> WriteAttempt
+            fn set<'a, I>(_interp: &mut I, _value: Word) -> WriteAttempt
             where
                 I: InstructionInterpreterPeripheralAccess<'a>,
                 <I as Deref>::Target: Peripherals<'a>,
@@ -1006,7 +1009,7 @@ macro_rules! pwm_mem_mapped {
                 I: InstructionInterpreterPeripheralAccess<'a>,
                 <I as Deref>::Target: Peripherals<'a>,
             {
-                use lc3_traits::peripherals::pwm::PwmState::*;
+                // use lc3_traits::peripherals::pwm::PwmState::*;
 
                 let word = Pwm::get_duty_cycle(interp.get_peripherals(), $pin) as Word;
 
@@ -1179,6 +1182,10 @@ mem_mapped!(special: PSR, PSR_ADDR, "Program Status Register.");
 
 use lc3_traits::control::ProcessorMode;
 
+
+// page 351 of the textbook implies that bit 14 of the PSR is a global enable/disable interrupt toggle...
+// afaict LC3Tools does not support this and no other part of the textbook makes reference to this.
+// TODO: should we support this?
 impl PSR {
     pub fn get_priority(&self) -> u8 {
         self.u8(8..10)

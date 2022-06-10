@@ -5,6 +5,8 @@ use lc3_traits::peripherals::timers::{Timers, TimerId, TimerState};
 use TimerId::*;
 use TimerState::*;
 
+use lc3_os::traps::timers as t;
+
 // TODO: flaky (race condition in shim/interpreter's interrupt handling?)
 single_test! {
     singleshot,
@@ -15,12 +17,12 @@ single_test! {
     insns: [
         { AND R0, R0, #0 },
         { LD R1, #0xD },
-        { LEA R2, #4 },
-        { TRAP #0x60 },
+        { LEA R2, #4 }, // R2 = x3007
+        { TRAP #t::SINGLESHOT },
 
         { LD R1, #0xB }, // x3004
         { BRz #-2 },
-        { TRAP #0x25 },
+        { TRAP #HALT },
 
         { ADD R6, R6, #-1 }, // x3007
         { STR R0, R6, #0 },
@@ -33,7 +35,7 @@ single_test! {
         { ADD R6, R6, #1 },
         { RTI } // x300E
     ],
-    with os { MemoryShim::new(**OS_IMAGE) } @ OS_START_ADDR
+    with default os,
 }
 
 
@@ -49,13 +51,13 @@ single_test! {
         { AND R0, R0, #0 },
         { LD R1, #0xF },
         { LEA R2, #6 },
-        { TRAP #0x61 },
+        { TRAP #t::REPEATED },
 
         { LD R1, #0xE }, // x3004
         { LD R0, #0xC },
         { ADD R0, R0, R1 },
         { BRn #-3 },
-        { TRAP #0x25 },
+        { TRAP #HALT },
 
         { ADD R6, R6, #-1 },
         { STR R0, R6, #0 },
@@ -68,7 +70,7 @@ single_test! {
         { ADD R6, R6, #1 },
         { RTI } // x3010
     ],
-    with os { MemoryShim::new(**OS_IMAGE) } @ OS_START_ADDR
+    with default os,
 }
 
 // TODO: check timing is correct. Seems too fast
@@ -84,7 +86,7 @@ single_test! {
         { ADD R0, R0, #1 },
         { LD R1, #0x12 },
         { LEA R2, #9 },
-        { TRAP #0x61 },
+        { TRAP #t::REPEATED },
 
         { LD R1, #0x11 }, // x3004
         { LD R0, #0xF },
@@ -93,8 +95,8 @@ single_test! {
 
         { AND R0, R0, #0 },
         { ADD R0, R0, #1 },
-        { TRAP #0x62 },
-        { TRAP #0x25 },
+        { TRAP #t::DISABLE },
+        { TRAP #HALT },
 
         { ADD R6, R6, #-1 },
         { STR R0, R6, #0 },
@@ -111,7 +113,7 @@ single_test! {
         let p = i.get_peripherals();
         eq!(Timers::get_state(p, T1), Disabled);
     },
-    with os { MemoryShim::new(**OS_IMAGE) } @ OS_START_ADDR
+    with default os,
 }
 
 single_test! {
@@ -124,16 +126,16 @@ single_test! {
         { AND R0, R0, #0 },
         { LD R1, #6 },
         { LEA R2, #4 },
-        { TRAP #0x60 },
-        { TRAP #0x63 },
+        { TRAP #t::SINGLESHOT },
+        { TRAP #t::GET_MODE },
         { ST R0, #3 },
-        { TRAP #0x25 },
+        { TRAP #HALT },
         { RTI }, // x3007
     ],
     post: |i| {
         eq!(i.get_word_unchecked(0x3009), 0);
     },
-    with os { MemoryShim::new(**OS_IMAGE) } @ OS_START_ADDR
+    with default os,
 }
 
 single_test! {
@@ -146,14 +148,14 @@ single_test! {
         { AND R0, R0, #0 },
         { LD R1, #6 },
         { LEA R2, #4 },
-        { TRAP #0x60 },
-        { TRAP #0x64 },
+        { TRAP #t::SINGLESHOT },
+        { TRAP #t::GET_PERIOD },
         { ST R0, #3 },
-        { TRAP #0x25 },
+        { TRAP #HALT },
         { RTI }, // x3007
     ],
     post: |i| {
         eq!(i.get_word_unchecked(0x3009), 1000);
     },
-    with os { MemoryShim::new(**OS_IMAGE) } @ OS_START_ADDR
+    with default os,
 }

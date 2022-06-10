@@ -227,7 +227,7 @@ peripheral_trait! {timers,
 /// [`Disabled`]: TimerState::Disabled
 /// [`Clock`]: super::Clock
 ///
-pub trait Timers<'a>: Default {
+pub trait Timers<'a> {
     fn set_mode(&mut self, timer: TimerId, mode: TimerMode);
     fn get_mode(&self, timer: TimerId) -> TimerMode;
     #[inline]
