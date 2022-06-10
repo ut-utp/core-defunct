@@ -53,7 +53,7 @@ single_test! {
         0x3015: 0xFFFC, // -4
     },
     prefill_expr: {
-        (TIMER_BASE_INT_VEC): 0x3009,
+        (TIMER_BASE_INT_VEC): 0x300A,
         (<PSR as MemMapped>::ADDR): 0x0302, // set starting priority to 3 (below
                                             // the timer interrupt's priority: 4)
     },

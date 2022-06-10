@@ -1,5 +1,7 @@
 //! Tests for memory mapped registers!
 //!
+//! The interrupt machinery is tested in the process too.
+//!
 //! Also kind of ends up testing that the peripherals used work (the shims do
 //! have their own unit tests anyways though).
 
@@ -17,5 +19,4 @@ mod gpio;
 mod pwm;
 mod timers;
 
-mod input;
 mod output;
