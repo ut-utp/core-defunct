@@ -20,7 +20,7 @@ mod single_instructions {
             steps: $steps:expr,
             ending_pc: $pc:literal,
             regs: { $($r:tt: $v:expr),* },
-            memory: { $($addr:literal: $val:expr),* }
+            memory: { $($addr:literal: $val:expr),* $(,)? } $(,)?
         ) => {
             $(#[doc = $panics] #[should_panic])?
             #[test]
@@ -667,7 +667,9 @@ mod single_instructions {
             steps: Some(5),
             ending_pc: 0x2fff,
             regs: {R6: 12},
-            memory: {}
+            memory: {
+                0x14: 0x2fff,
+            }
         }
     }
 
