@@ -19,4 +19,5 @@ mod gpio;
 mod pwm;
 mod timers;
 
+mod input;
 mod output;
