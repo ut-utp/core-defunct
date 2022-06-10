@@ -40,7 +40,7 @@ itertools = "0.10"
 
 [[test]]
 name = "mem_mapped"
-path = "tests/device_register_tests/mod.rs"
+path = "tests/mmapped_peripheral_tests/mod.rs"
 
 
 [features]
