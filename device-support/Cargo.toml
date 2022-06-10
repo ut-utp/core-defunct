@@ -34,7 +34,7 @@ lc3-traits = { path = "../traits", version = "0.1.0", default-features = false }
 serde = { version = "1.0", default-features = false } # Disable the `std` feature
 postcard = "1.0"
 # bbqueue = "0.4.4" # TODO
-embedded-hal = "0.2"
+embedded-hal = { version = "0.2", features = ["unproven"] }
 embedded-time = "0.12"
 nb = "1.0"
 static_assertions = "1.1"
