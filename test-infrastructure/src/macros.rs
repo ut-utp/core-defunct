@@ -16,7 +16,7 @@ macro_rules! single_test {
         $name:ident,
         $(prefill: { $($addr_p:literal: $val_p:expr),* $(,)?} $(,)?)?
         $(prefill_expr: { $(($addr_expr:expr): $val_expr:expr),* $(,)?} $(,)?)?
-        insns: [ $({ $($insn:tt)* }),* $(,)?] $(,)?
+        insns $(starting at { $starting_addr:expr })?: [ $({ $($insn:tt)* }),* $(,)?] $(,)?
         $(steps: $steps:expr,)?
         $(regs: { $($r:tt: $v:expr),* $(,)?} $(,)?)?
         $(memory: { $($addr:literal: $val:expr),* $(,)?} $(,)?)?
@@ -32,7 +32,7 @@ macro_rules! single_test {
         $crate::single_test_inner!(
             $(prefill: { $($addr_p: $val_p),* },)?
             $(prefill_expr: { $(($addr_expr): $val_expr),* },)?
-            insns: [ $({ $($insn)* }),* ],
+            insns $(starting at { $starting_addr })?: [ $({ $($insn)* }),* ],
             $(steps: $steps,)?
             $(regs: { $($r: $v),* },)?
             $(memory: { $($addr: $val),* },)?
@@ -59,7 +59,7 @@ macro_rules! __perip_type {
 macro_rules! single_test_inner {
     (   $(prefill: { $($addr_p:literal: $val_p:expr),* $(,)?} $(,)?)?
         $(prefill_expr: { $(($addr_expr:expr): $val_expr:expr),* $(,)?} $(,)?)?
-        insns: [ $({ $($insn:tt)* }),* $(,)?]  $(,)?
+        insns $(starting at { $starting_addr:expr })?: [ $({ $($insn:tt)* }),* $(,)?]  $(,)?
         $(steps: $steps:expr,)?
         $(regs: { $($r:tt: $v:expr),* $(,)?} $(,)?)?
         $(memory: { $($addr:literal: $val:expr),* $(,)?} $(,)?)?
@@ -101,6 +101,20 @@ macro_rules! single_test_inner {
         let mut prefill: Vec<(Addr, Word)> = Vec::new();
         $($(prefill.push(($addr_p, $val_p));)*)?
         $($(prefill.push(($addr_expr, $val_expr));)*)?
+
+        #[allow(unused, unused_mut)]
+        let mut instruction_starting_addr = USER_PROGRAM_START_ADDR;
+        #[allow(unused, unused_mut)]
+        let mut starting_pc = USER_PROGRAM_START_ADDR;
+
+        // If we have an different instruction stream starting
+        // address, use it as the starting PC as well:
+        $(
+            #[allow(unused_mut)]
+            let mut instruction_starting_addr: Word = $starting_addr;
+            #[allow(unused_mut)]
+            let mut starting_pc: Word = $starting_addr;
+        )?
 
         #[allow(unused_mut)]
         let mut insns: Vec<Instruction> = Vec::new();
@@ -155,7 +169,9 @@ macro_rules! single_test_inner {
 
         $crate::interp_test_runner::<MemoryShim, Per<'_>, _, _>(
             prefill,
+            instruction_starting_addr,
             insns,
+            starting_pc,
             steps,
             regs,
             None,
@@ -258,7 +274,7 @@ mod smoke_tests {
             prefill_expr: {
                 (0x3000 + 1): 'f' as Word,
             },
-            insns: [ { AND R0, R0, #0 }, { ADD R0, R0, #0b01 }, { STI R0, #0xD } ],
+            insns starting at { 0x3000 }: [ { AND R0, R0, #0 }, { ADD R0, R0, #0b01 }, { STI R0, #0xD } ],
             steps: 890 * 0x789,
             regs: {
                 R0: 0 * 7 + 3,

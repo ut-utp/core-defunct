@@ -1,7 +1,7 @@
 //! Home of the workhorse of this crate: `interp_test_runner`; the thing that
 //! actually runs the interpreter.
 
-use lc3_isa::{Addr, Instruction, Word};
+use lc3_isa::{Addr, Instruction, Word, USER_PROGRAM_START_ADDR};
 use lc3_traits::memory::Memory;
 use lc3_traits::peripherals::{Peripherals, PeripheralsWrapper};
 use lc3_baseline_sim::interp::{
@@ -15,7 +15,9 @@ use pretty_assertions::assert_eq;
 pub fn interp_test_runner<M: Memory + Default + Clone, P: Default + Peripherals, PF, TF>
 (
     prefilled_memory_locations: Vec<(Addr, Word)>,
+    insn_offset_addr: Word,
     insns: Vec<Instruction>,
+    starting_pc: Word,
     num_steps: Option<usize>,
     regs: [Option<Word>; 8],
     pc: Option<Addr>,
@@ -31,7 +33,7 @@ where
                                                    // since this is the last thing
                                                    // we do.
 {
-    let mut addr = 0x3000;
+    let mut addr = insn_offset_addr;
 
     let interp_builder = InterpreterBuilder::new().with_defaults();
 
@@ -47,14 +49,14 @@ where
             .build();
 
         int.reset();
-        int.set_pc(addr);
+        int.set_pc(starting_pc);
 
         int
     } else {
         let mut int = interp_builder.build();
 
         int.reset();
-        int.set_pc(addr);
+        int.set_pc(starting_pc);
 
         int
     };
@@ -123,8 +125,8 @@ where
         let val = interp.get_word_unchecked(*addr);
         assert_eq!(
             *word, val,
-            "Expected memory location {:#04X} to be {:#04X}",
-            *word, val
+            "Expected memory location {:#04X} to be {:#04X}, was {:#04X}",
+            addr, *word, val
         );
     }
 
