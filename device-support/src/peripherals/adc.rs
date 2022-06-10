@@ -7,6 +7,7 @@ use core::marker::PhantomData;
 use embedded_hal::adc::{Channel, OneShot};
 
 pub struct GenericAdc<
+    const W: u8 /*  = 12 */,
     U,
     A0,
     A1,
@@ -16,7 +17,6 @@ pub struct GenericAdc<
     A5,
     WORD,
     ADC,
-    const W: u8 = 12,
 > where
     A0: Channel<ADC>,
     A1: Channel<ADC>,
@@ -45,8 +45,8 @@ pub struct GenericAdc<
     phantom2: PhantomData<ADC>,
 }
 
-impl<U, A0, A1, A2, A3, A4, A5, WORD, ADC, const W: u8>
-    GenericAdc<U, A0, A1, A2, A3, A4, A5, WORD, ADC, W>
+impl<const W: u8, U, A0, A1, A2, A3, A4, A5, WORD, ADC>
+    GenericAdc<W, U, A0, A1, A2, A3, A4, A5, WORD, ADC>
 where
     A0: Channel<ADC>,
     A1: Channel<ADC>,
@@ -103,8 +103,8 @@ macro_rules! adc_read_pin {
     }}
 }
 
-impl<U, A0, A1, A2, A3, A4, A5, WORD, ADC, const W: u8> Adc
-    for GenericAdc<U, A0, A1, A2, A3, A4, A5, WORD, ADC, W>
+impl<const W: u8, U, A0, A1, A2, A3, A4, A5, WORD, ADC> Adc
+    for GenericAdc<W, U, A0, A1, A2, A3, A4, A5, WORD, ADC>
 where
     A0: Channel<ADC>,
     A1: Channel<ADC>,
@@ -195,7 +195,7 @@ mod tests {
             Transaction::read(2, 0xa0),
         ];
 
-        let mut generic_adc = GenericAdc::<_, _, _, _, _, _, _, _, _, 12>::new(
+        let mut generic_adc = GenericAdc::<12, _, _, _, _, _, _, _, _, _>::new(
             Mock::<u16>::new(&expectations),
             MockChan0,
             MockChan1,
@@ -219,7 +219,7 @@ mod tests {
             Transaction::read(2, 0xa0),
         ];
 
-        let mut generic_adc = GenericAdc::<_, _, _, _, _, _, _, _, _, 12>::new(
+        let mut generic_adc = GenericAdc::<12, _, _, _, _, _, _, _, _, _>::new(
             Mock::<u16>::new(&expectations),
             MockChan0,
             MockChan1,
@@ -302,7 +302,7 @@ mod tests {
             Transaction::read(2, 0xffff),
         ];
 
-        let mut generic_adc = GenericAdc::<_, _, _, _, _, _, _, _, _>::new(
+        let mut generic_adc = GenericAdc::<12, _, _, _, _, _, _, _, _, _>::new(
             Mock::<u16>::new(&expectations),
             MockChan0,
             MockChan1,
@@ -340,7 +340,7 @@ mod tests {
             Transaction::read(2, 0xffff),
         ];
 
-        let mut generic_adc = GenericAdc::<_, _, _, _, _, _, _, _, _>::new(
+        let mut generic_adc = GenericAdc::<12, _, _, _, _, _, _, _, _, _>::new(
             Mock::<u16>::new(&expectations),
             MockChan0,
             MockChan1,
@@ -379,7 +379,7 @@ mod tests {
             Transaction::read(2, 0xffff),
         ];
 
-        let mut generic_adc = GenericAdc::<_, _, _, _, _, _, _, _, _>::new(
+        let mut generic_adc = GenericAdc::<12, _, _, _, _, _, _, _, _, _>::new(
             Mock::<u16>::new(&expectations),
             MockChan0,
             MockChan1,

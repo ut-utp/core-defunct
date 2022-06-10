@@ -25,8 +25,10 @@ macro_rules! using_std_eager {
     };
 }
 #[cfg(not(feature = "std"))]
+#[allow(unused)]
 macro_rules! using_std_eager { ($($t:tt)*) => { }; }
 
+#[allow(unused)]
 macro_rules! not_wasm { ($($i:item)*) => ($(#[cfg(not(target_arch = "wasm32"))]$i)*) }
 #[allow(unused_macros)]
 macro_rules! wasm { ($($i:item)*) => ($(#[cfg(target_arch = "wasm32")]$i)*) }
