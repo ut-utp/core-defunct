@@ -118,6 +118,7 @@ pub trait Control {
         (regs, self.read_word(PSR), self.get_pc())
     }
 
+    // TODO: clarify interaction with mmapped I/O, ACVs, fallibility, etc.
     fn read_word(&self, addr: Addr) -> Word;
     fn write_word(&mut self, addr: Addr, word: Word);
 

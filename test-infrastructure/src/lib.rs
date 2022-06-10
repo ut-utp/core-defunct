@@ -39,3 +39,5 @@ mod misc;
 
 pub use runner::*;
 pub use misc::*;
+
+// TODO: figure out how to suppress "halting the LC-3"!

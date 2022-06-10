@@ -11,6 +11,8 @@ use core::convert::TryInto;
 
 use pretty_assertions::assert_eq;
 
+// TODO: add a trace option..
+
 #[inline]
 pub fn interp_test_runner<M: Memory + Default + Clone, P: Default + Peripherals, PF, TF>
 (
