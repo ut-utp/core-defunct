@@ -222,7 +222,7 @@ pub trait MemMappedSpecial: MemMapped {
 }
 
 pub trait Interrupt: MemMapped {
-    const INT_VEC: u8;
+    const INT_VEC: u8; // TODO: assert that this is in 0x80..0x100 (or switch to us doing the offset from 0x80?)
     const PRIORITY: u8; // Must be a 3 bit number
 
     /// Returns true if:
@@ -283,6 +283,8 @@ macro_rules! mem_mapped {
         $(#[doc=$extra_comment])?
         #[derive(Copy, Clone, Debug, PartialEq)]
         pub struct $name(Word);
+
+        // TODO: impl Display as `$name( {:#4X?} ({:#160b?}) )
 
         impl Deref for $name {
             type Target = Word;
@@ -514,7 +516,7 @@ impl MemMapped for DDR {
 
     fn from<I: Ipa>(_interp: &I) -> Result<Self, Acv> {
         // TODO: error here?
-        Ok(Self::with_value(0 as Word))
+        Ok(Self::with_value(0 as Word)) // TODO: explain this
     }
 
     fn set<I: Ipa>(interp: &mut I, value: Word) -> WriteAttempt {
@@ -1137,6 +1139,11 @@ mem_mapped!(special: PSR, PSR_ADDR, "Program Status Register.");
 
 use lc3_traits::control::ProcessorMode;
 
+// page 351 of the textbook implies that bit 14 of the PSR is a global enable/disable interrupt toggle...
+// afaict LC3Tools does not support this and no other part of the textbook makes reference to this.
+// TODO: should we support this?
+//
+// See: chiragsakhuja/lc3tools#27 (https://github.com/chiragsakhuja/lc3tools/issues/27)
 impl PSR {
     pub fn get_priority(&self) -> u8 {
         self.u8(8..10)

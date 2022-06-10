@@ -367,6 +367,19 @@ impl<'s, I: InstructionInterpreterPeripheralAccess, S: EventFutureSharedStatePor
         // Higher values for this constant will result in better throughput while
         // lower values will improve response times.
         const STEPS_IN_A_TICK: usize = 100; // TODO: tune!
+        // TODO: make adjustable? const generic param?
+        // TODO: adaptive?
+        // TODO: adaptive refresh rate in the TUI
+        // TODO: log req/resps in the controller that take too long (above a certain threshold)
+        // TODO: teach the TUI to drop draws? (timestamp these)
+        // TODO: have the TUI warn about updates that aren't handled in a threshold (timestamp these)
+        // TODO: add a smart data caching `Control` middleware
+        //   - only can be used in situations where there's 1 host for the device
+        //     + if using a multiplexed control middleware, you need to put this underneath it
+        //   - i.e. assumes breakpoints, watchpoints haven't changed
+        //          assumes registers, pc, words, depth, call stack don't changed when paused
+        //
+        // TODO: multiplexed control layer (websocket, etc.)
 
         use State::*;
 

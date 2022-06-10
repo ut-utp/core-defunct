@@ -82,7 +82,9 @@ where {
         use lc3_traits::peripherals::timers::{TIMERS, TimerMode, TimerState};
         use lc3_traits::peripherals::clock::Clock;
 
-        // TODO: do something with errors here?
+
+        // TODO: do something with errors here? thread the errors through here??
+        // (i.e. call set_error) or not?
         let p = self.get_peripherals_mut();
 
         let gpio = p.get_gpio_mut();
@@ -707,6 +709,11 @@ impl<M: Memory, P: Peripherals> Interpreter<M, P> {
                     if <$dev>::PRIORITY <= cur_priority { return false; }
                     else if <$dev as Interrupt>::interrupt(self) {
                         <$dev as Interrupt>::reset_interrupt_flag(self);
+
+                        // TODO: only reset the interrupt flag if we actually handled the interrupt!
+                        //
+                        // this is actually guaranteed because of the priority check above but still;
+                        // better to have this be explicit and obvious.
                         return self.handle_interrupt(<$dev>::INT_VEC, <$dev>::PRIORITY);
                     }
                 )*
