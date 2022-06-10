@@ -11,8 +11,7 @@ use lti::*;
 use lti::assert_eq as eq;
 
 use lc3_baseline_sim::interp::InstructionInterpreter;
-use lc3_os::OS_IMAGE;
-use lc3_isa::OS_START_ADDR;
+use lc3_os::traps::builtin::*;
 
 mod adc;
 mod clock;
@@ -20,5 +19,5 @@ mod gpio;
 mod pwm;
 mod timers;
 
-// mod input;
+mod input;
 mod output;

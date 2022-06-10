@@ -5,16 +5,18 @@ use super::*;
 
 // TODO: update these to use I/O peripherals now!
 
+use lc3_os::traps::output as o;
+
 // Print "!"
 single_test! {
     out,
     prefill: { 0x3003: 33 },
     insns: [
         { LD R0, #2 },
-        { TRAP #0x21 },
-        { TRAP #0x25 },
+        { TRAP #o::WRITE },
+        { TRAP #HALT },
     ],
-    with os { MemoryShim::new(**OS_IMAGE) } @ OS_START_ADDR
+    with default os,
 }
 
 // Print "(!)"
@@ -28,10 +30,10 @@ single_test! {
     },
     insns: [
         { LEA R0, #2 },
-        { TRAP #0x22 },
-        { TRAP #0x25 },
+        { TRAP #PUTS },
+        { TRAP #HALT },
     ],
-    with os { MemoryShim::new(**OS_IMAGE) } @ OS_START_ADDR
+    with default os,
 }
 
 // Print "(!)"
@@ -44,8 +46,8 @@ single_test! {
     },
     insns: [
         { LEA R0, #2 },
-        { TRAP #0x24 },
-        { TRAP #0x25 },
+        { TRAP #PUTSP },
+        { TRAP #HALT },
     ],
-    with os { MemoryShim::new(**OS_IMAGE) } @ OS_START_ADDR
+    with default os,
 }
