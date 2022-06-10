@@ -140,22 +140,54 @@ impl<T> IndexMut<GpioPin> for GpioPinArr<T> {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct GpioMiscError;
 
-type GpioStateMismatch = (GpioPin, GpioState);
+// Can't implement `From` because we want `GpioMiscError` to implement `Debug`.
+//
+// This is okay though; user code doesn't really generate these errors.
+impl GpioMiscError {
+    pub fn from_source<D: core::fmt::Debug>(_source: D) -> Self {
+        // TODO: log!(T)..
+        // on the device this can maybe send to the console, idk
+
+        // TODO: on the tm4c, register an env logger that sends stuff to the
+        // console!
+        GpioMiscError
+    }
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct GpioReadError(pub GpioStateMismatch);
+pub enum GpioReadError {
+    IsDisabled,
+    IsInOutputMode,
+    Other(GpioMiscError),
+}
+
+impl From<GpioMiscError> for GpioReadError {
+    fn from(misc: GpioMiscError) -> Self {
+        GpioReadError::Other(misc)
+    }
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct GpioWriteError(pub GpioStateMismatch);
+pub enum GpioWriteError {
+    IsDisabled,
+    IsInInputMode,
+    IsInInterruptMode,
+    Other(GpioMiscError),
+}
 
-pub type GpioStateMismatches = GpioPinArr<Option<GpioStateMismatch>>; // [Option<GpioStateMismatch>; NUM_GPIO_PINS as usize];
-impl Copy for GpioStateMismatches { }
+impl From<GpioMiscError> for GpioWriteError {
+    fn from(misc: GpioMiscError) -> Self {
+        GpioWriteError::Other(misc)
+    }
+}
+
+impl<T: Copy> Copy for GpioPinArr<T> { }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct GpioReadErrors(pub GpioStateMismatches);
+pub struct GpioReadErrors(pub GpioPinArr<Option<GpioReadError>>); // TODO: display impl
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct GpioWriteErrors(pub GpioStateMismatches);
+pub struct GpioWriteErrors(pub GpioPinArr<Option<GpioWriteError>>); // TODO: display impl
 
 // TODO: conditional (on std) Error impls
 
@@ -338,7 +370,7 @@ impl TryFrom<GpioPinArr<Result<bool, GpioReadError>>> for GpioReadErrors {
         if read_errors.iter().all(|r| r.is_ok()) {
             Err(()) // No error!
         } else {
-            let mut errors: GpioStateMismatches = GpioPinArr([None; GpioPin::NUM_PINS]);
+            let mut errors = GpioPinArr([None; GpioPin::NUM_PINS]);
 
             read_errors
                 .iter()
@@ -347,7 +379,7 @@ impl TryFrom<GpioPinArr<Result<bool, GpioReadError>>> for GpioReadErrors {
                     res.map_err(|gpio_read_error| (idx, gpio_read_error)).err()
                 })
                 .for_each(|(idx, gpio_read_error)| {
-                    errors.0[idx] = Some(gpio_read_error.0);
+                    errors.0[idx] = Some(gpio_read_error);
                 });
 
             Ok(GpioReadErrors(errors))
@@ -365,7 +397,7 @@ impl TryFrom<GpioPinArr<Result<(), GpioWriteError>>> for GpioWriteErrors {
             // None
             Err(())
         } else {
-            let mut errors: GpioStateMismatches = GpioPinArr([None; GpioPin::NUM_PINS]);
+            let mut errors = GpioPinArr([None; GpioPin::NUM_PINS]);
 
             write_errors
                 .iter()
@@ -375,7 +407,7 @@ impl TryFrom<GpioPinArr<Result<(), GpioWriteError>>> for GpioWriteErrors {
                         .err()
                 })
                 .for_each(|(idx, gpio_write_error)| {
-                    errors.0[idx] = Some(gpio_write_error.0);
+                    errors.0[idx] = Some(gpio_write_error);
                 });
 
             // Some(GpioWriteErrors(errors))

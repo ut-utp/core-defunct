@@ -23,8 +23,8 @@ impl Gpio for GpioStub {
     fn set_state(&mut self, _pin: GpioPin, _state: GpioState) -> Result<(), GpioMiscError> { Err(GpioMiscError) }
     fn get_state(&self, _pin: GpioPin) -> GpioState { GpioState::Disabled }
 
-    fn read(&self, pin: GpioPin) -> Result<bool, GpioReadError> { Err(GpioReadError((pin, GpioState::Disabled))) }
-    fn write(&mut self, pin: GpioPin, _bit: bool) -> Result<(), GpioWriteError> { Err(GpioWriteError((pin, GpioState::Disabled))) }
+    fn read(&self, _pin: GpioPin) -> Result<bool, GpioReadError> { Err(GpioReadError::IsDisabled) }
+    fn write(&mut self, _pin: GpioPin, _bit: bool) -> Result<(), GpioWriteError> { Err(GpioWriteError::IsDisabled) }
 
     fn interrupt_occurred(&self, _pin: GpioPin) -> bool { false }
     fn reset_interrupt_flag(&mut self, _pin: GpioPin) { }
