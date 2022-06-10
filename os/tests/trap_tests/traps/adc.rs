@@ -47,7 +47,6 @@ single_test! {
     ],
     pre: |p| { Adc::set_state(p, A0, Disabled).unwrap() },
     post: |i| { eq!(i.get_word_unchecked(0x3004), 0); },
-    with os { MemoryShim::new(**OS_IMAGE) } @ OS_START_ADDR
     with default os,
 }
 
@@ -62,7 +61,6 @@ single_test! {
     ],
     pre: |p| { Adc::set_state(p, A0, Enabled).unwrap() },
     post: |i| { eq!(i.get_word_unchecked(0x3004), 1); },
-    with os { MemoryShim::new(**OS_IMAGE) } @ OS_START_ADDR
     with default os,
 }
 

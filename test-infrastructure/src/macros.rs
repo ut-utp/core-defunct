@@ -73,9 +73,6 @@ macro_rules! single_test_inner {
         $(with os { $os:expr } @ $os_addr:expr $(,)?)?
     ) => {{
         #[allow(unused_imports)]
-        use super::*;
-
-        #[allow(unused_imports)]
         use $crate::{
             Addr, Word, Reg, Instruction, insn, Reg::*,
             ShareablePeripheralsShim, MemoryShim, SourceShim, new_shim_peripherals_set,

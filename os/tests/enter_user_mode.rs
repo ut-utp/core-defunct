@@ -9,8 +9,8 @@
 extern crate lc3_test_infrastructure as lti;
 use lti::{single_test, assert_eq as eq};
 
-use lc3_baseline_sim::{interp::{InstructionInterpreter, InstructionInterpreterPeripheralAccess}, mem_mapped::PSR};
-use lc3_os::{USER_PROG_START_ADDR_SETTING_ADDR, traps::builtin::*};
+use lc3_baseline_sim::{interp::InstructionInterpreter, mem_mapped::PSR};
+use lc3_os::traps::builtin::*;
 single_test! {
     respects_start_addr_setting,
     prefill: {

@@ -1,7 +1,6 @@
 use super::*;
 
-use lc3_traits::peripherals::input::Input;
-use lc3_baseline_sim::mem_mapped::{PSR as PSR_DEV, KBSR_ADDR, KBDR_ADDR, KEYBOARD_INT_VEC};
+use lc3_baseline_sim::mem_mapped::{KBSR_ADDR, KBDR_ADDR, KEYBOARD_INT_VEC};
 use lc3_isa::{PSR, INTERRUPT_VECTOR_TABLE_START_ADDR};
 
 

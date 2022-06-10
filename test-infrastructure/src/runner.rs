@@ -1,7 +1,7 @@
 //! Home of the workhorse of this crate: `interp_test_runner`; the thing that
 //! actually runs the interpreter.
 
-use lc3_isa::{Addr, Instruction, Word, USER_PROGRAM_START_ADDR};
+use lc3_isa::{Addr, Instruction, Word};
 use lc3_traits::memory::Memory;
 use lc3_traits::peripherals::{Peripherals, PeripheralsWrapper};
 use lc3_baseline_sim::interp::{
@@ -45,7 +45,7 @@ where
         interp_builder
     };
 
-    let mut interp: Interpreter<M, P> = if let Some((mem, addr)) = alt_memory {
+    let mut interp: Interpreter<M, P> = if let Some((mem, _addr)) = alt_memory {
         let mut int: Interpreter<M, P> = interp_builder
             .with_memory(mem)
             .build();

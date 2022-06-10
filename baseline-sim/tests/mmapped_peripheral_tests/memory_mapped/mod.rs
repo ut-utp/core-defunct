@@ -8,7 +8,6 @@
 use lc3_test_infrastructure::*;
 
 use lc3_isa::SignedWord;
-use Reg::*;
 
 use itertools::Itertools;
 use lc3_test_infrastructure::assert_eq as eq;
