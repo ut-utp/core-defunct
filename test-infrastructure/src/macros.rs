@@ -24,6 +24,7 @@ macro_rules! single_test {
         $(with custom peripherals: $custom_per:block -> [$custom_per_ty:tt] $(,)?)?
         $(pre: |$peripherals_s:pat_param| $setup:block $(,)?)?
         $(post: |$peripherals_t:pat_param| $teardown:block $(,)?)?
+        $(with default os $($default_os:literal)? $(,)?)?
         $(with os { $os:expr } @ $os_addr:expr $(,)?)?
     ) => {
     $(#[doc = $panics] #[should_panic])?
@@ -40,6 +41,7 @@ macro_rules! single_test {
             $(with custom peripherals: $custom_per -> [$custom_per_ty],)?
             $(pre: |$peripherals_s| $setup,)?
             $(post: |$peripherals_t| $teardown,)?
+            $(with default os $($default_os)?,)?
             $(with os { $os } @ $os_addr,)?
         ));
     }};
@@ -67,6 +69,7 @@ macro_rules! single_test_inner {
         $(with custom peripherals: $custom_per:block -> [$custom_per_ty:tt] $(,)?)?
         $(pre: |$peripherals_s:pat_param| $setup:block $(,)?)?
         $(post: |$peripherals_t:pat_param| $teardown:block $(,)?)?
+        $(with default os $($default_os:literal)? $(,)?)?
         $(with os { $os:expr } @ $os_addr:expr $(,)?)?
     ) => {{
         #[allow(unused_imports)]
@@ -78,6 +81,7 @@ macro_rules! single_test_inner {
             ShareablePeripheralsShim, MemoryShim, SourceShim, new_shim_peripherals_set,
             Interpreter, InstructionInterpreterPeripheralAccess,
             PeripheralsWrapper,
+            USER_PROGRAM_START_ADDR, OS_START_ADDR, OS_IMAGE, USER_PROG_START_ADDR_SETTING_ADDR,
         };
 
         #[allow(unused_imports)]
@@ -127,6 +131,30 @@ macro_rules! single_test_inner {
         #[allow(unused)]
         let os: Option<(MemoryShim, Addr)> = None;
         $(let os = Some(($os, $os_addr));)?
+        let mut os: Option<(MemoryShim, Addr)> = None;
+        // The default OS has lower precedence so process that first:
+        $(
+            #[cfg(___disable____)]
+            let _ = 1 $(+ $default_os)?;
+            let mut os = Some((MemoryShim::new(**OS_IMAGE), OS_START_ADDR));
+        )?
+        // Note that the above is not marked with `#[allow(unused)]`; this
+        // is intentional, we want to warn users that the `default os` option
+        // is being overriden.
+        $(
+            let mut os = Some(($os, $os_addr));
+        )?
+
+        // If we have an OS, use it as the starting adddress:
+        if let Some((ref mut image, ref os_start_addr)) = os {
+            // Modify the OS's memory image so it knows to jump to
+            // our instruction stream:
+            image[USER_PROG_START_ADDR_SETTING_ADDR] = starting_pc;
+            image.flush();
+
+            // And then change the starting PC to run the OS:
+            starting_pc = *os_start_addr;
+        }
 
         #[allow(unused)]
         let custom_peripherals: Option<Per<'_>> = None;

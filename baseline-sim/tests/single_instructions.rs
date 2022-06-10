@@ -40,7 +40,9 @@ mod single_instructions {
 
                 interp_test_runner::<MemoryShim, PeripheralsShim, _, _>(
                     Vec::new(),
+                    lc3_isa::USER_PROGRAM_START_ADDR,
                     insns,
+                    lc3_isa::USER_PROGRAM_START_ADDR,
                     $steps,
                     regs,
                     Some($pc),
