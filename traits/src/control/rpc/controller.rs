@@ -71,7 +71,10 @@ where
     // pending_messages: [Option<ControlMessage>; 2],
     shared_state: &'a S,
     waiting_for_event: AtomicBool, // TODO: no reason for this to be Atomic // Note: it's atomic so we can maintain interior mutability?
-    // waiting_for_event: bool,
+
+    #[cfg_attr(all(docs, not(doctest)), doc(cfg(feature = "std")))]
+    #[cfg(feature = "std")]
+    retry_timeout: Option<std::time::Duration>,
 }
 
 // TODO: make a builder!
@@ -93,7 +96,7 @@ where
     // actual value is never used so that users don't have to resort to using
     // the turbofish syntax to specify what they want the encoding layer to be.
     pub /*const*/ fn new(enc: E, dec: D, transport: T, shared_state: &'a S) -> Self {
-        Self {
+        let c = Self {
             // encoding,
             _encoded_formats: PhantomData,
             enc: RefCell::new(enc),
@@ -103,7 +106,51 @@ where
             // pending_messages: [None; 2],
             shared_state,
             waiting_for_event: AtomicBool::new(false),
-            // waiting_for_event: false,
+
+            #[cfg_attr(all(docs, not(doctest)), doc(cfg(feature = "std")))]
+            #[cfg(feature = "std")]
+            retry_timeout: None,
+        };
+
+        // In case we've just attached to a running interpreter:
+        //
+        // (we do this check once)
+        //
+        // TODO: perf hit? do we want to move this out to a separate function that
+        // needs to be called explicitly?
+        if let State::RunningUntilEvent = c.get_state() {
+            c.waiting_for_event.store(true, Ordering::SeqCst);
+
+            // we'd like to do this but can't because of the multi-batch issue...
+            //
+            // instead users of this `Control` impl will just need to
+            // call `run_until_event` themselves!
+            // c.shared_state.add_new_future().unwrap();
+        }
+
+        c
+    }
+
+    using_std! {
+        // TODO: explain better, esp the potential downsides (repeated
+        // messages!)
+        //
+        /// If enabled, retries sending the request messages for a response
+        /// we're waiting on after the given timeout.
+        ///
+        /// This can lead to the device getting duplicated request messages; for
+        /// commands that are not idempotent (i.e. Step) this will be
+        /// observable.
+        ///
+        /// The upside is that this enables the `Controller` to "recover" from
+        /// errors like the board being restarted in a way that's not aligned
+        /// with req/resps.
+        pub fn with_retry_timeout(
+            mut self,
+            timeout: std::time::Duration,
+        ) -> Self {
+            self.retry_timeout = Some(timeout);
+            self
         }
     }
 }
@@ -145,9 +192,19 @@ where
     //
     // Responses to our one non-blocking call (`run_until_event`) are the only
     // thing that could interrupt this.
-    fn tick(&self) -> TickAttempt<ResponseMessage, D::Err, T::RecvErr> {
-        let encoded_message = self.transport.get()
-            .map_err(|e| e.map(|inner| TickError::TransportError(inner)))?;
+    //
+    // In situations where this is called after sending data and a response is
+    // expected `use_blocking_get` can be set to `true`. This will use
+    // `get_blocking` on the underlying transport which may save the caller of
+    // this function (if waiting on a response) some spinning.
+    fn tick_inner(&self, use_blocking_get: bool) -> TickAttempt<ResponseMessage, D::Err, T::RecvErr> {
+        let transport_response = if use_blocking_get {
+            self.transport.blocking_get()
+        } else {
+            self.transport.get()
+        };
+        let encoded_message = transport_response
+            .map_err(|e| e.map(TickError::TransportError))?;
 
         let message = self.dec.borrow_mut()
             .decode(&encoded_message)
@@ -182,8 +239,14 @@ macro_rules! ctrl {
 
         $s.transport.send($s.enc.borrow_mut().encode(&m)).unwrap(); // TODO: don't panic? not sure how we'd realistically deal with any transport errors..
 
+        #[cfg(feature = "std")]
+        let msg_sent_at = std::time::Instant::now();
+
         loop {
-            match Controller::tick($s) {
+            // Because we have just sent a message, we expect a response.
+            //
+            // This means we can use `blocking_get`.
+            match Controller::tick_inner($s, true) {
                 // If we got a message, process it:
                 Ok(m) => {
                     if let $resp = m {
@@ -194,13 +257,42 @@ macro_rules! ctrl {
                 },
 
                 // If we got no message, try, try again:
-                Err(None) => { },
+                Err(None) => {
+                    // TODO: implement some kind of backoff here??
+                    // Separate change:
+                    #[cfg(feature = "std")]
+                    {
+                        // Try again!
+                        //
+                        // Hopefully the message actually was lost... otherwise
+                        // we'll get two responses and crash.
+                        if let Some(retry_timeout) = $s.retry_timeout {
+                            if std::time::Instant::now().duration_since(msg_sent_at) > retry_timeout {
+                                $s.transport.send($s.enc.borrow_mut().encode(&m)).unwrap(); // TODO: don't panic? not sure how we'd realistically deal with any transport errors..
+                            }
+                        }
+
+                        // TODO: we should maybe "poison" the run until event
+                        // future here, if we're assuming that the board has
+                        // been reset...
+                        //
+                        // Or not; I think we don't intend to support tolerating
+                        // board resets in the general case. If there are no
+                        // pending futures at the time of reset it'll __happen__
+                        // to work and that's okay.
+                        //
+                        // Note that if we ever do a caching control middleware,
+                        // it'll have a lot of its assumptions violated if the
+                        // board resets from under it. That's okay too.
+                    }
+                },
 
                 // If we got a transport error, bail:
                 Err(Some(TickError::TransportError(e))) => panic!("Transport error! `{:?}`", e),
 
                 // If we got a decode error, assume a problem in transmission
-                // and try again.
+                // and try again. (TODO: this is... fraught. but given how rare
+                // UART transmission errors are, this is probably good enough)
                 Err(Some(TickError::DecodeError(e))) => {
                     log::trace!("Decode Error: `{:?}`", e);
 
@@ -291,13 +383,17 @@ where
         let m = RequestMessage::RunUntilEvent.into();
 
         // If we're already waiting for an event, don't bother sending the
-        // request along again:
+        // request along again.
+        //
+        // If we're not yet waiting for an event:
         if !self.waiting_for_event.load(Ordering::SeqCst) {
             self.transport.send(self.enc.borrow_mut().encode(&m)).unwrap();
 
             // Wait for the acknowledge:
+            //
+            // (just like `ctrl!` we can use a `blocking_get` here)
             loop {
-                match Controller::tick(self) {
+                match Controller::tick_inner(self, true) {
                     Ok(m) => if let ResponseMessage::RunUntilEventAck = m {
                         break;
                     } else {
@@ -333,7 +429,11 @@ where
         // We should never actually get a message here (run until event responses are
         // handled within `Self::tick()`) though.
         // Self::tick(self).unwrap_none(); // when this goes stable, use this, maybe (TODO)
-        if let Err(None) = Self::tick(self) {
+        //
+        // Since we have not sent a message, we are not *guaranteed* to get any bytes
+        // (as mentioned, a RunUntilEvent response is the only thing we could _possibly_
+        // get) so we should not block.
+        if let Err(None) = Self::tick_inner(self, false) {
             /* We expect to get nothing here. */
         } else {
             panic!("Controller received a message in tick!")
