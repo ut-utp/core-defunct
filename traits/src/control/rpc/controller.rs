@@ -401,15 +401,14 @@ where
         // If we're in a sealed batch with pending futures, just crash.
         self.shared_state.add_new_future().expect("no new futures once a batch starts to resolve");
 
-        // TODO: factor out this code; it's a copy of that in the ctrl! macro.
-
-        let m = RequestMessage::RunUntilEvent.into();
-
         // If we're already waiting for an event, don't bother sending the
         // request along again.
         //
         // If we're not yet waiting for an event:
         if !self.waiting_for_event.load(Ordering::SeqCst) {
+            // Send the message:
+            /*
+            let m = RequestMessage::RunUntilEvent.into();
             self.transport.send(self.enc.borrow_mut().encode(&m)).unwrap();
 
             // Wait for the acknowledge:
@@ -436,6 +435,9 @@ where
                     },
                 }
             }
+            */
+
+            ctrl!(self, RunUntilEvent, R::RunUntilEventAck);
 
             self.waiting_for_event.store(true, Ordering::SeqCst);
         }
