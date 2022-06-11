@@ -242,6 +242,8 @@ macro_rules! ctrl {
         #[cfg(feature = "std")]
         let msg_sent_at = std::time::Instant::now();
 
+        log::trace!("sending message: {m:?}");
+
         loop {
             // Because we have just sent a message, we expect a response.
             //
@@ -250,15 +252,33 @@ macro_rules! ctrl {
                 // If we got a message, process it:
                 Ok(m) => {
                     if let $resp = m {
+                        log::trace!("got expected resp: {}", core::stringify!($resp));
                         break $($ret)?
                     } else {
-                        panic!("Incorrect response for message!")
+                        // We used to panic here but no longer...
+                        //
+                        // We're effectively throwing this response message away
+                        // and trying again (if we time out). The hope is that
+                        // we'll eventually realign ourselves.
+                        //
+                        // The ideal case is just that the device went away for
+                        // a bit (i.e. was paused in GDB) causing us to retry
+                        // meaning that we're now getting duplicated respoonses
+                        // for the previous request we sent out. In the future
+                        // maybe we'll cache the last request we tried and
+                        // _ensure_ that the response type we're getting
+                        // unexpectedly is that of the previous message.
+                        //
+                        // But for now we just log the error and move on.
+                        log::error!("Incorrect response for message! got: {m:?}, expected: {}", core::stringify!($resp))
                     }
                 },
 
                 // If we got no message, try, try again:
                 Err(None) => {
                     // TODO: implement some kind of backoff here??
+                    log::trace!("no message received (waiting on: {}), asking the transport to check again...", core::stringify!($resp));
+
                     // Separate change:
                     #[cfg(feature = "std")]
                     {
@@ -268,6 +288,8 @@ macro_rules! ctrl {
                         // we'll get two responses and crash.
                         if let Some(retry_timeout) = $s.retry_timeout {
                             if std::time::Instant::now().duration_since(msg_sent_at) > retry_timeout {
+                                log::error!("we've hit our retry timeout ({retry_timeout:?})! sending message `{m:?}` again...");
+
                                 $s.transport.send($s.enc.borrow_mut().encode(&m)).unwrap(); // TODO: don't panic? not sure how we'd realistically deal with any transport errors..
                             }
                         }
@@ -294,7 +316,8 @@ macro_rules! ctrl {
                 // and try again. (TODO: this is... fraught. but given how rare
                 // UART transmission errors are, this is probably good enough)
                 Err(Some(TickError::DecodeError(e))) => {
-                    log::trace!("Decode Error: `{:?}`", e);
+                    log::error!("Decode Error: `{:?}`", e);
+                    log::error!("Sending message `{m:?}` again...");
 
                     // TODO: because send _consumes_ the message we have to do
                     // the encode here. On the one hand having the transport
@@ -397,7 +420,7 @@ where
                     Ok(m) => if let ResponseMessage::RunUntilEventAck = m {
                         break;
                     } else {
-                        panic!("Incorrect response for message!")
+                        panic!("Incorrect response for message! got {m:?}, expected `RunUntilEventAck")
                     }
 
                     Err(None) => {},
@@ -407,7 +430,8 @@ where
                     },
 
                     Err(Some(TickError::DecodeError(e))) => {
-                        log::trace!("Decode Error: {:?}", e);
+                        // Try again!
+                        log::error!("Decode Error: {:?}", e);
                         self.transport.send(self.enc.borrow_mut().encode(&m)).unwrap();
                     },
                 }
