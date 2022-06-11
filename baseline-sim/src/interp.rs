@@ -1116,6 +1116,7 @@ impl<M: Memory, P: Peripherals> InstructionInterpreter for Interpreter<M, P> {
         self.memory.reset();
 
         self.get_special_reg::<PSR>().set_priority(self, 7);
+        self.get_special_reg::<PSR>().to_privileged_mode(self);
         self.get_special_reg::<MCR>().run(self);
         self.set_cc(0);
 

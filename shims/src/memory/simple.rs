@@ -123,3 +123,6 @@ impl Memory for MemoryShim {
         self.metadata = metadata;
     }
 }
+
+// TODO: add tests that ensure that mem-mapped space is cleared (zero'd) on
+// reset and that change to it don't persist, etc.
