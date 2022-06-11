@@ -18,8 +18,9 @@ use lc3_device_support::{
 
 use std::{
     borrow::Cow,
-    sync::Mutex,
     default::Default,
+    sync::Mutex,
+    time::Duration,
 };
 
 // Static data that we need:
@@ -163,7 +164,7 @@ where
             PostcardDecode::new(),
             config.new_transport(),
             &*EVENT_FUTURE_SHARED_STATE_CONT
-        );
+        ).with_retry_timeout(Duration::from_secs(2));
 
         let storage: &'s mut _ = b.put(BoardDevice::<_> { controller });
 
