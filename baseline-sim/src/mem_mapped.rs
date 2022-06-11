@@ -1182,6 +1182,35 @@ mem_mapped!(special: PSR, PSR_ADDR, "Program Status Register.");
 
 use lc3_traits::control::ProcessorMode;
 
+// TODO: move to util/macros in some crate...
+//
+// maybe device_support?
+macro_rules! pessimize {
+    ($(
+        $var_name:ident: $var_ty:ty
+    ),* => $fn:ident) => {
+        #[inline(never)]
+        #[no_mangle]
+        fn $fn(
+            $(
+                $var_name: $var_ty,
+            )*
+        ) -> ($($var_ty,)*) {
+            ($(
+                unsafe { ::core::ptr::read_volatile(
+                    &$var_name as _
+                ) },
+            )*)
+        }
+
+        #[allow(unused)]
+        let ($(
+            $var_name,
+        )*) = $fn($(
+            $var_name,
+        )*);
+    };
+}
 
 // page 351 of the textbook implies that bit 14 of the PSR is a global enable/disable interrupt toggle...
 // afaict LC3Tools does not support this and no other part of the textbook makes reference to this.
@@ -1217,12 +1246,17 @@ impl PSR {
         !self.in_user_mode()
     }
 
-    fn set_mode<'a, I>(&mut self, interp: &mut I, user_mode: bool)
+    fn set_mode<'a, I>(&mut self, interp: &mut I, processor_mode: ProcessorMode)
     where
         I: InstructionInterpreterPeripheralAccess<'a>,
         <I as Deref>::Target: Peripherals<'a>,
     {
-        self.0 = self.0.u16(0..14) | (Into::<Word>::into(user_mode) << 15);
+        // let old = self.0;
+        // let new = self.0.u16(0..14) | (Into::<Word>::into(processor_mode) << 15);
+        // pessimize!(old: u16, new: u16, processor_mode: ProcessorMode => set_mode_dbg);
+        // std::dbg!(processor_mode);
+
+        self.0 = self.0.u16(0..14) | (Into::<Word>::into(processor_mode) << 15);
 
         // Don't return a `WriteAttempt` since PSR accesses are infallible.
         self.write_current_value(interp).unwrap()
@@ -1233,7 +1267,7 @@ impl PSR {
         I: InstructionInterpreterPeripheralAccess<'a>,
         <I as Deref>::Target: Peripherals<'a>,
     {
-        self.set_mode(interp, true)
+        self.set_mode(interp, ProcessorMode::User)
     }
 
     pub fn to_privileged_mode<'a, I>(&mut self, interp: &mut I)
@@ -1241,7 +1275,7 @@ impl PSR {
         I: InstructionInterpreterPeripheralAccess<'a>,
         <I as Deref>::Target: Peripherals<'a>,
     {
-        self.set_mode(interp, false)
+        self.set_mode(interp, ProcessorMode::Supervisor)
     }
 
     pub fn n(&self) -> bool {
@@ -1338,6 +1372,12 @@ impl MCR {
         I: InstructionInterpreterPeripheralAccess<'a>,
         <I as Deref>::Target: Peripherals<'a>,
     {
+        // dbg!("setting running bit...");
+        // let old = self.0;
+        // let new = (self.0 & (!WORD_MAX_VAL.select(15..15))) | ((bit as Word) << 15);
+        // pessimize!(old: u16, new: u16, bit: bool => set_running_bit_dbg);
+        // self.0 = new;
+
         self.0 = (self.0 & (!WORD_MAX_VAL.select(15..15))) | ((bit as Word) << 15);
 
         // Don't return a `WriteAttempt` since MCR accesses don't produce ACVs (and are hence infallible).
@@ -1364,3 +1404,5 @@ impl MCR {
         self.set_running_bit(interp, true);
     }
 }
+
+// TODO: error set memory mapped device! (for TRAPs to set)

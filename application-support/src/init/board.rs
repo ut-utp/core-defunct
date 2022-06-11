@@ -22,6 +22,7 @@ use std::{
     path::{Path, PathBuf},
     default::Default,
     marker::PhantomData,
+    time::Duration,
 };
 
 // Static data that we need:
@@ -32,6 +33,7 @@ lazy_static::lazy_static! {
         SyncEventFutureSharedState::new();
 }
 
+#[allow(type_alias_bounds)]
 type Cont<'ss, EncFunc: FnMut() -> Cobs<Fifo<u8>>> = Controller<
     'ss,
     HostUartTransport,
@@ -186,7 +188,7 @@ where
             PostcardDecode::new(),
             config.new_transport(),
             &*EVENT_FUTURE_SHARED_STATE_CONT
-        );
+        ).with_retry_timeout(Duration::from_secs(2));
 
         let storage: &'s mut _ = b.put(BoardDevice::<_, P> { controller, _p: PhantomData });
 

@@ -82,6 +82,12 @@ pub enum ProcessorMode {
     User = 1,
 }
 
+impl From<ProcessorMode> for Word {
+    fn from(val: ProcessorMode) -> Self {
+        val as _
+    }
+}
+
 // Actually maybe make this Control a super trait of this can have Control still retain
 // EventFuture and run_until_event. (TODO)
 // pub trait Driver: Control { type EventFuture:

@@ -587,7 +587,7 @@ where
         // multiple times.
         let _ = self.step();
 
-        // TODO: unset + reset watchpoints here
+        // TODO: unset + reset watchpoints here (to pick up new data)
 
         InstructionInterpreter::reset(&mut self.interp);
         self.state = State::Paused;

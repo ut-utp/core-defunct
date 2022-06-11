@@ -869,11 +869,20 @@ impl<'a, M: Memory, P: Peripherals<'a>> Interpreter<'a, M, P> {
     fn is_acv(&self, addr: Word) -> bool {
         // TODO: is `PSR::from_special(self).in_user_mode()` clearer?
 
+        // #[inline(never)]
+        // fn is_acv_debug(addr: Word, in_user_mode: bool, ret: bool) -> bool {
+        //     unsafe { ::core::ptr::read_volatile(&addr as _) };
+        //     unsafe { ::core::ptr::read_volatile(&in_user_mode as _) };
+        //     unsafe { ::core::ptr::read_volatile(&ret as _) }
+        // }
+
         if self.get_special_reg::<PSR>().in_user_mode() {
             (addr < USER_PROGRAM_START_ADDR) | (addr >= MEM_MAPPED_START_ADDR)
         } else {
             false
         }
+
+        // is_acv_debug(addr, self.get_special_reg::<PSR>().in_user_mode(), ret)
     }
 
     fn instruction_step_inner(&mut self, insn: Instruction) -> Result<(), Acv> {
@@ -1209,6 +1218,7 @@ impl<'a, M: Memory, P: Peripherals<'a>> InstructionInterpreter for Interpreter<'
         self.memory.reset();
 
         self.get_special_reg::<PSR>().set_priority(self, 7);
+        self.get_special_reg::<PSR>().to_privileged_mode(self);
         self.get_special_reg::<MCR>().run(self);
         self.set_cc(0);
 

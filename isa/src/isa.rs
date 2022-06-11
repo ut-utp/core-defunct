@@ -615,6 +615,8 @@ impl Instruction {
     }
 }
 
+
+// TODO: change all of these to be range inclusive!
 pub trait Bits: Sized + Copy {
     fn bit(self, bit: u32) -> bool;
 

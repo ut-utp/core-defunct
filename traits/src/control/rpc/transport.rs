@@ -28,7 +28,24 @@ pub trait Transport<SendFormat, RecvFormat> {
     /// Err(Some(_)) on transport errors.
     // TODO: went from Result<Option<M>, Err> to Result<M, Option<Err>>; is this
     // fine? is there a better way?
-    fn get(&self) -> Result<RecvFormat, Option<Self::RecvErr>>;
+    fn get(&self) -> Result<RecvFormat, Option<Self::RecvErr>>; // TODO: &mut?
+
+    // Implementations of this are allowed to block (with some reasonable
+    // timeout) but do not have to.
+    //
+    // This is only called when we _know_ we're expecting a response.
+    //
+    // Implementing this is an optimization; if there's an efficient way to
+    // block on data, you should implement this.
+    //
+    // Note that the default implementation just calls `get` and does not
+    // block.
+    //
+    // `Err(None)` if we timed out.
+    // `Err(Some(_))` on transport errors.
+    fn blocking_get(&self) -> Result<RecvFormat, Option<Self::RecvErr>> { // TODO: &mut ?
+        self.get()
+    }
 
     // Number of invalid/discarded messages.
     fn num_get_errors(&self) -> u64 { 0 }

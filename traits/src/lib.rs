@@ -45,6 +45,8 @@
 // Mark the crate as no_std if the `no_std` feature is enabled.
 #![cfg_attr(all(feature = "no_std", not(test)), no_std)]
 
+// TODO: invert this feature!
+// TODO: add cfg(doc) feature tags too
 macro_rules! using_std { ($($i:item)*) => ($(#[cfg(not(feature = "no_std"))]$i)*) }
 
 macro_rules! not_wasm { ($($i:item)*) => ($(#[cfg(not(target_arch = "wasm32"))]$i)*) }

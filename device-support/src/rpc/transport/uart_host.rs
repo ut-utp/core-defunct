@@ -11,6 +11,8 @@ use serialport::{
 };
 pub use serialport::SerialPortSettings;
 
+use core::sync::atomic::Ordering;
+use std::sync::atomic::AtomicU64;
 use std::path::Path;
 use std::io::{Read, Write, Error, ErrorKind, Result as IoResult};
 use std::convert::AsRef;
@@ -22,17 +24,18 @@ use std::ffi::OsStr;
 pub struct HostUartTransport {
     serial: RefCell<Box<dyn SerialPort>>,
     internal_buffer: RefCell<Fifo<u8>>,
+    error_count: AtomicU64,
 }
 
 impl HostUartTransport {
     pub fn new<P: AsRef<Path>>(path: P, baud_rate: u32) -> IoResult<Self> {
         let settings = SerialPortSettings {
-            baud_rate: baud_rate,
+            baud_rate,
             data_bits: DataBits::Eight,
             flow_control: FlowControl::None,
             parity: Parity::None,
             stop_bits: StopBits::One,
-            timeout: Duration::from_secs(100),
+            timeout: Duration::from_secs(1),
         };
 
         Self::new_with_config(path, settings)
@@ -44,7 +47,14 @@ impl HostUartTransport {
         Ok(Self {
             serial: RefCell::new(serial),
             internal_buffer: RefCell::new(Fifo::new_const()),
+            error_count: AtomicU64::new(0),
         })
+    }
+
+    // Just a helper that increments the error counter:
+    fn err<T>(&self, t: T) -> T {
+        self.error_count.fetch_add(1, Ordering::Relaxed);
+        t
     }
 }
 
@@ -74,7 +84,7 @@ impl Transport<Fifo<u8>, Fifo<u8>> for HostUartTransport {
                         Ok(()) => break IoResult::Ok(()),
                         Err(e) => match e.kind() {
                             ErrorKind::WouldBlock => continue,
-                            _ => return Err(e),
+                            _ => return Err(self.err(e)),
                         }
                     }
                 }
@@ -90,46 +100,90 @@ impl Transport<Fifo<u8>, Fifo<u8>> for HostUartTransport {
 
     fn get(&self) -> Result<Fifo<u8>, Option<Error>> {
         let mut serial = self.serial.borrow_mut();
+
+        // Ensure that we have bytes before "blocking" and reading in a whole message:
+        if serial.bytes_to_read().map_err(|e| self.err(Some(e.into())))? != 0 {
+            drop(serial);
+            self.blocking_get()
+        } else {
+            Err(None)
+        }
+
+        // while serial.bytes_to_read().map_err(|e| Some(e.into()))? != 0 {
+        //     match serial.read(&mut temp_buf) {
+        //         Ok(1) => {
+        //             if temp_buf[0] == 0 {
+        //                 return Ok(core::mem::replace(&mut buf, Fifo::new()))
+        //             } else {
+        //                 // TODO: don't panic here; see the note in uart_simple
+        //                 buf.push(temp_buf[0]).unwrap()
+        //             }
+        //         },
+        //         Ok(0) => {},
+        //         Ok(_) => unreachable!(),
+        //         Err(err) => {
+        //             // if let std::io::ErrorKind::Io(kind) = err.kind() {
+        //             //     if let std::io::ErrorKind::WouldBlock = kind {
+        //             //         return Err(None)
+        //             //     } else {
+        //             //         return Err(Some(err))
+        //             //     }
+        //             // } else {
+        //             //     return Err(Some(err))
+        //             // }
+        //             log::error!("UART host transport error: {err:?}");
+
+        //             if let std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut = err.kind() {
+        //                 return Err(None)
+        //             } else {
+        //                 return Err(Some(err))
+        //             }
+        //         }
+        //     }
+        // }
+
+        // Err(None)
+    }
+
+    fn blocking_get(&self) -> Result<Fifo<u8>, Option<Self::RecvErr>> { // TODO: &mut ?
+        let mut serial = self.serial.borrow_mut();
         let mut buf = self.internal_buffer.borrow_mut();
 
-        // Note: this is bad!
-
+        // Note: this is bad! we should accept larger buffers?
         let mut temp_buf = [0; 1];
 
-        while serial.bytes_to_read().map_err(|e| Some(e.into()))? != 0 {
+        // If `get` has been called we expect to produce _something_ (or to timeout).
+        loop {
             match serial.read(&mut temp_buf) {
                 Ok(1) => {
+                    log::trace!("recv byte: {:#04X}", temp_buf[0]);
                     if temp_buf[0] == 0 {
+                        log::trace!("message over, returning.. ({} bytes)", buf.len());
                         return Ok(core::mem::replace(&mut buf, Fifo::new()))
                     } else {
                         // TODO: don't panic here; see the note in uart_simple
                         buf.push(temp_buf[0]).unwrap()
                     }
                 },
-                Ok(0) => {},
+                Ok(0) => {
+                    /* shouldn't get here but if we do we'll just try again */
+                    log::error!("shouldn't get here??");
+                },
                 Ok(_) => unreachable!(),
                 Err(err) => {
-                    // if let std::io::ErrorKind::Io(kind) = err.kind() {
-                    //     if let std::io::ErrorKind::WouldBlock = kind {
-                    //         return Err(None)
-                    //     } else {
-                    //         return Err(Some(err))
-                    //     }
-                    // } else {
-                    //     return Err(Some(err))
-                    // }
+                    log::error!("UART host transport error: {err:?}");
 
-                    if let std::io::ErrorKind::WouldBlock = err.kind() {
-                        return Err(None)
-                    } else {
-                        return Err(Some(err))
-                    }
-                }
+                    return match err.kind() {
+                        std::io::ErrorKind::WouldBlock => unreachable!("`serialport` clears O_NONBLOCK..."),
+                        std::io::ErrorKind::TimedOut => Err(None),
+                        _ => Err(Some(self.err(err))),
+                    };
+                },
             }
         }
-
-        Err(None)
     }
+
+    fn num_get_errors(&self) -> u64 { self.error_count.load(Ordering::Relaxed) }
 }
 
 

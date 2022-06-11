@@ -504,6 +504,7 @@ pub fn load_memory_dump<C: Control + ?Sized, P: LoadMemoryProgress>(sim: &mut C,
                         Err(PageChunkError::ChunkCrossesPageBoundary { .. }) |
                         Err(PageChunkError::NoCurrentSession) |
                         Err(PageChunkError::WrongPage { .. }) => unreachable!(),
+                        // TODO: better error; mention something about the board having possibly been reset/becoming out of sync.
                     }
                 }
             }
