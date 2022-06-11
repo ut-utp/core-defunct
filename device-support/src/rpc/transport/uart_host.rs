@@ -18,8 +18,8 @@ use std::time::Duration;
 
 // TODO: Debug impl
 pub struct HostUartTransport {
-    serial: RefCell<Box<dyn SerialPort>>,
-    internal_buffer: RefCell<Fifo<u8>>,
+    serial: RefCell<Box<dyn SerialPort>>, // TODO: get rid of RefCell/trait object?
+    internal_buffer: RefCell<Fifo<u8>>, // TODO: get rid of refcell?
 }
 
 impl HostUartTransport {

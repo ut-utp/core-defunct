@@ -1277,3 +1277,6 @@ impl MCR {
         self.set_running_bit(interp, true);
     }
 }
+
+// TODO: error set memory mapped device! (for TRAPs to set to communicate errors
+// to the tui/Control)
