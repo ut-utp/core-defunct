@@ -1164,19 +1164,19 @@ impl PSR {
         !self.in_user_mode()
     }
 
-    fn set_mode<I: Ipa>(&mut self, interp: &mut I, user_mode: bool) {
-        self.0 = self.0.u16(0..14) | (Into::<Word>::into(user_mode) << 15);
+    fn set_mode<I: Ipa>(&mut self, interp: &mut I, processor_mode: ProcessorMode) {
+        self.0 = self.0.u16(0..14) | (Into::<Word>::into(processor_mode) << 15);
 
         // Don't return a `WriteAttempt` since PSR accesses are infallible.
         self.write_current_value(interp).unwrap()
     }
 
     pub fn to_user_mode<I: Ipa>(&mut self, interp: &mut I) {
-        self.set_mode(interp, true)
+        self.set_mode(interp, ProcessorMode::User)
     }
 
     pub fn to_privileged_mode<I: Ipa>(&mut self, interp: &mut I) {
-        self.set_mode(interp, false)
+        self.set_mode(interp, ProcessorMode::Supervisor)
     }
 
     pub fn n(&self) -> bool {
