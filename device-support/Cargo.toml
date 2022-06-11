@@ -37,6 +37,7 @@ postcard = "1.0"
 embedded-hal = "0.2"
 nb = "1.0"
 static_assertions = "1.1"
+log = "0.4"
 
 # alloc deps:
 bytes = { version = "1.1", default-features = false, optional = true }
