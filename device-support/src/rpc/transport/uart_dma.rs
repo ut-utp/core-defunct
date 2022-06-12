@@ -93,13 +93,15 @@ pub struct BBBuffer_elements
 // }
 
 //#[derive(Debug)]
-pub struct UartDmaTransport<T, R: Read<u8>, W: Write<u8>>
+pub struct UartDmaTransport<T_UART_TX, T_UART_RX, R: Read<u8>, W: Write<u8>>
 where
-    T: DmaChannel,
+    T_UART_TX: DmaChannel,
+    T_UART_RX: DmaChannel,
     <R as Read<u8>>::Error: Debug,
     <W as Write<u8>>::Error: Debug,
 {
-    dma_unit: RefCell<T>,
+    dma_tx_channel: RefCell<T_UART_TX>,
+    dma_rx_channel: RefCell<T_UART_RX>,
     //dma_buffer: ,
    // bbbuffer: RefCell<BBBuffer_elements>,
    // bbbuffer_grant: RefCell<Option<GrantW<'static, 256>>>,
@@ -108,18 +110,20 @@ where
     internal_buffer: RefCell<Fifo<u8>>,
 }
 
-impl<T, R: Read<u8>, W: Write<u8>> UartDmaTransport<T, R, W>
+impl<T_UART_TX, T_UART_RX, R: Read<u8>, W: Write<u8>> UartDmaTransport<T_UART_TX, T_UART_RX, R, W>
 where
     <R as Read<u8>>::Error: Debug,
     <W as Write<u8>>::Error: Debug,
-    T: DmaChannel,
+    T_UART_TX: DmaChannel,
+    T_UART_RX: DmaChannel,
 {
     // Can't be const until bounds are allowe= d.
-    pub /*const*/ fn new(read: R, write: W, dma_unit: T) -> Self {
+    pub /*const*/ fn new(read: R, write: W, dma_tx_channel: T_UART_TX, dma_rx_channel: T_UART_RX) -> Self {
         //let dma_buffer: BBBuffer<256> = BBBuffer::new();
         //let (prod, cons) = dma_buffer.try_split().unwrap();
         Self {
-            dma_unit: RefCell::new(dma_unit),
+            dma_tx_channel: RefCell::new(dma_tx_channel),
+            dma_rx_channel: RefCell::new(dma_rx_channel),
             //dma_buffer: BBBuffer::new(),
             //bbbuffer: RefCell::new(BBBuffer_elements::new()),
             //bbbuffer_grant: RefCell::new(None),
@@ -131,9 +135,10 @@ where
 }
 
 
-impl<T, W: Write<u8>, R: Read<u8>> Transport<Fifo<u8>, Fifo<u8>> for UartDmaTransport<T, R, W>
+impl<T_UART_TX, T_UART_RX, W: Write<u8>, R: Read<u8>> Transport<Fifo<u8>, Fifo<u8>> for UartDmaTransport<T_UART_TX, T_UART_RX, R, W>
 where
-    T: DmaChannel,
+    T_UART_TX: DmaChannel,
+    T_UART_RX: DmaChannel,
     <R as Read<u8>>::Error: Debug,
     <W as Write<u8>>::Error: Debug,
 {
@@ -151,16 +156,36 @@ where
 
     fn send(&self, message: Fifo<u8>) -> Result<(), W::Error> {
         let mut write = self.write.borrow_mut();
+        let mut dma_tx = self.dma_tx_channel.borrow_mut();
+        let mut dma_rx = self.dma_rx_channel.borrow_mut();
 
-        for byte in message {
-            write.write(byte).unwrap();
+        //simple non-dma send impl
+        // for byte in message {
+        //     block!(write.write(byte))?
+        // }
+        // block!(write.flush())
+
+        let mut message_slice = message.as_slice();
+
+        //dma send impl. will just block for now. TODO: make unblocking and return appropriate error type on blocking detect case
+        dma_tx.dma_device_init();
+        // //dma_unit.dma_set_destination_address(internal_buffer.as_ref().as_ptr() as *const u8 as usize); This doesn't work for some reason
+        dma_tx.dma_set_source_address(message_slice.as_ptr() as *const u8 as usize);
+        dma_tx.dma_set_transfer_length(message.len());
+        dma_tx.dma_start();
+        while(dma_tx.dma_in_progress()) {
+            let bytes_transferred = dma_tx.dma_num_bytes_transferred();
+            let stuck_here = 0;
         }
-        block!(write.flush())
+        //dma_tx.dma_stop();
+
+        Ok(())
+
     }
 
     fn get(&self) -> Result<Fifo<u8>, Option<u32>> {
 
-        let mut dma_unit = self.dma_unit.borrow_mut();
+        let mut dma_unit = self.dma_rx_channel.borrow_mut();
         //let mut bbbuffer = self.bbbuffer.borrow_mut();
         //let mut bbbuffer_grant = self.bbbuffer_grant.borrow_mut();
         let mut internal_buffer = self.internal_buffer.borrow_mut();
@@ -228,8 +253,8 @@ where
 
         if(!dma_unit.dma_in_progress()){  //should probably be done in main initialization? seems like a one time only operation since the progress
                                           // always returns true as long as not all 256 max bytes are filled and no message is typically that long.
-            dma_unit.dma_device_init();
             //dma_unit.dma_set_destination_address(internal_buffer.as_ref().as_ptr() as *const u8 as usize); This doesn't work for some reason
+            dma_unit.dma_device_init();
             unsafe{dma_unit.dma_set_destination_address(&buf as *const u8 as usize);};
             dma_unit.dma_set_transfer_length(1024);
             dma_unit.dma_start();
@@ -249,7 +274,7 @@ where
                         }
                         // reset and start next cycle
                         
-                        dma_unit.dma_device_init(); 
+                        //dma_unit.dma_device_init(); 
                         //dma_unit.dma_set_destination_address(internal_buffer.as_ref().as_ptr() as *const u8 as usize);
                         unsafe{dma_unit.dma_set_destination_address(&buf as *const u8 as usize);};
                         dma_unit.dma_set_transfer_length(1024);
