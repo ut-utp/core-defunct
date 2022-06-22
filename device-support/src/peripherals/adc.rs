@@ -7,50 +7,140 @@ use core::cell::RefCell;
 
 pub struct Adc1;
 
-pub struct generic_adc_unit<T, U, WORD, ADC>
-where T: hal::adc::Channel<ADC>,
-	  U: hal::adc::OneShot<ADC, WORD, T>,
-	  WORD: From<u16>,
+macro_rules! ambiguity {
+    ($($i:ident)* $j:ident) => { };
+}
+
+pub struct generic_adc_unit<U0, U1, U2, U3, U4, U5, A0, A1, A2, A3, A4, A5, WORD, ADC>
+where
+	  A0: Channel<ADC>,
+	  A1: Channel<ADC>,
+	  A2: Channel<ADC>,
+	  A3: Channel<ADC>,
+	  A4: Channel<ADC>,
+	  A5: Channel<ADC>,
+	  U0: OneShot<ADC, WORD, A0>,
+	  U1: OneShot<ADC, WORD, A1>,
+	  U2: OneShot<ADC, WORD, A2>,
+	  U3: OneShot<ADC, WORD, A3>,
+	  U4: OneShot<ADC, WORD, A4>,
+	  U5: OneShot<ADC, WORD, A5>,
+	  WORD: From<u16> +Into<u16> ,
 { 
-	//x: T
-	hal_adc: RefCell<U>,
-	hal_pins: RefCell<AdcPinArr<T>>,
+	port0: RefCell<U0>,
+	port1: RefCell<U1>,
+	port2: RefCell<U2>,
+	port3: RefCell<U3>,
+	port4: RefCell<U4>,
+	port5: RefCell<U5>,
+	a0: RefCell<A0>,
+	a1: RefCell<A1>,
+	a2: RefCell<A2>,
+	a3: RefCell<A3>,
+	a4: RefCell<A4>,
+	a5: RefCell<A5>,
 	pin_states: AdcPinArr<AdcState>,
 	phantom: PhantomData<WORD>,
 	phantom2: PhantomData<ADC>,
+	phantom3: PhantomData<U0>,
 
 }
 
-impl <T, U, WORD, ADC> Default for generic_adc_unit<T, U, WORD, ADC>
-where T: hal::adc::Channel<ADC>,
-	  U: hal::adc::OneShot<ADC, WORD, T>,
-	  WORD: From<u16>,
+impl <U0, U1, U2, U3, U4, U5, A0, A1, A2, A3, A4, A5, WORD, ADC> Default for generic_adc_unit<U0, U1, U2, U3, U4, U5, A0, A1, A2, A3, A4, A5, WORD, ADC>
+where
+	  A0: Channel<ADC>,
+	  A1: Channel<ADC>,
+	  A2: Channel<ADC>,
+	  A3: Channel<ADC>,
+	  A4: Channel<ADC>,
+	  A5: Channel<ADC>,
+	  U0: OneShot<ADC, WORD, A0>,
+	  U1: OneShot<ADC, WORD, A1>,
+	  U2: OneShot<ADC, WORD, A2>,
+	  U3: OneShot<ADC, WORD, A3>,
+	  U4: OneShot<ADC, WORD, A4>,
+	  U5: OneShot<ADC, WORD, A5>,
+	  WORD: From<u16> +Into<u16> ,
 {
 	fn default() -> Self{
 		unimplemented!()
 	}
 }
 
-impl <T, U, WORD, ADC> generic_adc_unit<T, U, WORD, ADC>
-where T: hal::adc::Channel<ADC>,
-	  U: hal::adc::OneShot<ADC, WORD, T>,
-	  WORD: From<u16>,
+impl <U0, U1, U2, U3, U4, U5, A0, A1, A2, A3, A4, A5, WORD, ADC> generic_adc_unit<U0, U1, U2, U3, U4, U5, A0, A1, A2, A3, A4, A5, WORD, ADC>
+where
+	  A0: Channel<ADC>,
+	  A1: Channel<ADC>,
+	  A2: Channel<ADC>,
+	  A3: Channel<ADC>,
+	  A4: Channel<ADC>,
+	  A5: Channel<ADC>,
+	  U0: OneShot<ADC, WORD, A0>,
+	  U1: OneShot<ADC, WORD, A1>,
+	  U2: OneShot<ADC, WORD, A2>,
+	  U3: OneShot<ADC, WORD, A3>,
+	  U4: OneShot<ADC, WORD, A4>,
+	  U5: OneShot<ADC, WORD, A5>,
+	  WORD: From<u16> +Into<u16> ,
 {
-	fn new(hal_adc: U, pins: AdcPinArr<T>) -> Self{
+	fn new(port0: U0, port1: U1, port2: U2, port3: U3, port4: U4, port5: U5, p0: A0, p1: A1, p2: A2, p3: A3, p4: A4, p5: A5) -> Self{
 		Self{
-			hal_adc: RefCell::new(hal_adc),
-			hal_pins: RefCell::new(pins),
+			port0: RefCell::new(port0),
+			port1: RefCell::new(port1),
+			port2: RefCell::new(port2),
+			port3: RefCell::new(port3),
+			port4: RefCell::new(port4),
+			port5: RefCell::new(port5),
+			a0: RefCell::new(p0),
+			a1: RefCell::new(p1),
+			a2: RefCell::new(p2),
+			a3: RefCell::new(p3),
+			a4: RefCell::new(p4),
+			a5: RefCell::new(p5),
 			pin_states: AdcPinArr([AdcState::Disabled; AdcPin::NUM_PINS]),
 			phantom: PhantomData,
 			phantom2: PhantomData,
+			phantom3: PhantomData,
 		}
 	}
 }
 
-impl <T, U, WORD, ADC> Adc for generic_adc_unit<T, U, WORD, ADC>
-where T: hal::adc::Channel<ADC>,
-	  U: hal::adc::OneShot<ADC, WORD, T>,
-	  WORD: From<u16> + Into<u16>, // This trait bound is the only additional constraint being imposed on the HAL generics
+
+macro_rules! adc_read_pin {
+	($pin: ident, $port: ident, $self: ident, $adc_reading: ident) => {
+			 		let mut pin = $self.$pin.borrow_mut();
+			 		let mut port = $self.$port.borrow_mut();
+					let result = port.read(&mut *pin);
+
+			    	match result{
+			    		Ok(value) => {
+			    			//value_debug = value.into();
+			    			$adc_reading = Ok((value.into() >> 1) as u8)
+			    		},
+			    		_ => {
+			    			//adc_reading = Err(AdcReadError((pin, AdcState::Disabled))) would return this error
+			    			// TODO: This is not the correct eror type. should be miscallaneous error for HAL read fail?
+			    		},
+			    	}
+
+	}
+}
+
+impl <U0, U1, U2, U3, U4, U5, A0, A1, A2, A3, A4, A5, WORD, ADC> Adc for generic_adc_unit<U0, U1, U2, U3, U4, U5, A0, A1, A2, A3, A4, A5, WORD, ADC>
+where
+	  A0: Channel<ADC>,
+	  A1: Channel<ADC>,
+	  A2: Channel<ADC>,
+	  A3: Channel<ADC>,
+	  A4: Channel<ADC>,
+	  A5: Channel<ADC>,
+	  U0: OneShot<ADC, WORD, A0>,
+	  U1: OneShot<ADC, WORD, A1>,
+	  U2: OneShot<ADC, WORD, A2>,
+	  U3: OneShot<ADC, WORD, A3>,
+	  U4: OneShot<ADC, WORD, A4>,
+	  U5: OneShot<ADC, WORD, A5>,
+	  WORD: From<u16> +Into<u16> , // This trait bound is the only additional constraint being imposed on the HAL generics
 	  								//to make them usable with our traits. This is necessary since the HAL trait definition 
 	  								//does not impose any bounds on WORD but we need to get an integer from it to use it with our platform
 	  								//Hence, this might require one small additional custom board specific implementation to the HAL traits to convert
@@ -82,27 +172,38 @@ where T: hal::adc::Channel<ADC>,
         states
     }
 
+
+
     fn read(&self, pin: AdcPin) -> Result<u8, AdcReadError>{
-    	let mut adc_unit = self.hal_adc.borrow_mut();
-    	let mut pins = self.hal_pins.borrow_mut();
+    	//let mut adc_unit = self.hal_adc.borrow_mut();
+    	//let mut pins = self.hal_pins.borrow_mut();
     	
     	let mut adc_reading: Result<u8, AdcReadError> = Err(AdcReadError((pin, AdcState::Disabled)));
     	let mut value_debug = 0;
 
     	if(self.get_state(pin) == AdcState::Enabled){
 
-    		let result = adc_unit.read(&mut pins[pin]);
-
-	    	match result{
-	    		Ok(value) => {
-	    			//value_debug = value.into();
-	    			adc_reading = Ok((value.into() >> 1) as u8)
-	    		},
-	    		_ => {
-	    			//adc_reading = Err(AdcReadError((pin, AdcState::Disabled))) would return this error
-	    			// TODO: This is not the correct eror type. should be miscallaneous error for HAL read fail?
-	    		},
-	    	}
+    		match pin {
+    			AdcPin::A0 =>{
+    				adc_read_pin!(a0, port0, self, adc_reading);
+    			},
+    			AdcPin::A1 => {
+    				adc_read_pin!(a1, port1, self, adc_reading);
+    			}
+    			AdcPin::A2 =>{
+    				adc_read_pin!(a2, port2, self, adc_reading);
+    			},
+    			AdcPin::A3 => {
+    				adc_read_pin!(a3, port3, self, adc_reading);
+    			}
+    			AdcPin::A4 =>{
+    				adc_read_pin!(a4, port4, self, adc_reading);
+    			},
+    			AdcPin::A5 => {
+    				adc_read_pin!(a5, port5, self, adc_reading);
+    			}
+    			_ =>{},
+    		}
 	    }
 
     	adc_reading
