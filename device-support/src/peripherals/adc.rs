@@ -11,7 +11,7 @@ macro_rules! ambiguity {
     ($($i:ident)* $j:ident) => { };
 }
 
-pub struct generic_adc_unit<U0, U1, U2, U3, U4, U5, A0, A1, A2, A3, A4, A5, WORD, ADC>
+pub struct generic_adc_unit<U, A0, A1, A2, A3, A4, A5, WORD, ADC>
 where
 	  A0: Channel<ADC>,
 	  A1: Channel<ADC>,
@@ -19,20 +19,16 @@ where
 	  A3: Channel<ADC>,
 	  A4: Channel<ADC>,
 	  A5: Channel<ADC>,
-	  U0: OneShot<ADC, WORD, A0>,
-	  U1: OneShot<ADC, WORD, A1>,
-	  U2: OneShot<ADC, WORD, A2>,
-	  U3: OneShot<ADC, WORD, A3>,
-	  U4: OneShot<ADC, WORD, A4>,
-	  U5: OneShot<ADC, WORD, A5>,
+
+	  U: OneShot<ADC, WORD, A0> + OneShot<ADC, WORD, A1> + OneShot<ADC, WORD, A2> + OneShot<ADC, WORD, A3> + OneShot<ADC, WORD, A4> + OneShot<ADC, WORD, A5>,
+	  // U1: OneShot<ADC, WORD, A1>,
+	  // U2: OneShot<ADC, WORD, A2>,
+	  // U3: OneShot<ADC, WORD, A3>,
+	  // U4: OneShot<ADC, WORD, A4>,
+	  // U5: OneShot<ADC, WORD, A5>,
 	  WORD: From<u16> +Into<u16> ,
 { 
-	port0: RefCell<U0>,
-	port1: RefCell<U1>,
-	port2: RefCell<U2>,
-	port3: RefCell<U3>,
-	port4: RefCell<U4>,
-	port5: RefCell<U5>,
+	adc_unit: RefCell<U>,
 	a0: RefCell<A0>,
 	a1: RefCell<A1>,
 	a2: RefCell<A2>,
@@ -42,11 +38,10 @@ where
 	pin_states: AdcPinArr<AdcState>,
 	phantom: PhantomData<WORD>,
 	phantom2: PhantomData<ADC>,
-	phantom3: PhantomData<U0>,
 
 }
 
-impl <U0, U1, U2, U3, U4, U5, A0, A1, A2, A3, A4, A5, WORD, ADC> Default for generic_adc_unit<U0, U1, U2, U3, U4, U5, A0, A1, A2, A3, A4, A5, WORD, ADC>
+impl <U, A0, A1, A2, A3, A4, A5, WORD, ADC> Default for generic_adc_unit<U, A0, A1, A2, A3, A4, A5, WORD, ADC>
 where
 	  A0: Channel<ADC>,
 	  A1: Channel<ADC>,
@@ -54,12 +49,7 @@ where
 	  A3: Channel<ADC>,
 	  A4: Channel<ADC>,
 	  A5: Channel<ADC>,
-	  U0: OneShot<ADC, WORD, A0>,
-	  U1: OneShot<ADC, WORD, A1>,
-	  U2: OneShot<ADC, WORD, A2>,
-	  U3: OneShot<ADC, WORD, A3>,
-	  U4: OneShot<ADC, WORD, A4>,
-	  U5: OneShot<ADC, WORD, A5>,
+	  U:  OneShot<ADC, WORD, A0> + OneShot<ADC, WORD, A1> + OneShot<ADC, WORD, A2> + OneShot<ADC, WORD, A3> + OneShot<ADC, WORD, A4> + OneShot<ADC, WORD, A5>,
 	  WORD: From<u16> +Into<u16> ,
 {
 	fn default() -> Self{
@@ -67,7 +57,7 @@ where
 	}
 }
 
-impl <U0, U1, U2, U3, U4, U5, A0, A1, A2, A3, A4, A5, WORD, ADC> generic_adc_unit<U0, U1, U2, U3, U4, U5, A0, A1, A2, A3, A4, A5, WORD, ADC>
+impl <U, A0, A1, A2, A3, A4, A5, WORD, ADC> generic_adc_unit<U, A0, A1, A2, A3, A4, A5, WORD, ADC>
 where
 	  A0: Channel<ADC>,
 	  A1: Channel<ADC>,
@@ -75,22 +65,12 @@ where
 	  A3: Channel<ADC>,
 	  A4: Channel<ADC>,
 	  A5: Channel<ADC>,
-	  U0: OneShot<ADC, WORD, A0>,
-	  U1: OneShot<ADC, WORD, A1>,
-	  U2: OneShot<ADC, WORD, A2>,
-	  U3: OneShot<ADC, WORD, A3>,
-	  U4: OneShot<ADC, WORD, A4>,
-	  U5: OneShot<ADC, WORD, A5>,
+	  U:  OneShot<ADC, WORD, A0> + OneShot<ADC, WORD, A1> + OneShot<ADC, WORD, A2> + OneShot<ADC, WORD, A3> + OneShot<ADC, WORD, A4> + OneShot<ADC, WORD, A5>,
 	  WORD: From<u16> +Into<u16> ,
 {
-	fn new(port0: U0, port1: U1, port2: U2, port3: U3, port4: U4, port5: U5, p0: A0, p1: A1, p2: A2, p3: A3, p4: A4, p5: A5) -> Self{
+	pub fn new(hal_adc: U, p0: A0, p1: A1, p2: A2, p3: A3, p4: A4, p5: A5) -> Self{
 		Self{
-			port0: RefCell::new(port0),
-			port1: RefCell::new(port1),
-			port2: RefCell::new(port2),
-			port3: RefCell::new(port3),
-			port4: RefCell::new(port4),
-			port5: RefCell::new(port5),
+			adc_unit: RefCell::new(hal_adc),
 			a0: RefCell::new(p0),
 			a1: RefCell::new(p1),
 			a2: RefCell::new(p2),
@@ -100,17 +80,16 @@ where
 			pin_states: AdcPinArr([AdcState::Disabled; AdcPin::NUM_PINS]),
 			phantom: PhantomData,
 			phantom2: PhantomData,
-			phantom3: PhantomData,
 		}
 	}
 }
 
 
 macro_rules! adc_read_pin {
-	($pin: ident, $port: ident, $self: ident, $adc_reading: ident) => {
+	($pin: ident, $self: ident, $adc_reading: ident) => {
 			 		let mut pin = $self.$pin.borrow_mut();
-			 		let mut port = $self.$port.borrow_mut();
-					let result = port.read(&mut *pin);
+			 		let mut adc = $self.adc_unit.borrow_mut();
+					let result = adc.read(&mut *pin);
 
 			    	match result{
 			    		Ok(value) => {
@@ -126,7 +105,7 @@ macro_rules! adc_read_pin {
 	}
 }
 
-impl <U0, U1, U2, U3, U4, U5, A0, A1, A2, A3, A4, A5, WORD, ADC> Adc for generic_adc_unit<U0, U1, U2, U3, U4, U5, A0, A1, A2, A3, A4, A5, WORD, ADC>
+impl <U, A0, A1, A2, A3, A4, A5, WORD, ADC> Adc for generic_adc_unit<U, A0, A1, A2, A3, A4, A5, WORD, ADC>
 where
 	  A0: Channel<ADC>,
 	  A1: Channel<ADC>,
@@ -134,12 +113,8 @@ where
 	  A3: Channel<ADC>,
 	  A4: Channel<ADC>,
 	  A5: Channel<ADC>,
-	  U0: OneShot<ADC, WORD, A0>,
-	  U1: OneShot<ADC, WORD, A1>,
-	  U2: OneShot<ADC, WORD, A2>,
-	  U3: OneShot<ADC, WORD, A3>,
-	  U4: OneShot<ADC, WORD, A4>,
-	  U5: OneShot<ADC, WORD, A5>,
+	  U: OneShot<ADC, WORD, A0> + OneShot<ADC, WORD, A1> + OneShot<ADC, WORD, A2> + OneShot<ADC, WORD, A3> + OneShot<ADC, WORD, A4> + OneShot<ADC, WORD, A5>,
+
 	  WORD: From<u16> +Into<u16> , // This trait bound is the only additional constraint being imposed on the HAL generics
 	  								//to make them usable with our traits. This is necessary since the HAL trait definition 
 	  								//does not impose any bounds on WORD but we need to get an integer from it to use it with our platform
@@ -185,22 +160,22 @@ where
 
     		match pin {
     			AdcPin::A0 =>{
-    				adc_read_pin!(a0, port0, self, adc_reading);
+    				adc_read_pin!(a0, self, adc_reading);
     			},
     			AdcPin::A1 => {
-    				adc_read_pin!(a1, port1, self, adc_reading);
+    				adc_read_pin!(a1, self, adc_reading);
     			}
     			AdcPin::A2 =>{
-    				adc_read_pin!(a2, port2, self, adc_reading);
+    				adc_read_pin!(a2, self, adc_reading);
     			},
     			AdcPin::A3 => {
-    				adc_read_pin!(a3, port3, self, adc_reading);
+    				adc_read_pin!(a3, self, adc_reading);
     			}
     			AdcPin::A4 =>{
-    				adc_read_pin!(a4, port4, self, adc_reading);
+    				adc_read_pin!(a4, self, adc_reading);
     			},
     			AdcPin::A5 => {
-    				adc_read_pin!(a5, port5, self, adc_reading);
+    				adc_read_pin!(a5, self, adc_reading);
     			}
     			_ =>{},
     		}
