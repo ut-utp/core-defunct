@@ -8,9 +8,9 @@ use core::sync::atomic::AtomicBool;
 
 
 // //
-// pub enum TimerType<T, U>
-// where T: CountDown,
-// 	  U: CountDown + Periodic
+// pub enum TimerType<T, U, V>
+// where T: CountDown<Time = V>,
+// 	  U: CountDown<Time = V> + Periodic
 // {
 // 	SingleShot(T),
 // 	Repeated(U),
@@ -41,19 +41,22 @@ use core::sync::atomic::AtomicBool;
 // The only difference is that using the cancel trait to cancel is more efficient for performance since the hardware is not generating useless
 // interrupts (which can be a problem especially when the period is very small)
 //TODO: Implement using cancel trait here. Also, implement cancel functionality for TM4C hal
-pub struct generic_timer_unit<T, U>
-where T: CountDown + Periodic,
-	  U: CountDown + Periodic,
+pub struct generic_timer_unit<'a, T, U, V>
+where T: CountDown<Time = V> + Periodic,
+	  U: CountDown<Time = V> + Periodic,
+      V: Into<u16> + From<u16>
 { 
 	t0: RefCell<T>,
 	t1: RefCell<U>,
 	states: RefCell<TimerArr<TimerState>>,
     modes: TimerArr<TimerMode>,
+    interrupt_flags: Option<&'a TimerArr<AtomicBool>>,
 }
 
-impl <T, U> Default for generic_timer_unit<T, U>
-where T: CountDown + Periodic,
-	  U: CountDown + Periodic,
+impl <'a, T, U, V> Default for generic_timer_unit<'a, T, U, V>
+where T: CountDown<Time = V> + Periodic,
+	  U: CountDown<Time = V> + Periodic,
+      V: Into<u16> + From<u16>
 {
 	fn default() -> Self{
 		unimplemented!()
@@ -66,16 +69,19 @@ where T: CountDown + Periodic,
 
 
 
-impl <T, U> generic_timer_unit<T, U>
-where T: CountDown + Periodic,
-	  U: CountDown + Periodic,
+impl <'a, T, U, V> generic_timer_unit<'a, T, U, V>
+where T: CountDown<Time = V> + Periodic,
+	  U: CountDown<Time = V> + Periodic,
+      V: Into<u16> + From<u16>
 {
 	fn new(hal_timer0: T, hal_timer1: U) -> Self{
+
 		Self{
 			t0: RefCell::new(hal_timer0),
 			t1: RefCell::new(hal_timer1),
             states: RefCell::new(TimerArr([TimerState::Disabled; TimerId::NUM_TIMERS])),
 			modes: TimerArr([TimerMode::SingleShot; TimerId::NUM_TIMERS]),
+            interrupt_flags: None,
 		}
 	}
 }
@@ -96,6 +102,7 @@ macro_rules! timer_check_interrupt {
                             },
                             _ => {}
                         }
+                        $self.interrupt_flags.unwrap()[$timer_id].store(true, core::sync::atomic::Ordering::SeqCst);// = AtomicBool::new(true); 
                     }
                     _=> {}
                 }
@@ -105,9 +112,10 @@ macro_rules! timer_check_interrupt {
     }
 }
 
-impl <'a, T, U> Timers<'a> for generic_timer_unit<T, U>
-where T: CountDown + Periodic,
-	  U: CountDown + Periodic,
+impl <'a, T, U, V> Timers<'a> for generic_timer_unit<'a, T, U, V>
+where T: CountDown<Time = V> + Periodic,
+	  U: CountDown<Time = V> + Periodic,
+      V: Into<u16> + From<u16>
 
  {
     fn set_mode(&mut self, timer: TimerId, mode: TimerMode) {
@@ -127,6 +135,30 @@ where T: CountDown + Periodic,
 
     fn set_state(&mut self, timer: TimerId, state: TimerState) {
         self.states.borrow_mut()[timer] = state;
+
+        match timer{
+            TimerId::T0 => {
+                match state {
+                    TimerState::Disabled => {
+                        //TODO: //Cancel trait function here
+                    },
+                    TimerState::WithPeriod(period) => {
+                        self.t0.borrow_mut().start(core::num::NonZeroU16::get(period));
+                    },
+                }
+            }
+
+            TimerId::T1 => {
+                match state {
+                    TimerState::Disabled => {
+                        //TODO: //Cancel trait function here
+                    },
+                    TimerState::WithPeriod(period) => {
+                        self.t1.borrow_mut().start(core::num::NonZeroU16::get(period));
+                    },
+                }
+            }
+        }
     }
     fn get_state(&self, timer: TimerId) -> TimerState {
         self.states.borrow_mut()[timer]
@@ -142,7 +174,9 @@ where T: CountDown + Periodic,
         states
     }
 
-    fn register_interrupt_flags(&mut self, flags: &'a TimerArr<AtomicBool>) {}
+    fn register_interrupt_flags(&mut self, flags: &'a TimerArr<AtomicBool>) {
+        self.interrupt_flags = Some(flags);
+    }
 
     fn interrupt_occurred(&self, timer: TimerId) -> bool {
         let mut ret = false;
@@ -181,7 +215,9 @@ where T: CountDown + Periodic,
         
         ret
     }
-    fn reset_interrupt_flag(&mut self, timer: TimerId) {}
+    fn reset_interrupt_flag(&mut self, timer: TimerId) {
+        self.interrupt_flags.unwrap()[timer].store(false, core::sync::atomic::Ordering::SeqCst);
+    }
     #[inline]
     fn interrupts_enabled(&self, timer: TimerId) -> bool {
         matches!(self.get_state(timer), TimerState::WithPeriod(_)) ||
