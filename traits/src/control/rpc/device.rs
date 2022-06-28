@@ -278,7 +278,7 @@ where
                 data: 0,
             },
             display: DeviceDisplay{
-                current_data_written: AtomicBool::new(false),
+                current_data_written: AtomicBool::new(true),
                 data: 0,
             },
         }
