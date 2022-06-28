@@ -377,6 +377,9 @@ where
     fn get_program_metadata(&self) -> ProgramMetadata { ctrl!(self, GetProgramMetadata, R::GetProgramMetadata(r), r) }
     fn set_program_metadata(&mut self, metadata: ProgramMetadata) { ctrl!(self, SetProgramMetadata { metadata }, R::SetProgramMetadata) }
 
+    fn get_display_data(&mut self) -> Option<u8> { ctrl!(self, DisplayConsoleData, R::DisplayConsoleData(r), r) }
+    fn send_keyboard_data(&mut self, data: Option<u8>) { ctrl!(self, KeyboardData{ data }, R::KeyboardDataAck) }
+
     fn id(&self) -> crate::control::metadata::Identifier {
         crate::control::metadata::Identifier::new_from_str_that_crashes_on_invalid_inputs("PROX")
     }

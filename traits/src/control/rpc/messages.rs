@@ -38,6 +38,16 @@ use serde::{Serialize, Deserialize};
 // basically the same thing (assuming that I/O throughput is the bottleneck)
 // without adding more message related overhead to these "convenience calls".
 
+// Added 2 variants for Request and Response to model the "virtual" device peripherals 
+// keyboard and display (see comment in device.rs)
+// This is a special case of functionality since the real hardware (keyboard and display console)
+// is on the host but we treat it as if the MCU emulator owns it also we invert the usual
+// Request and Response types (the device requests for keyboard data and the host requests for display data)
+// TODO: Right now they are just polled for in event loop on device and host but could also consider having these special
+// case peripherals independent messages communicated asynchronously with other messages and multiplexed. Having a completely
+// independent physical layer of transport is not a good option as it would require more hardware (such as another serial port)
+// and unnecessary
+
 #[allow(dead_code)]
 // We're not using static_assertions here so that we can get an error that tells
 // us how much we're off by.
@@ -110,6 +120,9 @@ pub enum RequestMessage { // messages for everything but tick()
 
     GetProgramMetadata,
     SetProgramMetadata { metadata: ProgramMetadata },
+
+    KeyboardData { data: Option<u8> },
+    DisplayConsoleData,
 
     // no id!
 }
@@ -184,6 +197,9 @@ pub enum ResponseMessage { // messages for everything but tick()
 
     GetProgramMetadata(ProgramMetadata),
     SetProgramMetadata,
+
+    DisplayConsoleData(Option<u8>),
+    KeyboardDataAck,
 
     // no id!
 }
@@ -302,7 +318,9 @@ impl Clone for RequestMessage {
             GetClock,
             GetDeviceInfo,
             GetProgramMetadata,
-            SetProgramMetadata { metadata }
+            SetProgramMetadata { metadata },
+            KeyboardData { data },
+            DisplayConsoleData
         }
     }
 }
@@ -369,7 +387,10 @@ impl Clone for ResponseMessage {
             SetProgramMetadata,
 
             SendPageChunk(r),
-            FinishPageWrite(r)
+            FinishPageWrite(r),
+
+            DisplayConsoleData(r),
+            KeyboardDataAck
         }
     }
 }

@@ -304,6 +304,9 @@ pub trait Control {
     fn get_program_metadata(&self) -> ProgramMetadata;
     fn set_program_metadata(&mut self, metadata: ProgramMetadata);
 
+    fn get_display_data(&mut self) -> Option<u8>;
+    fn send_keyboard_data(&mut self, data: Option<u8>);
+
     // Should actually be an associated constant but isn't because of object
     // safety.
     //

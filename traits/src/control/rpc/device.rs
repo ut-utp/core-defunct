@@ -142,6 +142,7 @@ use core::task::{Context, Poll, Waker, RawWaker, RawWakerVTable};
 use core::future::Future;
 use core::pin::Pin;
 use core::fmt::Debug;
+use core::sync::atomic::{AtomicBool, Ordering};
 
 /// Check for messages and execute them on something that implements the
 /// [`Control`] interface.
@@ -179,6 +180,69 @@ where
     dec: ReqDec,
     // pending_event_future: Option<Pin<C::EventFuture>>,
     pending_event_future: Option<C::EventFuture>,
+    keyboard: DeviceKeyboard,
+    display: DeviceDisplay,
+}
+
+//Model all "virtual" device peripherals here (which right now is just keyboard and display). These are the peripherals
+//that are not real hardware on the microcontroller but we need to support. Right now, this includes keyboard and display.
+//For keyboard, when the host computer keyboard is pressed by user, the host controller should send a message to the device with the key data
+//Device receives it and updates its device_keyboard structure if data is available.
+//For display data, the host continuously polls in event loop for data that should be displayed on console.
+//Device sends the data of display register if any as response to the host
+#[derive(Debug, Default)]
+pub struct DeviceKeyboard{
+    data_available: AtomicBool,
+    data: u8,
+}
+
+impl DeviceKeyboard{
+    pub fn read_data(&self) -> Option<u8> {
+        let mut ret = None;
+        if(self.data_available.load(Ordering::SeqCst)){
+            ret = Some(self.data);
+        }
+        self.data_available.store(false, Ordering::SeqCst);
+        ret
+    }
+    pub fn update_data(&mut self, data: u8) {
+        self.data = data;
+        self.data_available.store(true, Ordering::SeqCst);
+    }
+    pub fn new_data_ready(&self) -> bool {
+        self.data_available.load(Ordering::SeqCst)
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct DeviceDisplay{
+    current_data_written: AtomicBool,
+    data: u8,
+}
+
+impl DeviceDisplay{
+    pub fn read_data_to_display(&self) -> Option<u8> {
+        let mut ret = None;
+        if(!(self.current_data_written.load(Ordering::SeqCst))){
+            ret = Some(self.data);
+        }
+        self.current_data_written.store(true, Ordering::SeqCst);
+        ret
+    }
+    pub fn update_data(&mut self, data: u8) -> Result<(), ()> {
+        let mut ret = Err(());
+
+        if((self.current_data_written.load(Ordering::SeqCst))){
+            self.data = data;
+            self.current_data_written.store(false, Ordering::SeqCst);
+            ret = Ok(());
+        }
+
+        ret
+    }
+    pub fn current_data_written(&self) -> bool {
+        self.current_data_written.load(Ordering::SeqCst)
+    }
 }
 
 // TODO: make a builder!
@@ -209,6 +273,14 @@ where
             enc,
             dec,
             pending_event_future: None,
+            keyboard: DeviceKeyboard{
+                data_available: AtomicBool::new(false),
+                data: 0,
+            },
+            display: DeviceDisplay{
+                current_data_written: AtomicBool::new(false),
+                data: 0,
+            },
         }
     }
 }
@@ -377,6 +449,18 @@ where
 
                 (GetProgramMetadata => R::GetProgramMetadata(r)) with r = c.get_program_metadata();
                 (SetProgramMetadata { metadata } => R::SetProgramMetadata) with _ = c.set_program_metadata(metadata);
+
+                (KeyboardData { data } => R::KeyboardDataAck) with _ = {
+
+                    match data {
+                        Some(new_data) => {
+                            self.keyboard.update_data(new_data);
+                        },
+
+                        _ => {}
+                    } 
+                };
+                (DisplayConsoleData => R::DisplayConsoleData(r)) with r = self.display.read_data_to_display();
             };
         }
 
