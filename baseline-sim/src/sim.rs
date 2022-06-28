@@ -1,7 +1,7 @@
 //! TODO!
 
 use crate::interp::{InstructionInterpreter, InstructionInterpreterPeripheralAccess, MachineState};
-use crate::mem_mapped::{MemMapped, KBDR};
+use crate::mem_mapped::{MemMapped, KBDR, DDR};
 
 use lc3_isa::{Addr, Reg, Word};
 use lc3_traits::control::{Control, Event, State, UnifiedRange, Idx, ProcessorMode};
@@ -645,6 +645,11 @@ where
     fn set_program_metadata(&mut self, metadata: ProgramMetadata) {
         self.interp.set_program_metadata(metadata)
     }
+
+    //Technically nothing needs to be done for these 2 on sim side. The simulator only updates display register and reads keyboard register
+    //The opposite operations (reading display to send to controller and writing keyboard to update it with outside data is handled separately and the simulator is not responsible for that)
+    fn get_display_data(&mut self) -> Option<u8> { unreachable!() }
+    fn send_keyboard_data(&mut self, data: Option<u8>) { unreachable!() }
 
     fn id(&self) -> Identifier {
         I::ID
