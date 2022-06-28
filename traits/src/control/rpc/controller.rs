@@ -378,6 +378,7 @@ where
     fn set_program_metadata(&mut self, metadata: ProgramMetadata) { ctrl!(self, SetProgramMetadata { metadata }, R::SetProgramMetadata) }
 
     fn get_display_data(&mut self) -> Option<u8> { ctrl!(self, DisplayConsoleData, R::DisplayConsoleData(r), r) }
+    //should be invoked upon key press on host computer
     fn send_keyboard_data(&mut self, data: Option<u8>) { ctrl!(self, KeyboardData{ data }, R::KeyboardDataAck) }
 
     fn id(&self) -> crate::control::metadata::Identifier {
