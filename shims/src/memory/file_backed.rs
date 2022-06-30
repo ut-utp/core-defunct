@@ -27,6 +27,7 @@ pub struct FileBackedMemoryShim {
     pub metadata: ProgramMetadata,
 }
 
+// TODO: get rid of this?
 impl Default for FileBackedMemoryShim {
     fn default() -> Self {
         Self::new("lc3.mem")

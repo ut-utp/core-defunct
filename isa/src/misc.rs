@@ -335,6 +335,7 @@ pub mod util {
             for (addr, word) in loadable {
                 self[addr as usize] = word;
             }
+            // TODO: check length!
 
             self
         }
@@ -345,6 +346,7 @@ pub mod util {
             for (addr, word) in iter {
                 self[addr as usize] = word;
             }
+            // TODO: check length?? (and in other places in this file too)
 
             self
         }
