@@ -1,3 +1,5 @@
+use crate::peripherals::gpio::GpioPin;
+
 use super::peripherals::gpio::{
     GpioMiscError, /* GpioInterruptRegisterError */
     GpioReadError, GpioReadErrors, GpioWriteError, GpioWriteErrors,
@@ -5,7 +7,7 @@ use super::peripherals::gpio::{
 use super::peripherals::adc::{AdcReadError, AdcReadErrors, AdcMiscError};
 use super::peripherals::input::InputError;
 use super::peripherals::output::OutputError;
-use lc3_isa::Word;
+use lc3_isa::{Word, Addr};
 
 use core::fmt::Display;
 
@@ -23,9 +25,9 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Error {
-    InvalidGpioWrite(GpioWriteError),
+    InvalidGpioWrite((GpioWriteError, GpioPin)),
     InvalidGpioWrites(GpioWriteErrors),
-    InvalidGpioRead(GpioReadError),
+    InvalidGpioRead((GpioReadError, GpioPin)),
     InvalidGpioReads(GpioReadErrors),
     GpioMiscError(GpioMiscError), // Unclear if we want to expose these kind of errors in the Control interface or just make the interpreter deal with them (probably expose...) (TODO)
                                   // InvalidGpioInterruptRegistration(GpioInterruptRegisterError),
@@ -37,6 +39,7 @@ pub enum Error {
     OutputError(OutputError),
 
     SystemStackOverflow,
+    AccessControlViolation(Addr),
     ///// TODO: finish
 }
 
@@ -45,13 +48,14 @@ impl Display for Error {
         use Error::*;
 
         match self {
-            InvalidGpioWrite(_err) =>
-                // write!(f, "Attempted to write to {} when in {} mode", (err.0).0, (err.0).1),
-                todo!(), // leverage Display impl..., introduce other type to add pin information?
+            InvalidGpioWrite((e, p)) =>
+                write!(f, "Error when writing to pin {p}: {e:?}"), // TODO: leverage Display impl...
+                // todo!(), // TODO: leverage Display impl..., introduce other type to add pin information?
             InvalidGpioWrites(_) => todo!(),
-            InvalidGpioRead(_err) =>
+            InvalidGpioRead((e, p)) =>
+                write!(f, "Error when reading from pin {p}: {e:?}"),
                 // write!(f, "Attempted to read from {} when in {} mode", (err.0).0, (err.0).1),
-                todo!(), // leverage Display impl..., introduce other type to add pin information?
+                // todo!("{err:?}"), // leverage Display impl..., introduce other type to add pin information?
             InvalidGpioReads(_) => todo!(),
             GpioMiscError(_) => todo!(),
             InvalidAdcRead(err) =>
@@ -61,6 +65,7 @@ impl Display for Error {
             OutputError(e) => write!(f, "{}", e),
             InputError(e) => write!(f, "{}", e),
             SystemStackOverflow => write!(f, "Overflowed system stack"),
+            AccessControlViolation(addr) => write!(f, "Access Control Violation at PC = {addr:#06X}"),
         }
     }
 }
@@ -89,9 +94,9 @@ macro_rules! err {
     };
 }
 
-err!(GpioWriteError, Error::InvalidGpioWrite);
+err!((GpioWriteError, GpioPin), Error::InvalidGpioWrite);
 err!(GpioWriteErrors, Error::InvalidGpioWrites);
-err!(GpioReadError, Error::InvalidGpioRead);
+err!((GpioReadError, GpioPin), Error::InvalidGpioRead);
 err!(GpioReadErrors, Error::InvalidGpioReads);
 err!(GpioMiscError, Error::GpioMiscError);
 err!(AdcReadError, Error::InvalidAdcRead);
@@ -137,6 +142,7 @@ impl From<Error> for ErrorHandlingStrategy {
             InputError(_) => Silent,        // TODO: what to actually do here?
             OutputError(_) => Silent,       // TODO: and here?
             SystemStackOverflow => Silent,
+            AccessControlViolation(_) => FireException { interrupt_vector_table_number: todo!(), payload: todo!() },
         }
     }
 }

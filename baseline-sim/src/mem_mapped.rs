@@ -675,7 +675,7 @@ macro_rules! gpio_mem_mapped {
                 let word = match Gpio::read(interp.get_peripherals(), $pin) {
                     Ok(val) => val as Word,
                     Err(err) => {
-                        interp.set_error(Error::from(err));
+                        interp.set_error(Error::from((err, $pin)));
                         0x8000
                     }
                 };
@@ -694,7 +694,7 @@ macro_rules! gpio_mem_mapped {
                 match Gpio::write(interp.get_peripherals_mut(), $pin, bit) {
                     Ok(()) => Ok(()),
                     Err(err) => {
-                        interp.set_error(Error::from(err));
+                        interp.set_error(Error::from((err, $pin)));
                         Ok(())
                     }
                 }

@@ -1827,3 +1827,5 @@ fn os() -> AssembledProgram {
 //   - we should probably add documentation explaining that you've got to be careful about the stack pointer when you do this (i.e. don't clobber R6 or you can't use the traps or take interrupts)
 //       + as an example, I set R6 to a mem mapped address which actually — inexplicably — caused the machine to hang..
 //           * when it went to HALT, it tried to push onto the memory mapped location as part of servicing the TRAP which is definitely weird but shouldn't cause a hang... (TODO?)
+
+// TODO: trap for whole port GPIO read!

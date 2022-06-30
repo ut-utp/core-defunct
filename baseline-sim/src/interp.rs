@@ -1103,7 +1103,10 @@ impl<'a, M: Memory, P: Peripherals<'a>> InstructionInterpreter for Interpreter<'
         }) {
             Ok(()) => {}
             // Access control violation: triggered when getting the current instruction or when executing it
-            Err(Acv) => self.handle_exception(ACCESS_CONTROL_VIOLATION_EXCEPTION_VECTOR),
+            Err(Acv) => {
+                self.set_error(Error::AccessControlViolation(current_pc));
+                self.handle_exception(ACCESS_CONTROL_VIOLATION_EXCEPTION_VECTOR)
+            },
         }
 
         self.get_machine_state()
