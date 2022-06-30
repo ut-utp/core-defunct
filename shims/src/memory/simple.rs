@@ -25,6 +25,9 @@ pub struct MemoryShim {
     pub metadata: ProgramMetadata,
 }
 
+// TODO: make the inner members private, impl AsRef<[]>, with `unwrap_unchecked`
+// (i.e. use heap memory).
+
 impl Default for MemoryShim {
     fn default() -> Self {
         Self {

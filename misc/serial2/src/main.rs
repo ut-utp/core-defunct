@@ -1,9 +1,9 @@
 
 use std::{time::Duration, borrow::Cow};
 use std::path::PathBuf;
+use std::io::{BufRead, BufReader};
 
-use tokio_serial::{DataBits, FlowControl, Parity, StopBits, SerialPortType, SerialPortInfo, SerialPortBuilderExt, SerialPort};
-use tokio::io::AsyncReadExt;
+use serialport::{DataBits, FlowControl, Parity, StopBits, SerialPortType, SerialPortInfo};
 use structopt::StructOpt;
 
 
@@ -12,25 +12,17 @@ struct Args {
     #[structopt(short = "p", long = "device-path", parse(from_os_str))]
     device_path: Option<PathBuf>,
 
-    #[structopt(short = "b", long = "baud-rate", default_value = "4000000")]
+    #[structopt(short = "b", long = "baud-rate", default_value = "1500000")]
     baud_rate: u32,
 }
 
-// const BAUD_RATE: u32 = 1_500_000;
-// const BAUD_RATE: u32 = 15200;
-// const BAUD_RATE: u32 = 115_200;
-// const BAUD_RATE: u32 = 2_300_000;
-// const BAUD_RATE: u32 = 2_500_000;
-// const BAUD_RATE: u32 = 2_500_000;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let Args { device_path, baud_rate } = dbg!(Args::from_args());
 
     let device_path: Cow<_> = if let Some(ref device_path) = device_path {
         device_path.to_str().unwrap().into()
     } else {
-        let available_ports = tokio_serial::available_ports().expect("no device path explicitly specified, couldn't detect available device");
+        let available_ports = serialport::available_ports().expect("no device path explicitly specified, couldn't detect available device");
         let found_port = available_ports
             .into_iter()
             .filter(|p| matches!(p, SerialPortInfo { port_type: SerialPortType::UsbPort(_) , ..}))
@@ -41,15 +33,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         found_port.port_name.into()
     };
 
-    let mut dev = tokio_serial::new(device_path, 9600)
-        // .data_bits(DataBits::Eight)
-        // .flow_control(FlowControl::None)
-        // .parity(Parity::None)
-        // .stop_bits(StopBits::One)
-        // .timeout(Duration::from_secs(2))
-        .open_native_async()?;
+    let dev = serialport::new(device_path, baud_rate)
+        .data_bits(DataBits::Eight)
+        .flow_control(FlowControl::None)
+        .parity(Parity::None)
+        .stop_bits(StopBits::One)
+        .timeout(Duration::from_secs(2))
+        .open_native()?;
 
-    dev.set_baud_rate(baud_rate).unwrap();
+    let mut dev = BufReader::new(dev);
 
     // let settings = SerialPortSettings {
     //     baud_rate,
@@ -63,7 +55,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // let mut dev = Serial::from_path(device_path, &settings)?;
 
+    let mut buf = String::new();
     loop {
-        print!("{}", dev.read_u8().await? as char);
+        match dev.read_line(&mut buf) {
+            Ok(n) => print!("[{n:3}] {}", buf),
+            Err(err) => eprintln!("error: {err:?}"),
+        }
+        buf.clear();
     }
 }

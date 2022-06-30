@@ -12,7 +12,7 @@ members = [
     "test-infrastructure",
     "device-support" # TODO: spin off
 ]
-exclude = [ "misc/lc3-tm4c", "misc/serial" ] # TODO: remove
+exclude = [ "misc/lc3-tm4c", "misc/serial", "misc/serial2" ] # TODO: remove
 
 
 [package] # TODO

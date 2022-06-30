@@ -48,6 +48,7 @@
 // We're a no_std crate!
 #![no_std]
 
+// TODO: I think this is all stable now?
 // Note: this feature is not tested by CI (still dependent on nightly Rust) but
 // this is fine for now.
 #![cfg_attr(feature = "nightly-const", feature(const_if_match))]

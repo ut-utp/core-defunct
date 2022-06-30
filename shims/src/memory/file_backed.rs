@@ -27,6 +27,11 @@ pub struct FileBackedMemoryShim {
     pub metadata: ProgramMetadata,
 }
 
+// TODO: make the inner members private, impl AsRef<[]>, with `unwrap_unchecked`
+// (i.e. use heap memory).
+
+// TODO: get rid of this?
+// and also the `Default` requirement on `Memory`?
 impl Default for FileBackedMemoryShim {
     fn default() -> Self {
         Self::new("lc3.mem")
