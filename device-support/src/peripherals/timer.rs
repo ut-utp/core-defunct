@@ -8,9 +8,9 @@ use core::sync::atomic::AtomicBool;
 
 
 // //
-// pub enum TimerType<T, U, V>
-// where T: CountDown<Time = V>,
-// 	  U: CountDown<Time = V> + Periodic
+// pub enum TimerType<S, T, U, V>
+// where T: CountDown<Time = S>,
+// 	  U: CountDown<Time = S> + Periodic
 // {
 // 	SingleShot(T),
 // 	Repeated(U),
@@ -41,22 +41,23 @@ use core::sync::atomic::AtomicBool;
 // The only difference is that using the cancel trait to cancel is more efficient for performance since the hardware is not generating useless
 // interrupts (which can be a problem especially when the period is very small)
 //TODO: Implement using cancel trait here. Also, implement cancel functionality for TM4C hal
-pub struct generic_timer_unit<'a, T, U, V>
+pub struct generic_timer_unit<'a, S, T, U, V>
 where T: CountDown<Time = V> + Periodic,
 	  U: CountDown<Time = V> + Periodic,
-      V: Into<u16> + From<u16>
+      S: Into<u16> + From<u16> + Into<V>,
 { 
 	t0: RefCell<T>,
 	t1: RefCell<U>,
 	states: RefCell<TimerArr<TimerState>>,
     modes: TimerArr<TimerMode>,
     interrupt_flags: Option<&'a TimerArr<AtomicBool>>,
+    phantom: PhantomData<S>,
 }
 
-impl <'a, T, U, V> Default for generic_timer_unit<'a, T, U, V>
+impl <'a, S, T, U, V> Default for generic_timer_unit<'a, S, T, U, V>
 where T: CountDown<Time = V> + Periodic,
 	  U: CountDown<Time = V> + Periodic,
-      V: Into<u16> + From<u16>
+      S: Into<u16> + From<u16> + Into<V>,
 {
 	fn default() -> Self{
 		unimplemented!()
@@ -69,12 +70,12 @@ where T: CountDown<Time = V> + Periodic,
 
 
 
-impl <'a, T, U, V> generic_timer_unit<'a, T, U, V>
+impl <'a, S, T, U, V> generic_timer_unit<'a, S, T, U, V>
 where T: CountDown<Time = V> + Periodic,
 	  U: CountDown<Time = V> + Periodic,
-      V: Into<u16> + From<u16>
+      S: Into<u16> + From<u16> + Into<V>,
 {
-	fn new(hal_timer0: T, hal_timer1: U) -> Self{
+	pub fn new(hal_timer0: T, hal_timer1: U) -> Self{
 
 		Self{
 			t0: RefCell::new(hal_timer0),
@@ -82,27 +83,28 @@ where T: CountDown<Time = V> + Periodic,
             states: RefCell::new(TimerArr([TimerState::Disabled; TimerId::NUM_TIMERS])),
 			modes: TimerArr([TimerMode::SingleShot; TimerId::NUM_TIMERS]),
             interrupt_flags: None,
+            phantom: PhantomData,
 		}
 	}
 }
 
 macro_rules! timer_check_interrupt {
-    ($hal_timer: ident, $timer_id: ident, $self: ident, $ret: ident) => {
-        match $self.states.borrow()[$timer_id]{
+    ($hal_timer: ident, $timer_id: ident, $self: ident, $ret: ident, $states: ident) => {
+        match $states[$timer_id]{
             TimerState::Disabled => {
                 $ret = false;
             }
             TimerState::WithPeriod(_) => {
-                match $self.$hal_timer.borrow_mut().wait() {
+                match $hal_timer.wait() {
                     Ok(()) => {
                         $ret = true;
                         match $self.modes[$timer_id]{
                             TimerMode::SingleShot => {
-                                $self.states.borrow_mut()[$timer_id] = TimerState::Disabled;
+                                $states[$timer_id] = TimerState::Disabled;
                             },
                             _ => {}
                         }
-                        $self.interrupt_flags.unwrap()[$timer_id].store(true, core::sync::atomic::Ordering::SeqCst);// = AtomicBool::new(true); 
+                        //$self.interrupt_flags.unwrap()[$timer_id].store(true, core::sync::atomic::Ordering::SeqCst);// = AtomicBool::new(true); 
                     }
                     _=> {}
                 }
@@ -112,10 +114,10 @@ macro_rules! timer_check_interrupt {
     }
 }
 
-impl <'a, T, U, V> Timers<'a> for generic_timer_unit<'a, T, U, V>
+impl <'a, S, T, U, V> Timers<'a> for generic_timer_unit<'a, S, T, U, V>
 where T: CountDown<Time = V> + Periodic,
 	  U: CountDown<Time = V> + Periodic,
-      V: Into<u16> + From<u16>
+      S: Into<u16> + From<u16> + Into<V>,
 
  {
     fn set_mode(&mut self, timer: TimerId, mode: TimerMode) {
@@ -143,7 +145,7 @@ where T: CountDown<Time = V> + Periodic,
                         //TODO: //Cancel trait function here
                     },
                     TimerState::WithPeriod(period) => {
-                        self.t0.borrow_mut().start(core::num::NonZeroU16::get(period));
+                        self.t0.borrow_mut().start(S::from(core::num::NonZeroU16::get(period)));
                     },
                 }
             }
@@ -154,7 +156,7 @@ where T: CountDown<Time = V> + Periodic,
                         //TODO: //Cancel trait function here
                     },
                     TimerState::WithPeriod(period) => {
-                        self.t1.borrow_mut().start(core::num::NonZeroU16::get(period));
+                        self.t1.borrow_mut().start(S::from(core::num::NonZeroU16::get(period)));
                     },
                 }
             }
@@ -182,14 +184,14 @@ where T: CountDown<Time = V> + Periodic,
         let mut ret = false;
         let mut t0 = self.t0.borrow_mut();
         let mut t1 = self.t1.borrow_mut();
+        let mut states = self.states.borrow_mut();
 
-        let mut timer_desired = t0;
         match timer{
             TimerId::T0 => {
-                timer_check_interrupt!(t0, timer, self, ret);
+                timer_check_interrupt!(t0, timer, self, ret, states);
             },
             TimerId::T1 => {
-                timer_check_interrupt!(t1, timer, self, ret);
+                timer_check_interrupt!(t1, timer, self, ret, states);
             }
         }
 
