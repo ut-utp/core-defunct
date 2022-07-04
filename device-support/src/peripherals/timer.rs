@@ -104,7 +104,7 @@ macro_rules! timer_check_interrupt {
                             },
                             _ => {}
                         }
-                        //$self.interrupt_flags.unwrap()[$timer_id].store(true, core::sync::atomic::Ordering::SeqCst);// = AtomicBool::new(true); 
+                        $self.interrupt_flags.unwrap()[$timer_id].store(true, core::sync::atomic::Ordering::SeqCst);// = AtomicBool::new(true); 
                     }
                     _=> {}
                 }
