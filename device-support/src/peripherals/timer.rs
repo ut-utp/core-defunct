@@ -1,7 +1,11 @@
 use core::cell::RefCell;
 use core::marker::PhantomData;
 use core::sync::atomic::AtomicBool;
+
 use embedded_hal::timer::*; //{Channel, OneShot};
+use embedded_time as hal_time;
+use hal_time::duration::Milliseconds;
+
 use lc3_traits::peripherals::timers::*;
 
 // //
@@ -41,7 +45,7 @@ pub struct GenericTimers<S, T, U, V>
 where
     T: CountDown<Time = V> + Periodic,
     U: CountDown<Time = V> + Periodic,
-    S: Into<u16> + From<u16> + Into<V>,
+    S: Into<Milliseconds> + From<Milliseconds> + Into<V>,
 {
     t0: RefCell<T>,
     t1: RefCell<U>,
@@ -58,7 +62,7 @@ impl<S, T, U, V> GenericTimers<S, T, U, V>
 where
     T: CountDown<Time = V> + Periodic,
     U: CountDown<Time = V> + Periodic,
-    S: Into<u16> + From<u16> + Into<V>,
+    S: Into<Milliseconds> + From<Milliseconds> + Into<V>,
 {
     pub fn new(hal_timer0: T, hal_timer1: U) -> Self {
         Self {
@@ -108,7 +112,7 @@ impl<S, T, U, V> Timers for GenericTimers<S, T, U, V>
 where
     T: CountDown<Time = V> + Periodic,
     U: CountDown<Time = V> + Periodic,
-    S: Into<u16> + From<u16> + Into<V>,
+    S: Into<Milliseconds> + From<Milliseconds> + Into<V>,
 {
     fn set_mode(&mut self, timer: TimerId, mode: TimerMode) {
         self.modes[timer] = mode;
@@ -131,9 +135,9 @@ where
                         //TODO: //Cancel trait function here
                     }
                     TimerState::WithPeriod(period) => {
-                        self.t0
-                            .borrow_mut()
-                            .start(S::from(core::num::NonZeroU16::get(period)));
+                        self.t0.borrow_mut().start(S::from(Milliseconds::new(
+                            core::num::NonZeroU16::get(period) as u32,
+                        )));
                     }
                 }
             }
@@ -144,9 +148,9 @@ where
                         //TODO: //Cancel trait function here
                     }
                     TimerState::WithPeriod(period) => {
-                        self.t1
-                            .borrow_mut()
-                            .start(S::from(core::num::NonZeroU16::get(period)));
+                        self.t1.borrow_mut().start(S::from(Milliseconds::new(
+                            core::num::NonZeroU16::get(period) as u32,
+                        )));
                     }
                 }
             }

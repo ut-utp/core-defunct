@@ -35,6 +35,7 @@ serde = { version = "1.0", default-features = false } # Disable the `std` featur
 postcard = "1.0"
 # bbqueue = "0.4.4" # TODO
 embedded-hal = "0.2"
+embedded-time = "0.12"
 nb = "1.0"
 static_assertions = "1.1"
 log = "0.4"
