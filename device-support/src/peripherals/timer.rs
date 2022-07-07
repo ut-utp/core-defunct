@@ -1,7 +1,12 @@
 use lc3_traits::peripherals::timers::*;
 extern crate embedded_hal;
-use embedded_hal as hal;
+extern crate embedded_time;
+
+use embedded_time as hal_time;
+use hal_time::duration::Milliseconds;
+
 use embedded_hal::timer::*;//{Channel, OneShot};
+
 use core::marker::PhantomData;
 use core::cell::RefCell;
 use core::sync::atomic::AtomicBool;
@@ -44,7 +49,7 @@ use core::sync::atomic::AtomicBool;
 pub struct generic_timer_unit<'a, S, T, U, V>
 where T: CountDown<Time = V> + Periodic,
       U: CountDown<Time = V> + Periodic,
-      S: Into<u16> + From<u16> + Into<V>,
+      S: Into<Milliseconds> + From<Milliseconds> + Into<V>,
 { 
     t0: RefCell<T>,
     t1: RefCell<U>,
@@ -57,7 +62,7 @@ where T: CountDown<Time = V> + Periodic,
 impl <'a, S, T, U, V> Default for generic_timer_unit<'a, S, T, U, V>
 where T: CountDown<Time = V> + Periodic,
       U: CountDown<Time = V> + Periodic,
-      S: Into<u16> + From<u16> + Into<V>,
+      S: Into<Milliseconds> + From<Milliseconds> + Into<V>,
 {
     fn default() -> Self{
         unimplemented!()
@@ -73,7 +78,7 @@ where T: CountDown<Time = V> + Periodic,
 impl <'a, S, T, U, V> generic_timer_unit<'a, S, T, U, V>
 where T: CountDown<Time = V> + Periodic,
       U: CountDown<Time = V> + Periodic,
-      S: Into<u16> + From<u16> + Into<V>,
+      S: Into<Milliseconds> + From<Milliseconds> + Into<V>,
 {
     pub fn new(hal_timer0: T, hal_timer1: U) -> Self{
 
@@ -117,7 +122,7 @@ macro_rules! timer_check_interrupt {
 impl <'a, S, T, U, V> Timers<'a> for generic_timer_unit<'a, S, T, U, V>
 where T: CountDown<Time = V> + Periodic,
       U: CountDown<Time = V> + Periodic,
-      S: Into<u16> + From<u16> + Into<V>,
+      S: Into<Milliseconds> + From<Milliseconds> + Into<V>,
 
  {
     fn set_mode(&mut self, timer: TimerId, mode: TimerMode) {
@@ -145,7 +150,7 @@ where T: CountDown<Time = V> + Periodic,
                         //TODO: //Cancel trait function here
                     },
                     TimerState::WithPeriod(period) => {
-                        self.t0.borrow_mut().start(S::from(core::num::NonZeroU16::get(period)));
+                        self.t0.borrow_mut().start(S::from(Milliseconds::new( core::num::NonZeroU16::get(period) as u32)));
                     },
                 }
             }
@@ -156,7 +161,7 @@ where T: CountDown<Time = V> + Periodic,
                         //TODO: //Cancel trait function here
                     },
                     TimerState::WithPeriod(period) => {
-                        self.t1.borrow_mut().start(S::from(core::num::NonZeroU16::get(period)));
+                        self.t1.borrow_mut().start(S::from(Milliseconds::new( core::num::NonZeroU16::get(period) as u32)));
                     },
                 }
             }
