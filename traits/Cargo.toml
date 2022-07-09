@@ -43,3 +43,9 @@ pretty_assertions = "0.6.1"
 [features]
 no_std = ["lc3-isa/no_std"]
 json_encoding_layer = ["serde_json"]
+
+[package.metadata.docs.rs]
+# targets = [""]
+rustdoc-args = ["--cfg", "docs"]
+all-features = true
+# default-target = ""

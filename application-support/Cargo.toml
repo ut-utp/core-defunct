@@ -44,6 +44,11 @@ js-sys = "0.3"
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 
-
 [dev-dependencies]
 pretty_assertions = "0.6.1"
+
+[package.metadata.docs.rs]
+# targets = [""]
+rustdoc-args = ["--cfg", "docs"]
+all-features = true
+# default-target = ""

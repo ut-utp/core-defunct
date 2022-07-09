@@ -42,16 +42,13 @@
 #![doc(test(attr(deny(rust_2018_idioms, warnings))))]
 #![doc(html_logo_url = "")] // TODO!
 
-// Mark the crate as no_std if the `no_std` feature is enabled.
-#![cfg_attr(all(feature = "no_std", not(test)), no_std)]
+// Enable the `doc_cfg` feature when running rustdoc.
+#![cfg_attr(all(docs, not(doctest)), feature(doc_cfg))]
 
 macro_rules! using_std { ($($i:item)*) => ($(#[cfg(not(feature = "no_std"))]$i)*) }
 
 macro_rules! not_wasm { ($($i:item)*) => ($(#[cfg(not(target_arch = "wasm32"))]$i)*) }
 macro_rules! wasm { ($($i:item)*) => ($(#[cfg(target_arch = "wasm32")]$i)*) }
-
-#[allow(unused_extern_crates)]
-extern crate core; // makes rls actually look into the standard library (hack)
 
 extern crate static_assertions as sa;
 

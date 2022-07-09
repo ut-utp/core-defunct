@@ -49,3 +49,9 @@ path = "tests/trap_tests/mod.rs"
 [features]
 default = []
 nightly-const = ["lc3-isa/nightly-const"] # Requires nightly; isn't tested by CI.
+
+[package.metadata.docs.rs]
+# targets = [""]
+rustdoc-args = ["--cfg", "docs"]
+all-features = true
+# default-target = ""

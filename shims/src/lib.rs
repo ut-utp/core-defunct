@@ -42,6 +42,9 @@
 #![doc(test(attr(deny(rust_2018_idioms, warnings))))]
 #![doc(html_logo_url = "")] // TODO!
 
+// Enable the `doc_cfg` feature when running rustdoc.
+#![cfg_attr(all(docs, not(doctest)), feature(doc_cfg))]
+
 extern crate static_assertions as sa;
 
 #[doc(hidden)]

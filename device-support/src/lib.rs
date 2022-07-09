@@ -45,8 +45,8 @@
 // Mark the crate as no_std if the `no_std` feature is enabled.
 #![cfg_attr(feature = "no_std", no_std)]
 
-macro_rules! using_std { ($($i:item)*) => ($(#[cfg(not(feature = "no_std"))]$i)*) }
-macro_rules! using_alloc { ($($i:item)*) => ($(#[cfg(feature = "alloc")]$i)*) }
+// Enable the `doc_cfg` feature when running rustdoc.
+#![cfg_attr(all(docs, not(doctest)), feature(doc_cfg))]
 
 using_alloc! { #[allow(unused_extern_crates)] extern crate alloc; }
 
