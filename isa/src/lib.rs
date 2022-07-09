@@ -52,16 +52,26 @@
 // this is fine for now.
 #![cfg_attr(feature = "nightly-const", feature(const_if_match))]
 #![cfg_attr(feature = "nightly-const", feature(const_panic))]
-#![cfg_attr(feature = "nightly-const", feature(const_fn))]
 
 // Makes some an item const if the nightly-const feature is activated and not
 // const otherwise.
+#[macro_export]
+#[doc(hidden)]
 macro_rules! nightly_const {
-    ([$($vis:tt)*] => [$($rest:tt)*]) => (
+    (
+        $( $(#[$m:meta])+ )?
+        [$($vis:tt)*] => [$($rest:tt)*]
+    ) => (
         #[cfg(not(feature = "nightly-const"))]
+        $( $(#[$m:meta])+ )?
+        ///
+        /// **NOTE**: This is only `const` when the `nightly-const` feature is enabled!
         $($vis)* $($rest)*
 
         #[cfg(feature = "nightly-const")]
+        $( $(#[$m:meta])+ )?
+        ///
+        /// **NOTE**: This is only `const` when the `nightly-const` feature is enabled!
         $($vis)* const $($rest)*
     );
 }

@@ -22,10 +22,11 @@ lazy_static! {
     pub static ref OS: AssembledProgram = os();
 }
 
+#[cfg_attr(all(docs, not(doctest)), doc(cfg(feature = "nightly-const")))]
 #[cfg(feature = "nightly-const")]
 pub const CONST_OS: AssembledProgram = os();
 
-nightly_const! { [] => [
+crate::nightly_const! { [] => [
 fn os() -> AssembledProgram {
     use Word as W;
 
