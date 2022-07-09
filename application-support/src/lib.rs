@@ -42,14 +42,18 @@
 #![doc(test(attr(deny(rust_2018_idioms, warnings))))]
 #![doc(html_logo_url = "")] // TODO!
 
-#[allow(unused_extern_crates)]
-extern crate core; // makes rls actually look into the standard library (hack)
+// Enable the `doc_cfg` feature when running rustdoc.
+#![cfg_attr(all(docs, not(doctest)), feature(doc_cfg))]
 
 #[doc(hidden)]
 #[macro_export]
 macro_rules! not_wasm {
     ($($i:item)*) => {
-        $( #[cfg(not(target_arch = "wasm32"))] $i )*
+        $(
+            #[cfg_attr(all(docs, not(doctest)), doc(not(target_arch = "wasm32")))]
+            #[cfg(not(target_arch = "wasm32"))]
+            $i
+        )*
     };
 }
 
@@ -57,7 +61,11 @@ macro_rules! not_wasm {
 #[macro_export]
 macro_rules! wasm {
     ($($i:item)*) => {
-        $( #[cfg(target_arch = "wasm32")] $i )*
+        $(
+            #[cfg_attr(all(docs, not(doctest)), doc(target_arch = "wasm32"))]
+            #[cfg(target_arch = "wasm32")]
+            $i
+        )*
     };
 }
 

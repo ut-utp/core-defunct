@@ -1,0 +1,12 @@
+[build]
+
+# Ordinarily we would just set this but: we don't want to break regular
+# `cargo doc` for developers that don't have a nightly toolchain installed.
+# rustdocflags = ["--cfg", "docs"]
+
+[alias]
+# Requires `nightly` Rust!
+docs = [
+    "-Z", "unstable-options", '--config=build.rustdocflags=["--cfg", "docs"]',
+    "doc", "--all", "--document-private-items", "--all-features"
+]

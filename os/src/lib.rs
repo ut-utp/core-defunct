@@ -45,6 +45,9 @@
 
 #![deny(intra_doc_link_resolution_failure)] // TODO: this is temporary
 
+// Enable the `doc_cfg` feature when running rustdoc.
+#![cfg_attr(all(docs, not(doctest)), feature(doc_cfg))]
+
 // We're a no_std crate!
 #![no_std]
 
@@ -77,9 +80,6 @@ pub const ERROR_ON_ACV_SETTING_ADDR: lc3_isa::Addr = 0x0601;
 pub const OS_STARTING_SP_ADDR: lc3_isa::Addr = 0x0602;
 
 pub const OS_DEFAULT_STARTING_SP: lc3_isa::Word = 0x0700;
-
-#[allow(unused_extern_crates)]
-extern crate core; // makes rls actually look into the standard library (hack)
 
 mod os;
 

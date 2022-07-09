@@ -46,3 +46,9 @@ strict = []
 
 # arbitrary = ["arbitrary"] is implict and can't be used with `no_std`
 nightly-const = [] # Requires nightly; isn't tested by CI.
+
+[package.metadata.docs.rs]
+# targets = [""]
+rustdoc-args = ["--cfg", "docs"]
+all-features = true
+# default-target = ""
