@@ -10,3 +10,7 @@ docs = [
     "-Z", "unstable-options", '--config=build.rustdocflags=["--cfg", "docs"]',
     "doc", "--all", "--document-private-items", "--all-features"
 ]
+# Stable equivalent of the above.
+docs-stable = [
+    "doc", "--all", "--document-private-items"
+]
