@@ -19,6 +19,9 @@ pub use output::Output;
 
 pub mod stubs;
 
+// (i seem to have the bad habit of using rustdoc as notebook, sorry)
+mod notes;
+
 use core::marker::PhantomData;
 
 // pub trait RunInContextRef<Wrapped = Self> {
