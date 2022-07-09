@@ -958,10 +958,12 @@ where
 using_std! {
     use serde::{Serialize, de::DeserializeOwned};
 
+    #[cfg_attr(all(docs, not(doctest)), doc(cfg(feature = "json_encoding_layer")))]
     #[cfg(feature = "json_encoding_layer")]
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
     pub struct JsonEncoding;
 
+    #[cfg_attr(all(docs, not(doctest)), doc(cfg(feature = "json_encoding_layer")))]
     #[cfg(feature = "json_encoding_layer")]
     impl<Message: Debug + Serialize> Encode<Message> for JsonEncoding {
         type Encoded = String;
@@ -971,6 +973,7 @@ using_std! {
         }
     }
 
+    #[cfg_attr(all(docs, not(doctest)), doc(cfg(feature = "json_encoding_layer")))]
     #[cfg(feature = "json_encoding_layer")]
     impl<Message: Debug + DeserializeOwned> Decode<Message> for JsonEncoding {
         type Encoded = String;

@@ -51,7 +51,11 @@ extern crate static_assertions as sa;
 #[macro_export]
 macro_rules! not_wasm {
     ($($i:item)*) => {
-        $( #[cfg(not(target_arch = "wasm32"))] $i )*
+        $(
+            #[cfg_attr(all(docs, not(doctest)), doc(cfg(not(target_arch = "wasm32"))))]
+            #[cfg(not(target_arch = "wasm32"))]
+            $i
+        )*
     };
 }
 
@@ -59,7 +63,11 @@ macro_rules! not_wasm {
 #[macro_export]
 macro_rules! wasm {
     ($($i:item)*) => {
-        $( #[cfg(target_arch = "wasm32")] $i )*
+        $(
+            #[cfg_attr(all(docs, not(doctest)), doc(cfg(target_arch = "wasm32")))]
+            #[cfg(target_arch = "wasm32")]
+            $i
+        )*
     };
 }
 

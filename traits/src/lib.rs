@@ -49,6 +49,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 macro_rules! using_std { ($($i:item)*) => ($(
+    #[cfg_attr(all(docs, not(doctest)), doc(cfg(feature = "std")))]
     #[cfg(feature = "std")]
     $i
 )*) }

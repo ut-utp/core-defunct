@@ -49,10 +49,12 @@
 #![cfg_attr(all(docs, not(doctest)), feature(doc_cfg))]
 
 macro_rules! using_std { ($($i:item)*) => ($(
+    #[cfg_attr(all(docs, not(doctest)), doc(cfg(feature = "std")))]
     #[cfg(feature = "std")]
     $i
 )*) }
 macro_rules! using_alloc { ($($i:item)*) => ($(
+    #[cfg_attr(all(docs, not(doctest)), doc(cfg(feature = "alloc")))]
     #[cfg(feature = "alloc")]
     $i
 )*) }

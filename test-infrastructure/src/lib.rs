@@ -68,6 +68,7 @@ mod runner;
 mod misc;
 
 // The bash script will not work on Windows.
+#[cfg_attr(all(docs, not(doctest)), doc(cfg(target_family = "unix")))]
 #[cfg(target_family = "unix")]
 #[macro_use] pub mod lc3tools;
 
