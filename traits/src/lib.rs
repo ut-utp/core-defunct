@@ -45,7 +45,13 @@
 // Enable the `doc_cfg` feature when running rustdoc.
 #![cfg_attr(all(docs, not(doctest)), feature(doc_cfg))]
 
-macro_rules! using_std { ($($i:item)*) => ($(#[cfg(not(feature = "no_std"))]$i)*) }
+// Mark the crate as no_std if the `std` feature **not** is enabled.
+#![cfg_attr(not(feature = "std"), no_std)]
+
+macro_rules! using_std { ($($i:item)*) => ($(
+    #[cfg(feature = "std")]
+    $i
+)*) }
 
 macro_rules! not_wasm { ($($i:item)*) => ($(#[cfg(not(target_arch = "wasm32"))]$i)*) }
 macro_rules! wasm { ($($i:item)*) => ($(#[cfg(target_arch = "wasm32")]$i)*) }

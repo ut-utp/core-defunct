@@ -51,7 +51,8 @@
 // Enable the `doc_cfg` feature when running rustdoc.
 #![cfg_attr(all(docs, not(doctest)), feature(doc_cfg))]
 
-extern crate static_assertions as sa;
+// Mark the crate as no_std if the `std` feature is **not** enabled.
+#![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate static_assertions as sa;
 
