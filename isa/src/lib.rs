@@ -76,10 +76,9 @@ pub const ADDR_SPACE_SIZE_IN_BYTES: usize = ADDR_SPACE_SIZE_IN_WORDS * size_of::
 mod fmt;
 mod isa;
 mod macros;
-mod misc;
 
 #[doc(hidden)]
 pub use macros::overlap_error as _macro_support;
 
 pub use isa::*;
-pub use misc::util;
+pub mod util;
