@@ -55,7 +55,6 @@ use lc3_traits::control::load::Index as IndexWrapper;
 /// 24 of these pages will occupy 12KiB of RAM, which we should be able to
 /// handle.
 ///
-#[repr(packed)]
 pub struct PartialMemory {
     program_data: ProgramMetadata,
     pages: [[Word; Self::PAGE_SIZE]; 24],
@@ -63,14 +62,19 @@ pub struct PartialMemory {
     void: Word,
 }
 
+// We keep this check in, in addition to the assertion below because this gives
+// us a better error message.
+//
+// The point of these checks is to guard against accidental changes to the size
+// of this type since we care a lot about how much space it ends up taking up.
 static __PARTIAL_MEM_SIZE_CHK: () = {
     let canary = [()];
     let size = core::mem::size_of::<PartialMemory>();
 
-    canary[size - ((24 * 512) + 8 + 28)]
+    canary[size - ((24 * 512) + 8 + 28 + /* padding */ 4)]
 };
 
-sa::const_assert!(core::mem::size_of::<PartialMemory>() == (24 * 512) + 8 + 28);
+sa::const_assert!(core::mem::size_of::<PartialMemory>() == (24 * 512) + 8 + 28 + /* padding */ 4);
 
 impl PartialMemory {
     const PAGE_SIZE: usize = 0x0100; // TODO: Use `PageAccess`?
