@@ -7,7 +7,7 @@ use lc3_isa::util::AssembledProgram;
 
 use pretty_assertions::assert_eq;
 
-
+#[cfg_attr(all(docs, not(doctest)), doc(cfg(feature = "nightly-const")))]
 #[cfg(feature = "nightly-const")]
 const CONST_LOADABLE_TEST: [(lc3_isa::Addr, lc3_isa::Word); 28] = lc3_isa::loadable! {
     .ORIG #0x3000  => is the program start;
@@ -54,6 +54,7 @@ const CONST_LOADABLE_TEST: [(lc3_isa::Addr, lc3_isa::Word); 28] = lc3_isa::loada
     .FILL #0x23u16;
 };
 
+#[cfg_attr(all(docs, not(doctest)), doc(cfg(feature = "nightly-const")))]
 #[cfg(feature = "nightly-const")]
 const CONST_PROGRAM_TEST: [(lc3_isa::Word, bool); lc3_isa::ADDR_SPACE_SIZE_IN_WORDS] = lc3_isa::program! {
     .ORIG #0x3000  => is the program start;
