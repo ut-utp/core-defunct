@@ -40,11 +40,11 @@ pretty_assertions = "0.6.1"
 
 
 [features]
-default = ["no_std"]
-no_std = []
+default = []
+std = []
 strict = []
 
-# arbitrary = ["arbitrary"] is implict and can't be used with `no_std`
+arbitrary = ["dep:arbitrary", "std"]
 nightly-const = [] # Requires nightly; isn't tested by CI.
 
 [package.metadata.docs.rs]

@@ -42,8 +42,8 @@
 #![doc(test(attr(deny(warnings))))]
 #![doc(html_logo_url = "")] // TODO!
 
-// Mark the crate as no_std if the `no_std` feature is enabled.
-#![cfg_attr(feature = "no_std", no_std)]
+// Mark the crate as no_std if the `std` feature is **not** enabled.
+#![cfg_attr(not(feature = "std"), no_std)]
 
 // Enable the `doc_cfg` feature when running rustdoc.
 #![cfg_attr(all(docs, not(doctest)), feature(doc_cfg))]

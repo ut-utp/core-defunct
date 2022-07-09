@@ -27,9 +27,9 @@ panic-semihosting = "0.5.3"
 # tm4c123x-hal = { version = "0.10.0", features = ["rt"] }
 tm4c123x-hal = { git = "https://github.com/thejpster/tm4c-hal/", features = ["rt"] }
 
-lc3-baseline-sim = { path = "../../baseline-sim", version = "0.1.0", default-features = false, features = ["no_std"] }
-lc3-isa = { path = "../../isa", version = "0.1.0", default-features = false, features = ["no_std"] }
-lc3-traits = { path = "../../traits", version = "0.1.0", default-features = false, features = ["no_std"]  }
+lc3-baseline-sim = { path = "../../baseline-sim", version = "0.1.0" }
+lc3-isa = { path = "../../isa", version = "0.1.0" }
+lc3-traits = { path = "../../traits", version = "0.1.0"  }
 
 [[bin]]
 name = "hc05-at"
