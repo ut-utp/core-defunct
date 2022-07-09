@@ -43,6 +43,16 @@ At the moment, the primary 'users' of the platform are the following:
      + Lives in the [`lc3-device-support` crate](device-support).
      + TODO: move out of this repo!
 
+## For Developers
+
+TODO: fill in
+
+To build the docs for the project:
+  - `cargo +nightly docs` (`cargo-nightly docs` if using `nix`)
+    + NOTE: this requires a nightly Rust toolchain!
+    + If you're on stable you can instead run: `cargo docs-stable` to get mostly identical output
+
+
 TODO:
  - [ ] crate and doc badges on each crate
  - [ ] doc badge to gh pages on the top level README (this file)
