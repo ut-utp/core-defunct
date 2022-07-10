@@ -100,6 +100,9 @@
             cargo-nightly
 
             cargo-bloat cargo-asm cargo-expand
+
+            # For `criterion`:
+            gnuplot
           ] ++ gdbPkgs;
         };
       }

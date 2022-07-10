@@ -22,7 +22,7 @@ use common::*;
 
 //// Benches ////
 
-use criterion::{BatchSize, BenchmarkId, Criterion, Throughput, PlotConfiguration, AxisScale};
+use criterion::{BenchmarkId, Criterion, Throughput, PlotConfiguration, AxisScale};
 use lc3_baseline_sim::interp::MachineState;
 
 // const ITERS: [Word; 10] = [1, 10, 100, 500, 1000, 5000, 10000, 25000, 50000, 65535];

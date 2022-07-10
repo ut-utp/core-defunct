@@ -22,7 +22,7 @@ fn black_box<T>(inp: T) -> T { inp }
 const ITERS: [Word; 5] = [1, 10, 100, 1000, 10_000];
 
 
-use criterion::{BatchSize, BenchmarkId, Criterion, Throughput, PlotConfiguration, AxisScale};
+use criterion::{BenchmarkId, Criterion, Throughput, PlotConfiguration, AxisScale};
 use lc3_baseline_sim::interp::MachineState;
 
 fn bench_fib(c: &mut Criterion) {
@@ -67,6 +67,7 @@ fn bench_fib(c: &mut Criterion) {
     }
 }
 
+#[allow(unused)]
 fn bench_fib_alt() {
     let flags = PeripheralInterruptFlags::default();
 

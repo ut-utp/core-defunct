@@ -18,13 +18,15 @@ pub use lc3_os::OS_IMAGE;
 
 pub use pretty_assertions::assert_eq as eq;
 
+#[allow(unused)]
 pub const fn fib_program_executed_insn_count(num_iters: Word) -> u64 {
-    (159 * (num_iters as u64) + 347)
+    159 * (num_iters as u64) + 347
 }
 
 // TODO: new macro that basically does the below + sets the orig hook
 // TODO: have obj conv set the orig hook
 
+#[allow(unused)]
 pub fn fib_program(num_iters: Word) -> AssembledProgram {
     const F: Word = 24;
 
@@ -72,6 +74,7 @@ pub fn fib_program(num_iters: Word) -> AssembledProgram {
     prog
 }
 
+#[allow(unused)]
 pub fn build_fib_memory_image(num_iters: Word) -> MemoryDump {
     let prog = fib_program(num_iters);
 
@@ -81,6 +84,7 @@ pub fn build_fib_memory_image(num_iters: Word) -> MemoryDump {
     image
 }
 
+#[allow(unused)]
 pub fn fib_closed_form(n: Word) -> u64 {
     let g: f64 = (1. + 5f64.sqrt()) / 2.0;
     let r: f64 = (g.powi(n as i32) - (-g).powi(-(n as i32))) / 5f64.sqrt();
@@ -101,6 +105,7 @@ pub use lc3_traits::control::Control;
 
 use lc3_traits::peripherals::stubs::PeripheralsStub;
 
+#[allow(unused)]
 pub fn bare_interpreter<'a, 'b>(
     program: MemoryDump,
     flags: &'b PeripheralInterruptFlags,
@@ -161,7 +166,8 @@ fn device_thread<ReqDec: 'static, RespEnc: 'static, Transp: 'static>(
                     }
                 }
             }
-        });
+        })
+        .unwrap();
 }
 
 lazy_static! {
@@ -173,6 +179,7 @@ use lc3_traits::control::rpc::encoding::Transparent;
 use std::sync::mpsc::{channel, Receiver, Sender};
 
 // TODO: test spin vs. sleep
+#[allow(unused)]
 pub fn remote_simulator/*<C: Control>*/(program: MemoryDump) -> (Sender<()>, Controller<'static, MpscTransport<RequestMessage, ResponseMessage>, SyncEventFutureSharedState>)
 // where
 //     <C as Control>::EventFuture: Sync + Send,
@@ -188,6 +195,7 @@ pub fn remote_simulator/*<C: Control>*/(program: MemoryDump) -> (Sender<()>, Con
 
 use lc3_traits::control::State;
 
+#[allow(unused)]
 pub fn executor_thread<C: Control>(mut dev: C) -> (Sender<Option<()>>, impl Fn(&Sender<Option<()>>), impl Fn(&Sender<Option<()>>) -> C::EventFuture)
 where
     C: Send + 'static,
@@ -217,17 +225,19 @@ where
 use lc3tools_sys::root::{
     lc3::sim as Lc3ToolsSimInner,
     buffer_printer, buffer_inputter, callback_printer, callback_inputter, free_sim,
-    get_mem, load_program, new_sim, new_sim_with_no_op_io, run_program,
+    load_program, new_sim, new_sim_with_no_op_io, run_program,
     State as Lc3ToolsSimState,
     lc3::utils::PrintType_P_SIM_OUTPUT as PrintTypeSimOutput,
 };
 
+#[allow(unused)]
 pub struct Lc3ToolsSim<'inp, 'out> {
     sim: *mut Lc3ToolsSimInner,
     inp: Option<&'inp Vec<u8>>,
     out: Option<&'out mut Vec<u8>>,
 }
 
+#[allow(unused)]
 impl<'inp, 'out> Lc3ToolsSim<'inp, 'out> {
     pub fn new() -> Self {
         Self {
