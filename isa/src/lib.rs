@@ -48,10 +48,6 @@
 // Enable the `doc_cfg` feature when running rustdoc.
 #![cfg_attr(all(docs, not(doctest)), feature(doc_cfg))]
 
-// Note: this feature is not tested by CI (still dependent on nightly Rust) but
-// this is fine for now.
-#![cfg_attr(feature = "nightly-const", feature(const_format_args))]
-
 extern crate static_assertions as sa;
 
 use core::mem::size_of;

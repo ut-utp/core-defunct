@@ -241,17 +241,6 @@ macro_rules! program {
 
     (%%contd, $addr:ident, $mem:ident | $(@$label:ident)? $(.)? FILL $($regs:ident),* $(,)? $(@$label_operand:ident)? $(#$num:expr)? $(=> $($_a:ident$($_b:literal)?)*)?; $($rest:tt)* ) => {
 
-        // $(
-        //     #[allow(non_snake_case)]
-        //     let $label = $addr;
-        // )?
-
-        // This is the last bit of const fn functionality that we use that *isn't* on stable Rust.
-        //
-        // Invocations of this macro are always const; it's just that you get worse errors for overlaps
-        // when _not_ using `nightly-const` and a nightly compiler.
-        //
-        // See the `overlap` macro for details.
         { if $mem[$addr as usize].1 { $crate::overlap!($addr); } }
         $mem[$addr as usize] = ($crate::word!(FILL $($regs,)* $(#((($label_operand))))? $(#$num)*), true);
 
@@ -262,12 +251,6 @@ macro_rules! program {
 
     (%%contd, $addr:ident, $mem:ident | $(@$label:ident)? $(.)? $op:ident $($regs:ident),* $(,)? $(@$label_operand:ident)? $(#$num:expr)? $(=> $($_a:ident$($_b:literal)?)*)?; $($rest:tt)* ) => {
 
-        // $(
-        //     #[allow(non_snake_case)]
-        //     let $label = $addr;
-        // )?
-
-        // See the above comment about const contexts.
         { if $mem[$addr as usize].1 { $crate::overlap!($addr); } }
         $mem[$addr as usize] = ($crate::word!($op $($regs,)* $(#((($label_operand as i64) - ($addr as i64) - 1) as $crate::SignedWord))? $(#$num)*), true);
 
@@ -304,46 +287,26 @@ macro_rules! program {
     };
 }
 
-/// This houses the last bit of unstable const fn functionality that we use.
-///
-/// We want to tie uses of `panic!(..., ...)` (unstable as of 1.62) to the
-/// `nightly-const` feature in _this_ crate and not in the crate where the macro
-/// is expanded.
-///
-/// This requires us to break out this part of the [`program`] macro into
-/// separate macros that are `cfg`ed; hence: this module.
+/// We cannot yet format args in `panic!`s; this module exposes a macro that
+/// uses the `const_panic` crate as a workaround.
 #[doc(hidden)]
 pub mod overlap_error {
     #[macro_export]
     #[doc(hidden)]
-    #[cfg(feature = "nightly-const")]
     macro_rules! overlap {
         ($addr:ident) => {
-            // If we can use `feature(const_format_args)`, just panic normally:
             $crate::_macro_support::err($addr);
         };
     }
 
-    // NOTE: we wrap this in a function so that it isn't reliant on nightly
-    // features being enabled in the crate of the caller of the macro.
+    // NOTE: we wrap this in a function so that our dependence on `const_panic`
+    // doesn't leak into the callers of our macro.
     #[doc(hidden)]
-    #[cfg(feature = "nightly-const")]
+    #[track_caller]
     pub const fn err(addr: crate::Word) {
-        panic!("Overlap at {:#4X}!", addr);
-    }
+        // in lieu of `panic!("Overlap at {:#4X}!", addr);`
 
-    #[macro_export]
-    #[doc(hidden)]
-    #[cfg(not(feature = "nightly-const"))]
-    macro_rules! overlap {
-        ($addr:ident) => {
-            // If we can't use nightly features, panic in this weird way that kind of
-            // hints at what the overlap address is:
-            let _ = {
-                const OVERLAP_ERROR_AT_ADDRESS: [(); 0] = [];
-                let _ = OVERLAP_ERROR_AT_ADDRESS[$addr as usize];
-            };
-        };
+        const_panic::concat_panic!("Overlap at ", {#X}: addr, "!");
     }
 }
 

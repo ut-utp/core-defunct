@@ -33,6 +33,7 @@ lc3-macros = { path = "../macros", version = "0.1.0" }
 serde = { version = "1.0", default-features = false, features = ["derive"]}
 static_assertions = "1.1.0"
 arbitrary = { version = "0.4.1", features = ["derive"], optional = true }
+const_panic = "0.2"
 
 [dev-dependencies]
 itertools = "0.9.0"
@@ -45,10 +46,6 @@ std = []
 strict = []
 
 arbitrary = ["dep:arbitrary", "std"]
-
-# Requires nightly; enables some quality of life features in the LC-3 macros
-# (better error messages).
-nightly-const = []
 
 [package.metadata.docs.rs]
 # targets = [""]
