@@ -48,7 +48,10 @@ path = "tests/trap_tests/mod.rs"
 
 [features]
 default = []
-nightly-const = ["lc3-isa/nightly-const"] # Requires nightly; isn't tested by CI.
+
+# Requires nightly; enables some quality of life features in the LC-3 macros
+# (better error messages).
+nightly-const = ["lc3-isa/nightly-const"]
 
 [package.metadata.docs.rs]
 # targets = [""]

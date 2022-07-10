@@ -51,15 +51,6 @@
 // We're a no_std crate!
 #![no_std]
 
-// Note: this feature is not tested by CI (still dependent on nightly Rust) but
-// this is fine for now.
-#![cfg_attr(feature = "nightly-const", feature(const_if_match))]
-#![cfg_attr(feature = "nightly-const", feature(const_panic))]
-
-// Makes some an item const if the nightly-const feature is activated and not
-// const otherwise.
-use lc3_isa::nightly_const;
-
 extern crate static_assertions as sa;
 
 // Note that these are 'page' aligned with the default starting sp pointing at
