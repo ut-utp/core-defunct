@@ -498,14 +498,14 @@ impl<T> ExactSizeIterator for Fifo<T> {}
 using_alloc! {
     use core::convert::TryInto;
 
-    use bytes::{Buf, BufMut};
+    use bytes::{{Buf, BufMut}, buf::UninitSlice};
 
     impl Buf for Fifo<u8> {
         fn remaining(&self) -> usize {
             self.length()
         }
 
-        fn bytes(&self) -> &[u8] {
+        fn chunk(&self) -> &[u8] {
             self.as_slice()
         }
 
@@ -514,7 +514,7 @@ using_alloc! {
         }
     }
 
-    impl BufMut for Fifo<u8> {
+    unsafe impl BufMut for Fifo<u8> {
         fn remaining_mut(&self) -> usize {
             self.remaining()
         }
@@ -537,15 +537,22 @@ using_alloc! {
             self.ending = Self::add(self.ending, cnt_cur);
         }
 
-        fn bytes_mut(&mut self) -> &mut [MaybeUninit<u8>] {
+        fn chunk_mut(&mut self) -> &mut UninitSlice {
+            fn into_uninit_slice(m: &mut [MaybeUninit<u8>]) -> &mut UninitSlice {
+                let ptr = m as *mut _ as *mut u8;
+                let len = m.len();
+
+                unsafe { UninitSlice::from_raw_parts_mut(ptr, len) }
+            }
+
             if Self::is_empty(self) {
-                &mut self.data
+                into_uninit_slice(&mut self.data)
             } else {
                 if self.ending <= self.starting {
-                    &mut self.data[(self.ending as usize)..(self.starting as usize)]
+                    into_uninit_slice(&mut self.data[(self.ending as usize)..(self.starting as usize)])
                 } else if self.ending > self.starting {
                     // Gotta do it in two parts then.
-                    &mut self.data[(self.ending as usize)..]
+                    into_uninit_slice(&mut self.data[(self.ending as usize)..])
                 } else { unreachable!() }
             }
         }
