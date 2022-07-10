@@ -67,19 +67,21 @@ where
     }
 
     fn reset_peripherals(&mut self) {
-        use lc3_traits::peripherals::gpio::{GPIO_PINS, GpioPin, GpioState};
-        use lc3_traits::peripherals::adc::{Adc, ADC_PINS, AdcPin, AdcState};
-        use lc3_traits::peripherals::pwm::{Pwm, PWM_PINS, PwmPin, PwmState};
-        use lc3_traits::peripherals::timers::{TIMERS, TimerId, TimerMode, TimerState};
+        use lc3_traits::peripherals::gpio::{GPIO_PINS, GpioState};
+        use lc3_traits::peripherals::adc::{Adc, ADC_PINS, AdcState};
+        use lc3_traits::peripherals::pwm::{Pwm, PWM_PINS, PwmState};
+        use lc3_traits::peripherals::timers::{TIMERS, TimerMode, TimerState};
         use lc3_traits::peripherals::clock::Clock;
 
+        // TODO: do something with errors here?
+
         for pin in GPIO_PINS.iter() {
-            Gpio::set_state(self.get_peripherals_mut(), *pin, GpioState::Disabled);
+            let _ = Gpio::set_state(self.get_peripherals_mut(), *pin, GpioState::Disabled);
             Gpio::reset_interrupt_flag(self.get_peripherals_mut(), *pin);
         }
 
         for pin in ADC_PINS.iter() {
-            Adc::set_state(self.get_peripherals_mut(), *pin, AdcState::Disabled);
+            let _ = Adc::set_state(self.get_peripherals_mut(), *pin, AdcState::Disabled);
         }
 
         for pin in PWM_PINS.iter() {
@@ -1072,7 +1074,7 @@ impl<'a, M: Memory, P: Peripherals<'a>> InstructionInterpreter for Interpreter<'
         }
 
         // Increment PC (state 18):
-        let mut current_pc = self.get_pc();
+        let current_pc = self.get_pc();
         self.set_pc(current_pc.wrapping_add(1)); // TODO: ???
 
         if self.check_interrupts() {

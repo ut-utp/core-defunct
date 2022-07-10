@@ -43,7 +43,7 @@
 #![doc(test(attr(deny(warnings))))]
 #![doc(html_logo_url = "")] // TODO!
 
-#![deny(intra_doc_link_resolution_failure)] // TODO: this is temporary
+#![deny(rustdoc::broken_intra_doc_links)] // TODO: this is temporary
 
 // Enable the `doc_cfg` feature when running rustdoc.
 #![cfg_attr(all(docs, not(doctest)), feature(doc_cfg))]

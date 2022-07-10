@@ -13,10 +13,7 @@ pub use serialport::SerialPortBuilder;
 
 use std::borrow::Cow;
 use std::cell::RefCell;
-use std::convert::AsRef;
-use std::ffi::OsStr;
 use std::io::{Error, ErrorKind, Read, Result as IoResult, Write};
-use std::path::Path;
 use std::time::Duration;
 
 // TODO: Debug impl
@@ -90,7 +87,7 @@ impl Transport<Fifo<u8>, Fifo<u8>> for HostUartTransport {
         // serial.write(message.as_slice()).map(|_| ())?;
         // serial.flush()
 
-        block!(serial.write(message.as_slice()).map(|_| ()));
+        block!(serial.write(message.as_slice()).map(|_| ())).unwrap();
         block!(serial.flush())
     }
 

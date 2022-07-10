@@ -1,5 +1,5 @@
 use lc3_traits::peripherals::output::{Output, OutputError};
-use std::io::{stdout, Error as IoError, Write};
+use std::io::{stdout, Write};
 
 use crate::peripherals::OwnedOrRef;
 
@@ -28,11 +28,11 @@ impl<W: Write> Sink for Mutex<W> {
 
 impl<S: Sink> Sink for Arc<S> {
     fn put_char(&self, c: u8) -> IoResult<usize> {
-        self.put_char(c)
+        (**self).put_char(c)
     }
 
     fn flush(&self) -> IoResult<()> {
-        self.flush()
+        (**self).flush()
     }
 }
 

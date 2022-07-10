@@ -140,8 +140,8 @@ impl<'a> Gpio<'a> for GpioShim<'a> {
             (State::Input(_), Output) |
             (State::Interrupt(_), Output) => State::Output(false),
 
-            (State::Input(v), Interrupt) |
-            (State::Interrupt(v), Interrupt) => State::Interrupt(false),
+            (State::Input(_), Interrupt) |
+            (State::Interrupt(_), Interrupt) => State::Interrupt(false),
             (State::Disabled, Interrupt) |
             (State::Output(_), Interrupt) => State::Interrupt(false),
 

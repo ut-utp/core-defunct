@@ -7,7 +7,7 @@ use lc3_traits::peripherals::Peripherals;
 use lc3_baseline_sim::interp::{PeripheralInterruptFlags, InstructionInterpreter,
     Interpreter, InterpreterBuilder, MachineState
 };
-use core::convert::{TryFrom, TryInto};
+use core::convert::TryInto;
 
 use pretty_assertions::assert_eq;
 
@@ -87,7 +87,7 @@ where
     if let Some(num_steps) = num_steps {
         for _ in 0..num_steps {
             // println!("step: x{0:4X}", interp.get_pc());
-            interp.step();
+            let _ = interp.step();
         }
     } else {
         while let MachineState::Running = interp.step() { }

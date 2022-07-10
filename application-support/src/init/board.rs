@@ -19,10 +19,7 @@ use lc3_device_support::{
 use std::{
     borrow::Cow,
     sync::Mutex,
-    thread::Builder as ThreadBuilder,
-    path::{Path, PathBuf},
     default::Default,
-    marker::PhantomData,
 };
 
 // Static data that we need:
@@ -33,6 +30,7 @@ lazy_static::lazy_static! {
         SyncEventFutureSharedState::new();
 }
 
+#[allow(type_alias_bounds)]
 type Cont<'ss, EncFunc: FnMut() -> Cobs<Fifo<u8>>> = Controller<
     'ss,
     HostUartTransport,

@@ -4,10 +4,8 @@
 //! [`Input`]: `lc3_traits::peripherals::Input`
 //! [`Output`]: `lc3_traits::peripherals::Output`
 
-use lc3_shims::peripherals::{Sink, SourceShim};
+use lc3_shims::peripherals::SourceShim;
 
-use std::io::{Read, Write};
-use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex};
 
 /// A trait for [`Input`] Peripherals that lets us, a controller, supply the

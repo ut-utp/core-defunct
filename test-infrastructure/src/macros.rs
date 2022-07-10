@@ -1,7 +1,5 @@
 //! Macros for writing Interpreter tests.
 
-#![macro_use]
-
 #[doc(inline)]
 pub use crate::single_test;
 

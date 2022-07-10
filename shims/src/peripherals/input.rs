@@ -103,7 +103,7 @@ impl Default for InputShim<'_, '_> {
 }
 
 impl<'int, 'i> InputShim<'i, 'int> {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 

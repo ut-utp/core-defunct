@@ -50,9 +50,10 @@ use proc_macro2::Span;
 use quote::quote_spanned;
 
 /// Report an error with the given `span` and message.
+#[allow(unused)]
 pub(crate) fn spanned_err(span: Span, msg: impl Into<String>) -> proc_macro::TokenStream {
     let msg = msg.into();
-    quote_spanned!(span.into() => {
+    quote_spanned!(span => {
         compile_error!(#msg);
     })
     .into()
@@ -62,7 +63,6 @@ pub(crate) fn spanned_err(span: Span, msg: impl Into<String>) -> proc_macro::Tok
 
 // pub use lifetime_to_identifier::lifetime_to_ident;
 
-use proc_macro::TokenTree;
 use quote::quote;
 use syn::{parse::Parse, parse::ParseStream, parse::Result as ParseResult, Ident};
 use syn::{parse_macro_input, Lifetime};

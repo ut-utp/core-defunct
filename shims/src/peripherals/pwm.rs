@@ -3,19 +3,14 @@ use core::num::NonZeroU8;
 use lc3_traits::peripherals::pwm::{
     Pwm, PwmPin, PwmPinArr, PwmState, PwmDutyCycle,
 };
-use std::sync::mpsc;
 use std::sync::Arc;
-use std::sync::Mutex;
-use std::thread;
 use std::time::Duration;
 use timer;
 use chrono;
-use core::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::channel;
+use core::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::SeqCst;
 use std::thread::sleep;
 
-const MAX_PERIOD: u8 = u8::max_value();
 const MAX_DUTY_CYCLE: PwmDutyCycle = PwmDutyCycle::max_value();
 
 pub struct PwmShim {
@@ -89,7 +84,7 @@ impl PwmShim {
         drop(feg);
     }
 
-    fn get_pin(&self, pin: PwmPin) -> bool {
+    pub fn get_pin(&self, pin: PwmPin) -> bool {
         return self.bit_states[pin].load(SeqCst);
     }
 
@@ -129,6 +124,8 @@ impl Pwm for PwmShim {
 mod tests {
     use super::*;
     use lc3_traits::peripherals::pwm::{self, Pwm, PwmPin::*, PwmState};
+
+    const MAX_PERIOD: u8 = u8::max_value();
 
     use lc3_test_infrastructure::{
         assert_eq, assert_is_about, run_periodically_for_a_time
