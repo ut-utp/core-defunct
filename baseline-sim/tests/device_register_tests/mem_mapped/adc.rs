@@ -18,7 +18,7 @@ mod states {
     // TODO: Clean this up!
     #[test]
     fn exhaustive_state_testing() { with_larger_stack(None, || {
-        assert_eq!(AdcPin::NUM_PINS, 6, "Number of Adc Pins has changed!");
+        eq!(AdcPin::NUM_PINS, 6, "Number of Adc Pins has changed!");
 
         fn state_to_word(s: AdcState) -> SignedWord {
             match s {
@@ -164,9 +164,9 @@ mod read {
 
     #[test]
     fn read_testing() { with_larger_stack(None, || {
-         assert_eq!(AdcPin::NUM_PINS, 6, "Number of Adc Pins has changed!");
+        eq!(AdcPin::NUM_PINS, 6, "Number of Adc Pins has changed!");
 
-      
+
          let state_iter = [Disabled, Enabled].iter();
 
 
@@ -186,12 +186,10 @@ mod read {
          let permutations = ADC_PINS.iter()
              .map(|_| state_iter.clone())
              .multi_cartesian_product();
- 
-        let mut counter = 0; // easier than starting an rng thread... 
-         for states in permutations {
 
-           
-
+        #[allow(unused)] // TODO
+        let counter = 0; // easier than starting an rng thread...
+        for states in permutations {
 
             single_test_inner! {
                 prefill: {
@@ -219,20 +217,20 @@ mod read {
                     R4: match_state(*states[4]),
                     R5: match_state(*states[5]),
                 },
-                pre: |p| { 
+                pre: |p| {
                     for (pin, state) in ADC_PINS.iter().zip(states.clone()) {
-                        let _set = Adc::set_state(p, *pin, *state).unwrap(); 
+                        let _set = Adc::set_state(p, *pin, *state).unwrap();
                         // let _set_val = Adc::set_value(p, *pin, counter); - no implementation for RwLock
                     }
-                },   
+                },
             }
 
 
-        }   
+        }
 
 
     })}
-    
+
     /*
     single_test! {
         Adc_cr_pin0_read_input1,
@@ -253,7 +251,7 @@ mod read {
         steps: 3,
         regs: { R0: 0b01111111},
         memory: { },
-        post: |i| { assert_eq!(0b01111111, Adc::read(i.get_peripherals(), A2)); }
+        post: |i| { eq!(0b01111111, Adc::read(i.get_peripherals(), A2)); }
     }
     single_test! {
         Adc_cr_pin3_read_input,
@@ -263,7 +261,7 @@ mod read {
         steps: 3,
         regs: { R0: 0b00000000},
         memory: { },
-        post: |i| { assert_eq!(0b00000000, Adc::read(i.get_peripherals(), A3)); }
+        post: |i| { eq!(0b00000000, Adc::read(i.get_peripherals(), A3)); }
     }
     single_test! {
         Adc_cr_pin4_read_input,
@@ -273,7 +271,7 @@ mod read {
         steps: 3,
         regs: { R0: 0b00001101},
         memory: { },
-        post: |i| { assert_eq!(0b00001101, Adc::read(i.get_peripherals(), A4)); }
+        post: |i| { eq!(0b00001101, Adc::read(i.get_peripherals(), A4)); }
     }
     single_test! {
         Adc_cr_pin1_read_input,
@@ -283,7 +281,7 @@ mod read {
         steps: 3,
         regs: { R0: 0b00001101},
         memory: { },
-        post: |i| { assert_eq!(0b00001101, Adc::read(i.get_peripherals(), A1)); }
+        post: |i| { eq!(0b00001101, Adc::read(i.get_peripherals(), A1)); }
     }
     single_test! {
         Adc_cr_pin5_read_input,
@@ -293,7 +291,7 @@ mod read {
         steps: 3,
         regs: { R0: 0b00000101},
         memory: { },
-        post: |i| { assert_eq!(0b00001101, Adc::read(i.get_peripherals(), A5)); }
+        post: |i| { eq!(0b00001101, Adc::read(i.get_peripherals(), A5)); }
     }
     single_test! {
         Adc_cr_pin6_read_input,
@@ -303,7 +301,7 @@ mod read {
         steps: 3,
         regs: { R0: 0b00101111},
         memory: { },
-        post: |i| { assert_eq!(0b00101111, Adc::read(i.get_peripherals(), A6)); }
+        post: |i| { eq!(0b00101111, Adc::read(i.get_peripherals(), A6)); }
     }
     single_test! {
         Adc_cr_pin7_read_input,
@@ -313,7 +311,7 @@ mod read {
         steps: 3,
         regs: { R0: 0b00000001},
         memory: { },
-        post: |i| { assert_eq!(0b00001101, Adc::read(i.get_peripherals(), A7)); }
+        post: |i| { eq!(0b00001101, Adc::read(i.get_peripherals(), A7)); }
     }
     single_test! {
         Adc_cr_pin0_read_input1,
@@ -323,7 +321,7 @@ mod read {
         steps: 3,
         regs: { R0: 0b00001101},
         memory: { },
-        post: |i| { assert_eq!(0b00001101, Adc::read(i.get_peripherals(), A0)); }
+        post: |i| { eq!(0b00001101, Adc::read(i.get_peripherals(), A0)); }
     }
 
     single_test! {
@@ -334,7 +332,7 @@ mod read {
         steps: 3,
         regs: { R0: 0b01111111},
         memory: { },
-        post: |i| { assert_eq!(0b01111111, Adc::read(i.get_peripherals(), A2)); }
+        post: |i| { eq!(0b01111111, Adc::read(i.get_peripherals(), A2)); }
     }
     single_test! {
         Adc_cr_pin3_read_input,
@@ -344,7 +342,7 @@ mod read {
         steps: 3,
         regs: { R0: 0b00000000},
         memory: { },
-        post: |i| { assert_eq!(0b00000000, Adc::read(i.get_peripherals(), A3)); }
+        post: |i| { eq!(0b00000000, Adc::read(i.get_peripherals(), A3)); }
     }
     single_test! {
         Adc_cr_pin4_read_input,
@@ -354,7 +352,7 @@ mod read {
         steps: 3,
         regs: { R0: 0b00001101},
         memory: { },
-        post: |i| { assert_eq!(0b00001101, Adc::read(i.get_peripherals(), A4)); }
+        post: |i| { eq!(0b00001101, Adc::read(i.get_peripherals(), A4)); }
     }
     single_test! {
         Adc_cr_pin1_read_input,
@@ -364,7 +362,7 @@ mod read {
         steps: 3,
         regs: { R0: 0b00001101},
         memory: { },
-        post: |i| { assert_eq!(0b00001101, Adc::read(i.get_peripherals(), A1)); }
+        post: |i| { eq!(0b00001101, Adc::read(i.get_peripherals(), A1)); }
     }
     single_test! {
         Adc_cr_pin5_read_input,
@@ -374,7 +372,7 @@ mod read {
         steps: 3,
         regs: { R0: 0b00000101},
         memory: { },
-        post: |i| { assert_eq!(0b00001101, Adc::read(i.get_peripherals(), A5)); }
+        post: |i| { eq!(0b00001101, Adc::read(i.get_peripherals(), A5)); }
     }*/
 }
 //}
@@ -385,15 +383,15 @@ mod write {
 
     #[test]
     fn write_testing() { with_larger_stack(None, || {
-         assert_eq!(AdcPin::NUM_PINS, 6, "Number of Adc Pins has changed!");
+         eq!(AdcPin::NUM_PINS, 6, "Number of Adc Pins has changed!");
 
-      
+
          let state_iter = [Disabled, Enabled].iter();
 
          let permutations = ADC_PINS.iter()
              .map(|_| state_iter.clone())
              .multi_cartesian_product();
- 
+
 
         fn state_to_word(s: AdcState) -> SignedWord {
                 match s {
@@ -442,13 +440,13 @@ mod write {
             ],
             steps: AdcPin::NUM_PINS * 3,
             post: |i| {
-                for (pin, state) in ADC_PINS.iter().zip(states.clone()) {
+                for (pin, _) in ADC_PINS.iter().zip(states.clone()) {
                     let got = Adc::get_state(i.get_peripherals(), *pin);
                     let read_adc = Adc::read(i.get_peripherals(), *pin);
 
                     match got {
                         Enabled => {
-                            eq!(read_adc, Ok(0), 
+                            eq!(read_adc, Ok(0),
                             "Adc Pin {}: expected val `{:?}`, got `{:?}`.\
                             \n\n[Test Case: {:?}]",
                             pin, 0, read_adc, states
@@ -463,7 +461,7 @@ mod write {
                         }
                     }
 
-                   
+
                 }
             }
         }

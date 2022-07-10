@@ -3,24 +3,19 @@ use super::*;
 use lc3_traits::peripherals::gpio::{Gpio, GpioPin, GpioState, GPIO_PINS};
 use lc3_baseline_sim::interp::InstructionInterpreter;
 use lc3_baseline_sim::mem_mapped::{
-    G0CR_ADDR, G0DR_ADDR, G0_INT_VEC,
-    G1CR_ADDR, G1DR_ADDR, G1_INT_VEC,
-    G2CR_ADDR, G2DR_ADDR, G2_INT_VEC,
-    G3CR_ADDR, G3DR_ADDR, G3_INT_VEC,
-    G4CR_ADDR, G4DR_ADDR, G4_INT_VEC,
-    G5CR_ADDR, G5DR_ADDR, G5_INT_VEC,
-    G6CR_ADDR, G6DR_ADDR, G6_INT_VEC,
-    G7CR_ADDR, G7DR_ADDR, G7_INT_VEC,
-    GPIODR_ADDR,
+    G0CR_ADDR, G0DR_ADDR, /* G0_INT_VEC, */ // TODO!
+    G1CR_ADDR, G1DR_ADDR, /* G1_INT_VEC, */ // TODO!
+    G2CR_ADDR, G2DR_ADDR, /* G2_INT_VEC, */ // TODO!
+    G3CR_ADDR, G3DR_ADDR, /* G3_INT_VEC, */ // TODO!
+    G4CR_ADDR, G4DR_ADDR, /* G4_INT_VEC, */ // TODO!
+    G5CR_ADDR, G5DR_ADDR, /* G5_INT_VEC, */ // TODO!
+    G6CR_ADDR, G6DR_ADDR, /* G6_INT_VEC, */ // TODO!
+    G7CR_ADDR, G7DR_ADDR, /* G7_INT_VEC, */ // TODO!
+    // GPIODR_ADDR, // TODO!
 };
 
 use GpioState::*;
 use GpioPin::*;
-use std::sync::mpsc::channel;
-use std::thread;
-use std::time::Duration;
-
-
 
 mod states {
     use super::*;
@@ -36,7 +31,7 @@ mod states {
     fn exhaustive_state_testing() { with_larger_stack(None, || {
         // The actual assembly assumes that there are 8 pins and needs to be
         // updated if this changes.
-        assert_eq!(GpioPin::NUM_PINS, 8, "Number of Gpio Pins has changed!");
+        eq!(GpioPin::NUM_PINS, 8, "Number of Gpio Pins has changed!");
 
         // We're also assuming that the states in GpioState won't change:
         // TODO: make this a `From` impl on the GpioState type so we don't have
@@ -193,7 +188,6 @@ mod states {
 
 mod read {
     use super::*;
-    use lc3_traits::peripherals::gpio::*;
 
     // Test that reads of [0, 1] work for all the pins when everything is
     // configured as inputs (i think we can skip the full 2 ^ 8 possibilities
@@ -381,7 +375,6 @@ mod read {
 
 mod write {
     use super::*;
-    use lc3_traits::peripherals::gpio::*;
 
     // test that when you write in output mode that you can read the values back in
     #[test]
@@ -521,41 +514,44 @@ mod write {
 }
 
 mod interrupt {
-    use super::*;
-    use lc3_traits::peripherals::gpio::*;
-   // Reading from pins in interrupt mode should already be covered; the only
-   // thing left is to test that interrupts actually trigger.
+    // use super::*;
+    // use lc3_traits::peripherals::gpio::*;
 
-   // Here are the variables:
-   //   - rising edge or falling edge
-   //   - in interrupt mode or some other mode (i.e. 3 other modes)
+    // TODO!
 
-   // Interrupts should only trigger on rising edges AND when interrupts are
-   // enabled AND when in interrupt mode. If we do an exhaustive test, this
-   // is (2 * 4) ^ 8 = 16,777,216 states...
-   //
-   // So, maybe don't do an exhaustive test or randomly pick a few thousand
-   // combinations from the full set of possibilities.
-   // Should also test that multiple interrupts are handled (i.e. they all
-   // run).
+    // Reading from pins in interrupt mode should already be covered; the only
+    // thing left is to test that interrupts actually trigger.
 
-   // Also need to test that when multiple interrupts occur, they trigger in
-   // the documented order!
-   //
-   // i.e. if G0 through G7 all trigger, G0 runs first, then G1, then G2, etc.
-   //
-   // One way we can actually test this is to have each handler increment R0
-   // and to have each handler store R0 into a fixed memory location for that
-   // handler.
-   //
-   // i.e. G0's handler -> 0x1000
-   //      G1's handler -> 0x1001
-   //      G2's handler -> 0x1002
-   //      G3's handler -> 0x1003
-   //      etc.
-   //
-   // If the handlers trigger in the right order, the values in 0x1000..0x1007
-   // should be sequential; if the handlers get run out of order they won't be.
+    // Here are the variables:
+    //   - rising edge or falling edge
+    //   - in interrupt mode or some other mode (i.e. 3 other modes)
+
+    // Interrupts should only trigger on rising edges AND when interrupts are
+    // enabled AND when in interrupt mode. If we do an exhaustive test, this
+    // is (2 * 4) ^ 8 = 16,777,216 states...
+    //
+    // So, maybe don't do an exhaustive test or randomly pick a few thousand
+    // combinations from the full set of possibilities.
+    // Should also test that multiple interrupts are handled (i.e. they all
+    // run).
+
+    // Also need to test that when multiple interrupts occur, they trigger in
+    // the documented order!
+    //
+    // i.e. if G0 through G7 all trigger, G0 runs first, then G1, then G2, etc.
+    //
+    // One way we can actually test this is to have each handler increment R0
+    // and to have each handler store R0 into a fixed memory location for that
+    // handler.
+    //
+    // i.e. G0's handler -> 0x1000
+    //      G1's handler -> 0x1001
+    //      G2's handler -> 0x1002
+    //      G3's handler -> 0x1003
+    //      etc.
+    //
+    // If the handlers trigger in the right order, the values in 0x1000..0x1007
+    // should be sequential; if the handlers get run out of order they won't be.
 
 
 

@@ -1,14 +1,8 @@
 use super::*;
 
-use lc3_traits::peripherals::clock::Clock;
-use lc3_baseline_sim::{
-    mem_mapped::CLKR_ADDR,
-    interp::InstructionInterpreter,
-};
+use lc3_baseline_sim::mem_mapped::CLKR_ADDR;
 use std::thread::sleep;
 use std::time::Duration;
-use lc3_test_infrastructure::assert_is_about;
-use lc3_isa::Reg::*;
 
 const TOLERANCE: u16 = 5;
 
@@ -25,7 +19,7 @@ single_test! {
     prefill: { 0x3010: CLKR_ADDR },
     insns: [ { LDI R0, #0xF } ],
     steps: 1,
-    pre: |p| { sleep(Duration::from_millis(100)); },
+    pre: |_| { sleep(Duration::from_millis(100)); },
     post: |i| { assert_is_about(i.get_register(R0), 100, TOLERANCE); }
 }
 
@@ -38,7 +32,7 @@ single_test! {
         { LDI R0, #0xD },
     ],
     steps: 3,
-    pre: |p| { sleep(Duration::from_millis(100)); },
+    pre: |_| { sleep(Duration::from_millis(100)); },
     post: |i| { assert_is_about(i.get_register(R0), 0, TOLERANCE); }
 }
 
@@ -54,6 +48,6 @@ single_test! {
         { LDI R0, #0xD }
     ],
     steps: 3,
-    pre: |p| { sleep(Duration::from_millis(100)); },
+    pre: |_| { sleep(Duration::from_millis(100)); },
     post: |i| { assert_is_about(i.get_register(R0), 1000, TOLERANCE); }
 }

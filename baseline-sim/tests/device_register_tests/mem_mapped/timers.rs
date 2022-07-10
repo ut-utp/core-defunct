@@ -1,16 +1,12 @@
 use super::*;
 
-use lc3_traits::peripherals::timers::{Timers, TimerId, TIMERS};
 use lc3_baseline_sim::mem_mapped::{
     MemMapped,
     T0CR_ADDR, T0DR_ADDR,
-    T1CR_ADDR, T1DR_ADDR,
-    TIMER_BASE_INT_VEC, T0_INT_VEC,
+    TIMER_BASE_INT_VEC,
     PSR,
     MCR
 };
-
-use TimerId::*;
 
 single_test! {
     singleshot_100ms,

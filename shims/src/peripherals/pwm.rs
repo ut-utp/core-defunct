@@ -123,26 +123,27 @@ impl Pwm for PwmShim {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use std::{thread, sync::Mutex};
+
     use lc3_traits::peripherals::pwm::{self, Pwm, PwmPin::*, PwmState};
 
     const MAX_PERIOD: u8 = u8::max_value();
 
-    use lc3_test_infrastructure::{
-        assert_eq, assert_is_about, run_periodically_for_a_time
-    };
+    use lc3_test_infrastructure::assert_eq;
     #[test]
     fn get_disabled() {
         let mut shim = PwmShim::new();
         assert_eq!(shim.get_state(P0), PwmState::Disabled);
 
-        let res = shim.set_state(P1, PwmState::Disabled);
+        shim.set_state(P1, PwmState::Disabled);
         assert_eq!(shim.get_state(P0), PwmState::Disabled);
     }
 
     #[test]
     fn get_enabled() {
         let mut shim = PwmShim::new();
-        let res = shim.set_state(P0, pwm::PwmState::Enabled(NonZeroU8::new(MAX_PERIOD).unwrap()));
+        shim.set_state(P0, pwm::PwmState::Enabled(NonZeroU8::new(MAX_PERIOD).unwrap()));
         let val = shim.get_state(P0);
         assert_eq!(val, pwm::PwmState::Enabled((NonZeroU8::new(MAX_PERIOD)).unwrap()));
     }
@@ -150,8 +151,8 @@ mod tests {
     #[test]
     fn get_duty() {
         let mut shim = PwmShim::new();
-        let res = shim.set_state(P0, pwm::PwmState::Enabled(NonZeroU8::new(MAX_PERIOD).unwrap()));
-        let res2 = shim.set_duty_cycle(P0, 100);
+        shim.set_state(P0, pwm::PwmState::Enabled(NonZeroU8::new(MAX_PERIOD).unwrap()));
+        shim.set_duty_cycle(P0, 100);
         assert_eq!(shim.get_duty_cycle(P0), 100);
         shim.set_state(P0, pwm::PwmState::Disabled);
     }
@@ -159,7 +160,7 @@ mod tests {
     #[test]
     fn get_pin_initial() {
         let mut shim = PwmShim::new();
-        let res = shim.set_state(P0, pwm::PwmState::Enabled(NonZeroU8::new(MAX_PERIOD).unwrap()));
+        shim.set_state(P0, pwm::PwmState::Enabled(NonZeroU8::new(MAX_PERIOD).unwrap()));
 
         let b = shim.get_pin(P0);
         assert_eq!(b, true);
@@ -168,9 +169,9 @@ mod tests {
     #[test]
     fn get_pin_on() {
         let mut shim = PwmShim::new();
-        let res = shim.set_state(P0, pwm::PwmState::Enabled(NonZeroU8::new(MAX_PERIOD).unwrap()));
+        shim.set_state(P0, pwm::PwmState::Enabled(NonZeroU8::new(MAX_PERIOD).unwrap()));
 
-        let res = shim.set_duty_cycle(P0, MAX_DUTY_CYCLE); // should always be on
+        shim.set_duty_cycle(P0, MAX_DUTY_CYCLE); // should always be on
         thread::sleep(Duration::from_millis(10));
         let b = shim.get_pin(P0);
         assert_eq!(b, true);
@@ -179,8 +180,8 @@ mod tests {
     #[test]
     fn start_pwm() {
         let mut shim = PwmShim::new();
-        let res0 = shim.set_state(P0, pwm::PwmState::Enabled(NonZeroU8::new(255).unwrap()));
-        let res1 = shim.set_duty_cycle(P0, 100); // this starts pwm
+        shim.set_state(P0, pwm::PwmState::Enabled(NonZeroU8::new(255).unwrap()));
+        shim.set_duty_cycle(P0, 100); // this starts pwm
 
         let b = shim.get_pin(P0);
         thread::sleep(Duration::from_millis(100));
@@ -190,16 +191,16 @@ mod tests {
     }
 
     #[test]
-    fn P0_toggle_once_check() {
+    fn p0_toggle_once_check() {
         let mut shim = PwmShim::new();
 
-        let res = shim.set_state(P0, pwm::PwmState::Enabled((NonZeroU8::new(MAX_PERIOD)).unwrap()));
+        shim.set_state(P0, pwm::PwmState::Enabled((NonZeroU8::new(MAX_PERIOD)).unwrap()));
 
         shim.set_duty_cycle(P0, MAX_DUTY_CYCLE / 2);
         let pin_state = shim.get_pin(P0);
         thread::sleep(Duration::from_millis(1 as u64));
         let mut toggle_flag = 0;
-        for i in 0..4 { // let it  run for 2 complete cycles
+        for _ in 0..4 { // let it  run for 2 complete cycles
             if shim.get_pin(P0) != pin_state {
                 toggle_flag = 1;
             }
@@ -211,17 +212,17 @@ mod tests {
 
 
     #[test]
-    fn P1_toggle_once_check() {
+    fn p1_toggle_once_check() {
         let mut shim = PwmShim::new();
 
-        let res = shim.set_state(P1, pwm::PwmState::Enabled((NonZeroU8::new(MAX_PERIOD)).unwrap()));
+        shim.set_state(P1, pwm::PwmState::Enabled((NonZeroU8::new(MAX_PERIOD)).unwrap()));
 
         shim.set_duty_cycle(P1, MAX_DUTY_CYCLE / 2);
         let pin_state = shim.get_pin(P1);
 
         thread::sleep(Duration::from_millis(1 as u64));
         let mut toggle_flag = 0;
-        for i in 0..4 { // let it run for 2 complete cycles
+        for _ in 0..4 { // let it run for 2 complete cycles
             if shim.get_pin(P1) != pin_state {
                 toggle_flag = 1;
             }
@@ -234,7 +235,7 @@ mod tests {
 
 
     #[test]
-    fn P0_duty_cycle() {
+    fn p0_duty_cycle() {
 
         let mut shim = PwmShim::new();
 
@@ -253,7 +254,7 @@ mod tests {
         shim.set_duty_cycle(P0, MAX_DUTY_CYCLE/duty_cycle_ratio);
         thread::sleep(Duration::from_millis(1 as u64));  // give wiggle room
 
-        let mut actual_cycles = Arc::new(Mutex::new(0));
+        let actual_cycles = Arc::new(Mutex::new(0));
 
         let timer = timer::Timer::new();
         let duration = chrono::Duration::milliseconds(MAX_DUTY_CYCLE as i64);
@@ -300,7 +301,7 @@ mod tests {
     }
 
     #[test]
-    fn P1_duty_cycle() {
+    fn p1_duty_cycle() {
 
         let mut shim = PwmShim::new();
 
@@ -316,7 +317,7 @@ mod tests {
         shim.set_duty_cycle(P1, MAX_DUTY_CYCLE/duty_cycle_ratio);
         thread::sleep(Duration::from_millis(1 as u64));  // give wiggle room
 
-        let mut actual_cycles = Arc::new(Mutex::new(0));
+        let actual_cycles = Arc::new(Mutex::new(0));
 
         let timer = timer::Timer::new();
         let duration = chrono::Duration::milliseconds(MAX_DUTY_CYCLE as i64);

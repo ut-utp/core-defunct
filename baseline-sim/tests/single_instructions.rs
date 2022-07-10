@@ -8,7 +8,6 @@ mod single_instructions {
     use super::*;
     use Reg::*;
 
-    use lti::assert_eq;
     use lti::{interp_test_runner, with_larger_stack};
 
     // Test that the instructions work

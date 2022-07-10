@@ -193,7 +193,9 @@ impl<'inp, 'int> Input<'int> for InputShim<'inp, 'int> {
 
 #[cfg(test)]
 mod tests {
+    // TODO!
+    /*
     use super::*;
-
     use lc3_test_infrastructure::{assert_eq, assert_ne};
+    */
 }

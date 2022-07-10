@@ -72,7 +72,6 @@ mod tests {
     #[test]
     fn get_and_set() {
         let mut clock = ClockShim::default();
-        let start = Instant::now();
 
         sleep(Duration::from_millis(2));
         assert_eq!(clock.get_milliseconds(), 2);

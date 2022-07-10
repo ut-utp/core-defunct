@@ -109,7 +109,7 @@ use lc3_isa::{Addr, Instruction::*, Reg::*, Word};
 fn loadable_full() {
 
     // TODO: remove
-    let LOADABLE: [(lc3_isa::Addr, lc3_isa::Word); 28] = lc3_isa::loadable! {
+    const LOADABLE: [(lc3_isa::Addr, lc3_isa::Word); 28] = lc3_isa::loadable! {
         .ORIG #0x3000  => is the program start;
         ADD R0, R0, R1 => you can use comments like this;
         ADD R1, R1, #0 => careful though there are things you cannot stick in these weird comments;
