@@ -12,8 +12,6 @@ members = [
     "test-infrastructure",
     "device-support" # TODO: spin off
 ]
-exclude = [ "misc/lc3-tm4c", "misc/serial" ] # TODO: remove
-
 
 [package] # TODO
 name = "lc3-utp"
