@@ -48,7 +48,6 @@ harness = false
 
 [features]
 default = []
-nightly = [] # For benchmarking.
 lto = ["lc3tools-sys/lto"] # For benchmarking.
 
 
