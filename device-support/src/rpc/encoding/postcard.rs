@@ -5,7 +5,7 @@ use crate::util::Fifo;
 use lc3_traits::control::rpc::{Encode, Decode};
 
 use serde::{Serialize, Deserialize};
-use postcard::flavors::{SerFlavor, Cobs};
+use postcard::ser_flavors::{Flavor as SerFlavor, Cobs};
 use postcard::serialize_with_flavor;
 use postcard::take_from_bytes_cobs;
 
@@ -186,16 +186,16 @@ mod decode {
 impl SerFlavor for Fifo<u8> {
     type Output = Self;
 
-    fn try_push(&mut self, data: u8) -> Result<(), ()> {
-        self.push(data)
+    fn try_push(&mut self, data: u8) -> postcard::Result<()> {
+        self.push(data).map_err(|()| postcard::Error::SerializeBufferFull)
     }
 
-    fn release(self) -> Result<Self::Output, ()> {
+    fn finalize(self) -> postcard::Result<Self::Output> {
         Ok(self)
     }
 
-    fn try_extend(&mut self, data: &[u8]) -> Result<(), ()> {
-        self.push_slice(data)
+    fn try_extend(&mut self, data: &[u8]) -> postcard::Result<()> {
+        self.push_slice(data).map_err(|()| postcard::Error::SerializeBufferFull)
     }
 }
 

@@ -478,7 +478,7 @@ impl<T> AsMut<[T]> for Fifo<T> {
 }
 
 // Use `Iterator::by_ref` to retain ownership of the iterator
-impl<T> Iterator for /*&mut */Fifo<T> {
+impl<T> Iterator for Fifo<T> { // /*&mut */
     type Item = T;
 
     #[inline]
