@@ -11,6 +11,8 @@ use core::{
 // Note: Capacity is a constant so that the transition to const generics (once
 // that lands on stable) will be not terrible painful.
 
+// TODO: const generics!
+
 pub(super) mod fifo_config {
     use core::mem::size_of;
 
