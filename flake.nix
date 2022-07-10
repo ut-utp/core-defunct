@@ -103,7 +103,9 @@
 
             # For `criterion`:
             gnuplot
-          ] ++ gdbPkgs;
+          ] ++ gdbPkgs ++ lib.optionals (pkgs.stdenv.isDarwin) [
+            darwin.apple_sdk.frameworks.IOKit
+          ];
         };
       }
     );
