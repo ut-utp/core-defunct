@@ -768,7 +768,7 @@ impl Instruction {
     // #[doc(hidden)]
 
     #[rustfmt::skip]
-    nightly_const! { [pub] => [fn to_word(&self) -> u16 {
+    pub const fn to_word(&self) -> u16 {
         #![allow(non_snake_case)]
         use Instruction::*;
 
@@ -808,7 +808,7 @@ impl Instruction {
             Str { sr, base, offset6 } => Op(0b0111) | Dr(sr) | Base(base) | O6(offset6),
             Trap { trapvec }          => Op(0b1111)          | Trapvec(trapvec)        ,
         }
-    }]}
+    }
 }
 
 // TODO: tests for Instruction

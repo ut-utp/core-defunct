@@ -50,31 +50,7 @@
 
 // Note: this feature is not tested by CI (still dependent on nightly Rust) but
 // this is fine for now.
-#![cfg_attr(feature = "nightly-const", feature(const_if_match))]
-#![cfg_attr(feature = "nightly-const", feature(const_panic))]
-
-// Makes some an item const if the nightly-const feature is activated and not
-// const otherwise.
-#[macro_export]
-#[doc(hidden)]
-macro_rules! nightly_const {
-    (
-        $( $(#[$m:meta])+ )?
-        [$($vis:tt)*] => [$($rest:tt)*]
-    ) => (
-        #[cfg(not(feature = "nightly-const"))]
-        $( $(#[$m:meta])+ )?
-        ///
-        /// **NOTE**: This is only `const` when the `nightly-const` feature is enabled!
-        $($vis)* $($rest)*
-
-        #[cfg(feature = "nightly-const")]
-        $( $(#[$m:meta])+ )?
-        ///
-        /// **NOTE**: This is only `const` when the `nightly-const` feature is enabled!
-        $($vis)* const $($rest)*
-    );
-}
+#![cfg_attr(feature = "nightly-const", feature(const_format_args))]
 
 extern crate static_assertions as sa;
 
@@ -142,6 +118,9 @@ mod fmt;
 mod isa;
 mod macros;
 mod misc;
+
+#[doc(hidden)]
+pub use macros::overlap_error as _macro_support;
 
 pub use isa::*;
 pub use misc::util;
