@@ -2,7 +2,7 @@
 name = "lc3-test-infrastructure"
 version = "0.1.0"
 authors = ["UT UTP <ut.utp.group@gmail.com>"]
-edition = "2018"
+edition = "2021"
 publish = false # Only really useful for us
 
 workspace = ".."

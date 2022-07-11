@@ -381,7 +381,7 @@ mod tests {
     #[test]
     fn misc() {
         let insn =
-            insn!(AND R0, R0, R0, => Unfortunately we'll take trailing commas, but don't do this!);
+            insn!(AND R0, R0, R0, => Unfortunately we will take trailing commas, but please do not do this!);
 
         assert_eq!(insn, insn!(AND R0, R0, R0));
 
