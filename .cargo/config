@@ -3,16 +3,45 @@
 # Ordinarily we would just set this but: we don't want to break regular
 # `cargo doc` for developers that don't have a nightly toolchain installed.
 # rustdocflags = ["--cfg", "docs"]
+#
+# Instead, we provide the `docs` alias.
+#
+# Similar to regular lints and clippy lints (below), we want to have one place
+# to stick our rustdoc lints.
+#
+# Sticking these in `rustdocflags` has two downsides:
+#   - these lints will not show up in your editor!
+#   - these lints block building docs!
+#
+# Unfortunately, I don't currently know of a better way.
+#
+# As a stopgap, we _do_ pass rustdoc `--cap-lints allow` in the `cargo docs`
+# alias below but that requires nightly Rust.
+rustdocflags = [
+    ### [rustdoc] https://doc.rust-lang.org/rustdoc/lints.html
+    "--deny", "rustdoc::broken_intra_doc_links",
+    "--deny", "missing-docs",
+    "--deny", "rustdoc::missing_crate_level_docs",
+    "--deny", "rustdoc::bare_urls",
+
+    # NOTE: `cargo` still sets `--cap-lints` when building docs for deps so
+    # these lints don't trigger there/break the docs build.
+]
+
+# TODO: in CI, set RUSTDOCFLAGS to `--cap-lints forbid`.
+# TODO: in CI, run rustdoc with "--show-coverage"
 
 [alias]
 # Requires `nightly` Rust!
 docs = [
-    "-Z", "unstable-options", '--config=build.rustdocflags=["--cfg", "docs"]',
-    "doc", "--all", "--document-private-items", "--all-features"
+    "-Z", "unstable-options",
+    "-Z", "rustdoc-scrape-examples=examples",
+    '--config=build.rustdocflags=["--cfg", "docs", "-Zunstable-options", "--show-type-layout", "--cap-lints=allow"]', # `--scrape-examples`, '--check-cfg', '--generate-link-to-definition'
+    "doc", "--workspace", "--document-private-items", "--all-features", # "--bins", "--examples",
 ]
 # Stable equivalent of the above.
 docs-stable = [
-    "doc", "--all", "--document-private-items"
+    "doc", "--workspace", "--document-private-items", "--all-features", # "--bins", "--examples"
 ]
 
 # We put this list here instead of in `lib.rs`/`main.rs`/CI workflows for a
