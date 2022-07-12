@@ -44,6 +44,11 @@ docs-stable = [
     "doc", "--workspace", "--document-private-items", "--all-features", # "--bins", "--examples"
 ]
 
+build-all = ["build", "--workspace", "--all-features", "--all-targets"]
+check-all = ["check", "--workspace", "--all-features", "--all-targets"]
+fmt-all = ["fmt", "--workspace"]
+test-all = ["test", "--workspace", "--all-features", "--all-targets", "--no-fail-fast"]
+
 # We put this list here instead of in `lib.rs`/`main.rs`/CI workflows for a
 # couple of reasons:
 #   1) We'd like to not have to duplicate/update this list in every crate in
@@ -170,3 +175,9 @@ clippy-all = ["clippy", "--all", "--all-features", "--all-targets", "--",
 ]
 lint = ["clippy-all"]
 
+b = "build-all"
+c = "check-all"
+d = "docs-stable"
+f = "fmt-all"
+t = "test-all"
+l = "lint"
