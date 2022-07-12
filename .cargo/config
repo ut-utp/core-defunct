@@ -157,7 +157,16 @@ clippy-all = ["clippy", "--all", "--all-features", "--all-targets", "--",
     "--forbid", "macro_expanded_macro_exports_accessed_by_absolute_paths",
     "--forbid", "unknown_crate_types",
 
+    ####### Clippy Lints: https://rust-lang.github.io/rust-clippy/master/ #######
 
+    ### [clippy] cargo
+    "--deny", "clippy::cargo_common_metadata",
+    "--warn", "clippy::multiple_crate_versions",
+    "--deny", "clippy::negative_feature_names",
+    "--deny", "clippy::redundant_feature_names",
+    "--deny", "clippy::wildcard_dependencies",
+
+    # TODO: peruse the other clippy lints (the defaults are pretty good though)
 ]
 lint = ["clippy-all"]
 
