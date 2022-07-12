@@ -14,3 +14,38 @@ docs = [
 docs-stable = [
     "doc", "--all", "--document-private-items"
 ]
+
+# We put this list here instead of in `lib.rs`/`main.rs`/CI workflows for a
+# couple of reasons:
+#   1) We'd like to not have to duplicate/update this list in every crate in
+#      this workspace
+#   2) For local development, we want running these lints to be _opt in_.
+#      Having, for example, missing documentation prevent you from compiling
+#      and testing while you're still figuring out how to implement something
+#      is counterproductive.
+#
+#      These lints *are* enforced by CI however we don't want to put this list
+#      in the CI workflow definition either because: we still want to have an
+#      easy way for developers to run exactly the checks CI will run, locally.
+#
+# The downside to this approach, as detailed in `.vscode/core.code-workspace`,
+# is that this alias does not play well with rust analyzer so there isn't an
+# easy way for developers to see these errors in their editor.
+#
+# In the future we may want to switch to:
+#   - clippy.toml, when it is implemented
+#     + https://github.com/rust-lang/rust-clippy/issues/1313
+#     + https://github.com/rust-lang/cargo/issues/5034
+#   - `cargo-cranky`, if we decide we're okay requiring developers to install it
+#     + https://github.com/ericseppanen/cargo-cranky
+#     + this supports rustc lints and also plays well with `rust-analyzer`
+clippy-all = ["clippy", "--all", "--all-features", "--all-targets", "--",
+    ### [rustc] allow by default lints: https://doc.rust-lang.org/rustc/lints/listing/allowed-by-default.html
+
+    ### [rustc] warn by default lints: https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html
+
+    ### [rustc] deny by default lints: https://doc.rust-lang.org/rustc/lints/listing/deny-by-default.html
+
+]
+lint = ["clippy-all"]
+
