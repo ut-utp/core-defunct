@@ -241,23 +241,7 @@ macro_rules! program {
 
     (%%contd, $addr:ident, $mem:ident | $(@$label:ident)? $(.)? FILL $($regs:ident),* $(,)? $(@$label_operand:ident)? $(#$num:expr)? $(=> $($_a:ident$($_b:literal)?)*)?; $($rest:tt)* ) => {
 
-        // $(
-        //     #[allow(non_snake_case)]
-        //     let $label = $addr;
-        // )?
-
-        // If we want to be const, we'll have to disable this check (or find a workaround).
-        // Right now the blocker for being const is that we can't match (or deal with enum
-        // variants at all) which breaks our ability to convert `Instruction`s to `Word`s
-        // (which is fairly required).
-        //
-        // Update: now that const if/match have landed on nightly, this macro can be
-        // const and *is* const when this crate is used with the `nightly-const` feature
-        // and a new enough nightly rustc build.
-        #[cfg(not(feature = "nightly-const"))]
-        { if $mem[$addr as usize].1 { panic!("Overlap at {:#4X}!", $addr); } }
-        #[cfg(feature = "nightly-const")]
-        { if $mem[$addr as usize].1 { panic!("Overlap!"); } } // Can't format in consts yet!
+        { if $mem[$addr as usize].1 { $crate::overlap!($addr); } }
         $mem[$addr as usize] = ($crate::word!(FILL $($regs,)* $(#((($label_operand))))? $(#$num)*), true);
 
         $addr += 1;
@@ -267,16 +251,7 @@ macro_rules! program {
 
     (%%contd, $addr:ident, $mem:ident | $(@$label:ident)? $(.)? $op:ident $($regs:ident),* $(,)? $(@$label_operand:ident)? $(#$num:expr)? $(=> $($_a:ident$($_b:literal)?)*)?; $($rest:tt)* ) => {
 
-        // $(
-        //     #[allow(non_snake_case)]
-        //     let $label = $addr;
-        // )?
-
-        // See the above comment about const contexts.
-        #[cfg(not(feature = "nightly-const"))]
-        { if $mem[$addr as usize].1 { panic!("Overlap at {:#4X}!", $addr); } }
-        #[cfg(feature = "nightly-const")]
-        { if $mem[$addr as usize].1 { panic!("Overlap!"); } } // Can't format in consts yet!
+        { if $mem[$addr as usize].1 { $crate::overlap!($addr); } }
         $mem[$addr as usize] = ($crate::word!($op $($regs,)* $(#((($label_operand as i64) - ($addr as i64) - 1) as $crate::SignedWord))? $(#$num)*), true);
 
         $addr += 1;
@@ -310,6 +285,29 @@ macro_rules! program {
     (%%label_def, $addr:ident |) => {
 
     };
+}
+
+/// We cannot yet format args in `panic!`s; this module exposes a macro that
+/// uses the `const_panic` crate as a workaround.
+#[doc(hidden)]
+pub mod overlap_error {
+    #[macro_export]
+    #[doc(hidden)]
+    macro_rules! overlap {
+        ($addr:ident) => {
+            $crate::_macro_support::err($addr);
+        };
+    }
+
+    // NOTE: we wrap this in a function so that our dependence on `const_panic`
+    // doesn't leak into the callers of our macro.
+    #[doc(hidden)]
+    #[track_caller]
+    pub const fn err(addr: crate::Word) {
+        // in lieu of `panic!("Overlap at {:#4X}!", addr);`
+
+        const_panic::concat_panic!("Overlap at ", {#X}: addr, "!");
+    }
 }
 
 #[macro_export]
@@ -383,7 +381,7 @@ mod tests {
     #[test]
     fn misc() {
         let insn =
-            insn!(AND R0, R0, R0, => Unfortunately we'll take trailing commas, but don't do this!);
+            insn!(AND R0, R0, R0, => Unfortunately we will take trailing commas, but please do not do this!);
 
         assert_eq!(insn, insn!(AND R0, R0, R0));
 

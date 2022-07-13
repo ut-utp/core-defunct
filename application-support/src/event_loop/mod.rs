@@ -125,8 +125,6 @@ specialize! {
     not: { mod not_wasm; }
 }
 
-use lc3_traits::control::Control;
-
 /*
 // To make sure that the `Backoff` interface is satisfied:
 #[doc(hidden)]

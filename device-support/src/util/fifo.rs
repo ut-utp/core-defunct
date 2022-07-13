@@ -1,15 +1,17 @@
 //! Stack allocated FIFO. (TODO)
 
 use core::{
+    convert::{AsMut, AsRef},
     fmt::{self, Debug},
-    iter::{ExactSizeIterator, Iterator, FusedIterator},
+    iter::{ExactSizeIterator, FusedIterator, Iterator},
     mem::{replace, size_of, transmute, transmute_copy, MaybeUninit},
     ops::{Index, IndexMut},
-    convert::{AsRef, AsMut},
 };
 
 // Note: Capacity is a constant so that the transition to const generics (once
 // that lands on stable) will be not terrible painful.
+
+// TODO: const generics!
 
 pub(super) mod fifo_config {
     use core::mem::size_of;
@@ -305,7 +307,7 @@ impl<T> Fifo<T> {
             &[]
         } else {
             if self.ending > self.starting {
-                let s = & self.data
+                let s = &self.data
                     [(self.starting as usize)..(self.ending as usize)];
 
                 #[allow(unsafe_code)]
@@ -314,7 +316,7 @@ impl<T> Fifo<T> {
                 }
             } else if self.ending <= self.starting {
                 // Gotta do it in two parts then.
-                let s = & self.data[(self.starting as usize)..];
+                let s = &self.data[(self.starting as usize)..];
 
                 #[allow(unsafe_code)]
                 unsafe {
@@ -478,7 +480,7 @@ impl<T> AsMut<[T]> for Fifo<T> {
 }
 
 // Use `Iterator::by_ref` to retain ownership of the iterator
-impl<T> Iterator for /*&mut */Fifo<T> {
+impl<T> Iterator for Fifo<T> { // /*&mut */
     type Item = T;
 
     #[inline]
@@ -491,21 +493,21 @@ impl<T> Iterator for /*&mut */Fifo<T> {
     }
 }
 
-impl<T> FusedIterator for Fifo<T> { }
+impl<T> FusedIterator for Fifo<T> {}
 
-impl<T> ExactSizeIterator for Fifo<T> { }
+impl<T> ExactSizeIterator for Fifo<T> {}
 
 using_alloc! {
     use core::convert::TryInto;
 
-    use bytes::{Buf, BufMut};
+    use bytes::{{Buf, BufMut}, buf::UninitSlice};
 
     impl Buf for Fifo<u8> {
         fn remaining(&self) -> usize {
             self.length()
         }
 
-        fn bytes(&self) -> &[u8] {
+        fn chunk(&self) -> &[u8] {
             self.as_slice()
         }
 
@@ -514,7 +516,7 @@ using_alloc! {
         }
     }
 
-    impl BufMut for Fifo<u8> {
+    unsafe impl BufMut for Fifo<u8> {
         fn remaining_mut(&self) -> usize {
             self.remaining()
         }
@@ -537,15 +539,22 @@ using_alloc! {
             self.ending = Self::add(self.ending, cnt_cur);
         }
 
-        fn bytes_mut(&mut self) -> &mut [MaybeUninit<u8>] {
+        fn chunk_mut(&mut self) -> &mut UninitSlice {
+            fn into_uninit_slice(m: &mut [MaybeUninit<u8>]) -> &mut UninitSlice {
+                let ptr = m as *mut _ as *mut u8;
+                let len = m.len();
+
+                unsafe { UninitSlice::from_raw_parts_mut(ptr, len) }
+            }
+
             if Self::is_empty(self) {
-                &mut self.data
+                into_uninit_slice(&mut self.data)
             } else {
                 if self.ending <= self.starting {
-                    &mut self.data[(self.ending as usize)..(self.starting as usize)]
+                    into_uninit_slice(&mut self.data[(self.ending as usize)..(self.starting as usize)])
                 } else if self.ending > self.starting {
                     // Gotta do it in two parts then.
-                    &mut self.data[(self.ending as usize)..]
+                    into_uninit_slice(&mut self.data[(self.ending as usize)..])
                 } else { unreachable!() }
             }
         }
@@ -557,7 +566,6 @@ using_alloc! {
 sa::assert_eq_size!(&mut [MaybeUninit<u8>], &mut [u8]);
 sa::assert_eq_size!([MaybeUninit<u8>; CAPACITY], [u8; CAPACITY]);
 sa::assert_eq_align!([MaybeUninit<u8>; CAPACITY], [u8; CAPACITY]);
-
 
 #[cfg(test)]
 mod tests {
@@ -575,17 +583,23 @@ mod tests {
     }
 
     impl Cloneable {
-        const fn new(n: usize) -> Self { Self { a: n, b: n, c: n } }
+        const fn new(n: usize) -> Self {
+            Self { a: n, b: n, c: n }
+        }
     }
 
     // A type this does *not* implement Clone.
     #[derive(Debug, PartialEq, Eq)]
     struct Uncloneable {
-        inner: Cloneable
+        inner: Cloneable,
     }
 
     impl Uncloneable {
-        const fn new(n: usize) -> Self { Self { inner: Cloneable::new(n) } }
+        const fn new(n: usize) -> Self {
+            Self {
+                inner: Cloneable::new(n),
+            }
+        }
     }
 
     // Also tests push_slice (requires Clone)
@@ -645,7 +659,9 @@ mod tests {
     #[test]
     fn push_uncloneable() {
         let mut arr = [0; CAPACITY];
-        for i in 0..CAPACITY { arr[i] = i; }
+        for i in 0..CAPACITY {
+            arr[i] = i;
+        }
 
         let mut iter = arr.iter().map(|i| Uncloneable::new(*i));
         let mut fifo = Fifo::new();
@@ -661,7 +677,9 @@ mod tests {
     fn overpush() {
         let mut fifo = FIFO;
 
-        for i in 0..fifo.capacity() { assert_eq!(Ok(()), fifo.push(i)); }
+        for i in 0..fifo.capacity() {
+            assert_eq!(Ok(()), fifo.push(i));
+        }
 
         assert_eq!(Err(()), fifo.push(123));
         assert_eq!(Err(()), fifo.push(567));
@@ -674,10 +692,14 @@ mod tests {
         assert_eq!(None, fifo.pop());
         assert_eq!(None, fifo.pop());
 
-        for i in 0..fifo.capacity() { assert_eq!(Ok(()), fifo.push(i)); }
+        for i in 0..fifo.capacity() {
+            assert_eq!(Ok(()), fifo.push(i));
+        }
 
         // Also tests ordering!
-        for i in 0..fifo.capacity() { assert_eq!(Some(i), fifo.pop()); }
+        for i in 0..fifo.capacity() {
+            assert_eq!(Some(i), fifo.pop());
+        }
 
         assert_eq!(None, fifo.pop());
         assert_eq!(None, fifo.pop());

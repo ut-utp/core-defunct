@@ -2,7 +2,7 @@
 name = "lc3-isa"
 version = "0.1.0"
 authors = ["UT UTP <ut.utp.group@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 workspace = ".."
 
@@ -30,13 +30,14 @@ maintenance = { status = "actively-developed" }
 [dependencies]
 lc3-macros = { path = "../macros", version = "0.1.0" }
 
-serde = { version = "1.0", default-features = false, features = ["derive"]}
-static_assertions = "1.1.0"
-arbitrary = { version = "0.4.1", features = ["derive"], optional = true }
+arbitrary = { version = "1.1", features = ["derive"], optional = true }
+const_panic = "0.2"
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+static_assertions = "1.1"
 
 [dev-dependencies]
-itertools = "0.9.0"
-pretty_assertions = "0.6.1"
+itertools = "0.10"
+pretty_assertions = "1.2"
 
 
 [features]
@@ -45,10 +46,10 @@ std = []
 strict = []
 
 arbitrary = ["dep:arbitrary", "std"]
-nightly-const = [] # Requires nightly; isn't tested by CI.
 
 [package.metadata.docs.rs]
-# targets = [""]
-rustdoc-args = ["--cfg", "docs"]
+targets = ["x86_64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-pc-windows-msvc", "wasm32-unknown-unknown", "thumbv7em-none-eabihf"]
+cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples=examples"]
+rustdoc-args = ["--cfg", "docs"] # "--scrape-tests"
 all-features = true
-# default-target = ""
+default-target = "x86_64-unknown-linux-gnu"

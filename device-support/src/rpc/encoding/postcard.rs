@@ -2,10 +2,10 @@
 
 use crate::util::Fifo;
 
-use lc3_traits::control::rpc::{Encode, Decode, RequestMessage, ResponseMessage};
+use lc3_traits::control::rpc::{Encode, Decode};
 
 use serde::{Serialize, Deserialize};
-use postcard::flavors::{SerFlavor, Cobs, Slice};
+use postcard::ser_flavors::{Flavor as SerFlavor, Cobs};
 use postcard::serialize_with_flavor;
 use postcard::take_from_bytes_cobs;
 
@@ -165,7 +165,7 @@ mod decode {
         fn decode(&mut self, encoded: &Self::Encoded) -> Result<Out, Self::Err> {
             // This is bad and is a hack!
             let mut fifo: Fifo<u8> = Fifo::new();
-            fifo.push_slice(encoded.as_ref());
+            fifo.push_slice(encoded.as_ref()).unwrap();
             // fifo.push_iter(&mut encoded.as_ref().iter()).unwrap();
 
             // // TODO: remove this hack!
@@ -186,16 +186,16 @@ mod decode {
 impl SerFlavor for Fifo<u8> {
     type Output = Self;
 
-    fn try_push(&mut self, data: u8) -> Result<(), ()> {
-        self.push(data)
+    fn try_push(&mut self, data: u8) -> postcard::Result<()> {
+        self.push(data).map_err(|()| postcard::Error::SerializeBufferFull)
     }
 
-    fn release(self) -> Result<Self::Output, ()> {
+    fn finalize(self) -> postcard::Result<Self::Output> {
         Ok(self)
     }
 
-    fn try_extend(&mut self, data: &[u8]) -> Result<(), ()> {
-        self.push_slice(data)
+    fn try_extend(&mut self, data: &[u8]) -> postcard::Result<()> {
+        self.push_slice(data).map_err(|()| postcard::Error::SerializeBufferFull)
     }
 }
 

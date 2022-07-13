@@ -36,7 +36,7 @@ impl<'a> Gpio<'a> for GpioStub {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct AdcStub;
 
-use super::adc::{AdcPin, AdcState, AdcPinArr, AdcReadError, AdcMiscError};
+use super::adc::{AdcPin, AdcState, AdcReadError, AdcMiscError};
 impl Adc for AdcStub {
     fn set_state(&mut self, _pin: AdcPin, _: AdcState) -> Result<(), AdcMiscError> { Err(AdcMiscError) }
     fn get_state(&self, _pin: AdcPin) -> AdcState { AdcState::Disabled }
@@ -47,7 +47,7 @@ impl Adc for AdcStub {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct PwmStub;
 
-use super::pwm::{PwmPin, PwmState, PwmPinArr, PwmDutyCycle};
+use super::pwm::{PwmPin, PwmState, PwmDutyCycle};
 impl Pwm for PwmStub {
     fn set_state(&mut self, _pin: PwmPin, _state: PwmState) { }
     fn get_state(&self, _pin: PwmPin) -> PwmState { PwmState::Disabled }
@@ -103,7 +103,7 @@ pub struct OutputStub;
 use super::output::OutputError;
 
 impl<'a> Output<'a> for OutputStub {
-    fn write_data(&mut self, c: u8) -> Result<(), OutputError> { Ok(()) }
+    fn write_data(&mut self, _c: u8) -> Result<(), OutputError> { Ok(()) }
     fn current_data_written(&self) -> bool { true }
 
     fn register_interrupt_flag(&mut self, _flag: &'a AtomicBool) { }

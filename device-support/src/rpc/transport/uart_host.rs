@@ -3,20 +3,18 @@
 use crate::util::Fifo;
 
 use lc3_traits::control::rpc::Transport;
-use lc3_traits::control::{Identifier, Version, version_from_crate};
+use lc3_traits::control::{version_from_crate, Identifier, Version};
 
 use serialport::{
-    DataBits, FlowControl, Parity, StopBits, SerialPort,
-    open_with_settings
+    DataBits, FlowControl, Parity, Result as SerialResult, SerialPort,
+    StopBits,
 };
-pub use serialport::SerialPortSettings;
+pub use serialport::SerialPortBuilder;
 
-use std::path::Path;
-use std::io::{Read, Write, Error, ErrorKind, Result as IoResult};
-use std::convert::AsRef;
+use std::borrow::Cow;
 use std::cell::RefCell;
+use std::io::{Error, ErrorKind, Read, Result as IoResult, Write};
 use std::time::Duration;
-use std::ffi::OsStr;
 
 // TODO: Debug impl
 pub struct HostUartTransport {
@@ -25,21 +23,24 @@ pub struct HostUartTransport {
 }
 
 impl HostUartTransport {
-    pub fn new<P: AsRef<Path>>(path: P, baud_rate: u32) -> IoResult<Self> {
-        let settings = SerialPortSettings {
-            baud_rate: baud_rate,
-            data_bits: DataBits::Eight,
-            flow_control: FlowControl::None,
-            parity: Parity::None,
-            stop_bits: StopBits::One,
-            timeout: Duration::from_secs(100),
-        };
+    pub fn new<'a>(
+        path: impl Into<Cow<'a, str>>,
+        baud_rate: u32,
+    ) -> SerialResult<Self> {
+        let settings = serialport::new(path, baud_rate)
+            .data_bits(DataBits::Eight)
+            .flow_control(FlowControl::None)
+            .parity(Parity::None)
+            .stop_bits(StopBits::One)
+            .timeout(Duration::from_secs(10));
 
-        Self::new_with_config(path, settings)
+        Self::new_with_config(settings)
     }
 
-    pub fn new_with_config<P: AsRef<Path>>(path: P, config: SerialPortSettings) -> IoResult<Self> {
-        let serial = open_with_settings(AsRef::<OsStr>::as_ref(path.as_ref()), &config)?;
+    pub fn new_with_config(
+        config: SerialPortBuilder,
+    ) -> SerialResult<Self> {
+        let serial = config.open()?;
 
         Ok(Self {
             serial: RefCell::new(serial),
@@ -54,11 +55,13 @@ impl Transport<Fifo<u8>, Fifo<u8>> for HostUartTransport {
     type RecvErr = Error;
     type SendErr = Error;
 
-    const ID: Identifier = Identifier::new_from_str_that_crashes_on_invalid_inputs("UART");
+    const ID: Identifier =
+        Identifier::new_from_str_that_crashes_on_invalid_inputs("UART");
     const VER: Version = {
         let ver = version_from_crate!();
 
-        let id = Identifier::new_from_str_that_crashes_on_invalid_inputs("host");
+        let id =
+            Identifier::new_from_str_that_crashes_on_invalid_inputs("host");
 
         Version::new(ver.major, ver.minor, ver.patch, Some(id))
     };
@@ -75,7 +78,7 @@ impl Transport<Fifo<u8>, Fifo<u8>> for HostUartTransport {
                         Err(e) => match e.kind() {
                             ErrorKind::WouldBlock => continue,
                             _ => return Err(e),
-                        }
+                        },
                     }
                 }
             };
@@ -84,7 +87,7 @@ impl Transport<Fifo<u8>, Fifo<u8>> for HostUartTransport {
         // serial.write(message.as_slice()).map(|_| ())?;
         // serial.flush()
 
-        block!(serial.write(message.as_slice()).map(|_| ()));
+        block!(serial.write(message.as_slice()).map(|_| ())).unwrap();
         block!(serial.flush())
     }
 
@@ -100,13 +103,13 @@ impl Transport<Fifo<u8>, Fifo<u8>> for HostUartTransport {
             match serial.read(&mut temp_buf) {
                 Ok(1) => {
                     if temp_buf[0] == 0 {
-                        return Ok(core::mem::replace(&mut buf, Fifo::new()))
+                        return Ok(core::mem::replace(&mut buf, Fifo::new()));
                     } else {
                         // TODO: don't panic here; see the note in uart_simple
                         buf.push(temp_buf[0]).unwrap()
                     }
-                },
-                Ok(0) => {},
+                }
+                Ok(0) => {}
                 Ok(_) => unreachable!(),
                 Err(err) => {
                     // if let std::io::ErrorKind::Io(kind) = err.kind() {
@@ -120,9 +123,9 @@ impl Transport<Fifo<u8>, Fifo<u8>> for HostUartTransport {
                     // }
 
                     if let std::io::ErrorKind::WouldBlock = err.kind() {
-                        return Err(None)
+                        return Err(None);
                     } else {
-                        return Err(Some(err))
+                        return Err(Some(err));
                     }
                 }
             }
@@ -131,5 +134,3 @@ impl Transport<Fifo<u8>, Fifo<u8>> for HostUartTransport {
         Err(None)
     }
 }
-
-

@@ -1,0 +1,82 @@
+{
+	"folders": [
+		{ "path": ".." }
+	],
+	"settings": {
+		"files.exclude": {
+			"target": true
+		},
+
+		"rust-analyzer": {
+			"cargo.features": "all",
+			"checkOnSave": {
+				"allTargets": true,
+				"features": "all",
+
+				// Note: we cannot actually use `lint` here because it cannot
+				// accept `cargo clippy` args `--workspace` and `--all-features`
+				// (because it uses `--` and passes the underlying clippy
+				// invocation args).
+				//
+				// This means developers must run the `lint` build task to see
+				// the errors CI will complain about *and* that there isn't an
+				// easy way for developers to see these errors in their editor.
+				"command": "clippy",
+			}
+		},
+	},
+	"extensions": {
+        "recommendations": [
+            // Rust:
+            "rust-lang.rust-analyzer",
+            "bungcip.better-toml",
+            "serayuzgur.crates",
+            // Misc:
+            "eamodio.gitlens",
+            // Nix:
+            "jnoortheen.nix-ide",
+            "mkhl.direnv"
+        ]
+    },
+	"tasks": {
+		"version": "2.0.0",
+		"tasks": [
+			{
+				"label": "Build All",
+				"type": "cargo",
+				"command": "b",
+				"problemMatcher": ["$rustc"],
+			},
+			{
+				"label": "Open Docs",
+				"type": "cargo",
+				"command": "d --open",
+				"problemMatcher": ["$rustc"],
+			},
+			{
+				"label": "Format Workspace",
+				"type": "cargo",
+				"command": "f",
+				"problemMatcher": ["$rustc"],
+			},
+			{
+				"label": "Test All",
+				"type": "cargo",
+				"command": "t",
+				"problemMatcher": ["$rustc"],
+			},
+			{
+				"label": "Lint All",
+				"type": "cargo",
+				"command": "l",
+				"problemMatcher": ["$rustc"],
+			},
+			{
+				"label": "Run Benchmarks",
+				"type": "cargo",
+				"command": "bench",
+				"problemMatcher": ["$rustc"],
+			}
+		]
+	},
+}

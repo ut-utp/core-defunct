@@ -1,7 +1,7 @@
 use super::*;
 
 use core::num::NonZeroU8;
-use lc3_traits::peripherals::pwm::{Pwm, PwmPin, PwmState, PwmDutyCycle};
+use lc3_traits::peripherals::pwm::{Pwm, PwmPin, PwmState};
 use PwmState::*;
 use PwmPin::*;
 

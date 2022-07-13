@@ -103,7 +103,7 @@ impl Default for InputShim<'_, '_> {
 }
 
 impl<'int, 'i> InputShim<'i, 'int> {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 
@@ -193,7 +193,9 @@ impl<'inp, 'int> Input<'int> for InputShim<'inp, 'int> {
 
 #[cfg(test)]
 mod tests {
+    // TODO!
+    /*
     use super::*;
-
     use lc3_test_infrastructure::{assert_eq, assert_ne};
+    */
 }

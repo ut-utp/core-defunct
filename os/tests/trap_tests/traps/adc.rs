@@ -6,8 +6,6 @@ use lc3_shims::peripherals::AdcShim;
 use AdcState::*;
 use AdcPin::*;
 
-use std::sync::RwLock;
-
 single_test! {
     enable,
     insns: [
@@ -29,7 +27,7 @@ single_test! {
         { TRAP #0x41 },
         { TRAP #0x25 },
     ],
-    pre: |p| { Adc::set_state(p, A0, Enabled); },
+    pre: |p| { Adc::set_state(p, A0, Enabled).unwrap() },
     post: |i| {
         let p = i.get_peripherals();
         eq!(Adc::get_state(p, A0), Disabled);
@@ -46,7 +44,7 @@ single_test! {
         { ST R0, #1 },
         { TRAP #0x25 },
     ],
-    pre: |p| { Adc::set_state(p, A0, Disabled); },
+    pre: |p| { Adc::set_state(p, A0, Disabled).unwrap() },
     post: |i| { eq!(i.get_word_unchecked(0x3004), 0); },
     with os { MemoryShim::new(**OS_IMAGE) } @ OS_START_ADDR
 }
@@ -60,7 +58,7 @@ single_test! {
         { ST R0, #1 },
         { TRAP #0x25 },
     ],
-    pre: |p| { Adc::set_state(p, A0, Enabled); },
+    pre: |p| { Adc::set_state(p, A0, Enabled).unwrap() },
     post: |i| { eq!(i.get_word_unchecked(0x3004), 1); },
     with os { MemoryShim::new(**OS_IMAGE) } @ OS_START_ADDR
 }
@@ -75,8 +73,8 @@ single_test! {
         { TRAP #0x25 },
     ],
     pre: |p| {
-        Adc::set_state(p, A0, Enabled);
-        AdcShim::set_value(&mut *p.get_adc().write().unwrap(), A0, 10);
+        Adc::set_state(p, A0, Enabled).unwrap();
+        AdcShim::set_value(&mut *p.get_adc().write().unwrap(), A0, 10).unwrap();
     },
     post: |i| { eq!(i.get_word_unchecked(0x3004), 10); },
     with os { MemoryShim::new(**OS_IMAGE) } @ OS_START_ADDR

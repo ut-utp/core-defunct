@@ -2,7 +2,7 @@
 name = "lc3-os"
 version = "0.1.0"
 authors = ["UT UTP <ut.utp.group@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 workspace = ".."
 
@@ -48,10 +48,10 @@ path = "tests/trap_tests/mod.rs"
 
 [features]
 default = []
-nightly-const = ["lc3-isa/nightly-const"] # Requires nightly; isn't tested by CI.
 
 [package.metadata.docs.rs]
-# targets = [""]
-rustdoc-args = ["--cfg", "docs"]
+targets = ["x86_64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-pc-windows-msvc", "wasm32-unknown-unknown", "thumbv7em-none-eabihf"]
+cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples=examples"]
+rustdoc-args = ["--cfg", "docs"] # "--scrape-tests"
 all-features = true
-# default-target = ""
+default-target = "x86_64-unknown-linux-gnu"

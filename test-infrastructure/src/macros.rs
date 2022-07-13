@@ -1,7 +1,5 @@
 //! Macros for writing Interpreter tests.
 
-#![macro_use]
-
 #[doc(inline)]
 pub use crate::single_test;
 
@@ -24,8 +22,8 @@ macro_rules! single_test {
         $(memory: { $($addr:literal: $val:expr),* $(,)?} $(,)?)?
         $(with io peripherals: { source as $inp:ident, sink as $out:ident } $(,)?)?
         $(with custom peripherals: $custom_per:block -> [$custom_per_ty:tt] $(,)?)?
-        $(pre: |$peripherals_s:ident| $setup:block $(,)?)?
-        $(post: |$peripherals_t:ident| $teardown:block $(,)?)?
+        $(pre: |$peripherals_s:pat_param| $setup:block $(,)?)?
+        $(post: |$peripherals_t:pat_param| $teardown:block $(,)?)?
         $(with os { $os:expr } @ $os_addr:expr $(,)?)?
     ) => {
     $(#[doc = $panics] #[should_panic])?
@@ -67,8 +65,8 @@ macro_rules! single_test_inner {
         $(memory: { $($addr:literal: $val:expr),* $(,)?} $(,)?)?
         $(with io peripherals: { source as $inp:ident, sink as $out:ident } $(,)?)?
         $(with custom peripherals: $custom_per:block -> [$custom_per_ty:tt] $(,)?)?
-        $(pre: |$peripherals_s:ident| $setup:block $(,)?)?
-        $(post: |$peripherals_t:ident| $teardown:block $(,)?)?
+        $(pre: |$peripherals_s:pat_param| $setup:block $(,)?)?
+        $(post: |$peripherals_t:pat_param| $teardown:block $(,)?)?
         $(with os { $os:expr } @ $os_addr:expr $(,)?)?
     ) => {{
         #[allow(unused_imports)]
@@ -184,6 +182,7 @@ mod smoke_tests {
     use std::io::Read;
 
     // // Just some compile tests:
+    #[test]
     fn io_perip() {
         single_test_inner! {
             insns: [ { LDI R0, #0xF }, ],
@@ -191,6 +190,7 @@ mod smoke_tests {
         }
     }
 
+    #[test]
     fn io_perip_used() {
         single_test_inner! {
             insns: [{ LDI R0, #0xF }],
@@ -207,6 +207,7 @@ mod smoke_tests {
     #[allow(unused_lifetimes)]
     type PeripheralsStubAlias<'int, 'io> = PeripheralsStub<'int>;
 
+    #[test]
     fn custom_perip() {
         single_test_inner! {
             insns: [],
@@ -250,6 +251,7 @@ mod smoke_tests {
     }
     */
 
+    #[test]
     fn all_with_custom_and_commas() {
         single_test_inner! {
             prefill: {
@@ -279,6 +281,7 @@ mod smoke_tests {
         }
     }
 
+    #[test]
     fn all_with_io_and_no_commas() {
         single_test_inner! {
             prefill: { 0x3000: 2_109 * 1, }
@@ -301,18 +304,19 @@ mod smoke_tests {
 
                 let mut s = String::new();
 
-                <&[u8]>::read_to_string(&mut out.lock().unwrap().as_ref(), &mut s);
+                <&[u8]>::read_to_string(&mut out.lock().unwrap().as_ref(), &mut s).unwrap();
             }
         }
     }
 
+    #[test]
     fn thread_safe() {
         use lc3_application_support::io_peripherals::{InputSink, OutputSource};
 
         single_test_inner! {
             insns: [],
             with io peripherals: { source as inp, sink as out },
-            pre: |p| {
+            pre: |_| {
                 let inp = inp.clone();
                 let out = out.clone();
 

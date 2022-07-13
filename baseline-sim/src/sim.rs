@@ -6,7 +6,7 @@ use crate::mem_mapped::{MemMapped, KBDR};
 use lc3_isa::{Addr, Reg, Word};
 use lc3_traits::control::{Control, Event, State, UnifiedRange, Idx, ProcessorMode};
 use lc3_traits::control::control::{MAX_BREAKPOINTS, MAX_MEMORY_WATCHPOINTS, MAX_CALL_STACK_DEPTH};
-use lc3_traits::control::metadata::{Identifier, ProgramMetadata, DeviceInfo, Version};
+use lc3_traits::control::metadata::{Identifier, ProgramMetadata, DeviceInfo};
 use lc3_traits::control::load::{
     PageIndex, PageWriteStart, StartPageWriteError, PageChunkError,
     FinishPageWriteError, LoadApiSession, Offset, CHUNK_SIZE_IN_WORDS,
@@ -396,7 +396,7 @@ where
 //            }
 
             for _ in 0..STEPS_IN_A_TICK {
-                if let Some(e) = self.step() {
+                if let Some(_e) = self.step() {
                     // If we produced some event, we're no longer `RunningUntilEvent`.
                     return STEPS_IN_A_TICK; // this is not accurate but this is allowed
                 }
@@ -555,7 +555,11 @@ where
         match self.get_state() {
             Halted | Paused => {}, // Nothing changes!
             RunningUntilEvent => {
-                self.shared_state.as_ref().expect("unreachable; must have a shared state to call a run_until_event and therefore be in `RunningUntilEvent`").resolve_all(Event::Interrupted);
+                self
+                    .shared_state.as_ref()
+                    .expect("unreachable; must have a shared state to call a run_until_event and therefore be in `RunningUntilEvent`")
+                    .resolve_all(Event::Interrupted)
+                    .expect("error: batch sealed!");
                 self.state = Paused;
             }
         }
@@ -568,7 +572,7 @@ where
     fn reset(&mut self) {
         self.interp.halt();
 
-        self.unset_depth_condition();
+        let _ = self.unset_depth_condition();
 
         // Resolve all futures! Doesn't cause problems if reset is called
         // multiple times.

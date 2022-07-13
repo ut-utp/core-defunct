@@ -110,7 +110,7 @@ use lc3_isa::{Addr, Bits, SignedWord, Word, MCR as MCR_ADDR, PSR as PSR_ADDR, WO
 use lc3_traits::peripherals::Peripherals;
 use lc3_traits::error::Error;
 
-use crate::interp::{Acv, InstructionInterpreter, WriteAttempt};
+use crate::interp::{Acv, WriteAttempt};
 
 pub trait MemMapped: Deref<Target = Word> + Sized {
     const ADDR: Addr;
@@ -354,7 +354,7 @@ impl MemMapped for KBDR {
         Ok(Self::with_value(data))
     }
 
-    fn set<'a, I>(interp: &mut I, value: Word) -> WriteAttempt
+    fn set<'a, I>(_interp: &mut I, _value: Word) -> WriteAttempt
     where
         I: InstructionInterpreterPeripheralAccess<'a>,
         <I as Deref>::Target: Peripherals<'a>,
@@ -536,11 +536,12 @@ impl MemMapped for DDR {
         Self(value)
     }
 
-    fn from<'a, I>(interp: &I) -> Result<Self, Acv>
+    fn from<'a, I>(_interp: &I) -> Result<Self, Acv>
     where
         I: InstructionInterpreterPeripheralAccess<'a>,
         <I as Deref>::Target: Peripherals<'a>,
     {
+        // TODO: error here?
         Ok(Self::with_value(0 as Word))
     }
 
@@ -549,7 +550,8 @@ impl MemMapped for DDR {
         I: InstructionInterpreterPeripheralAccess<'a>,
         <I as Deref>::Target: Peripherals<'a>,
     {
-        Output::write_data(interp.get_peripherals_mut(), value as u8);
+        // TODO: propagate errors here!
+        let _ = Output::write_data(interp.get_peripherals_mut(), value as u8);
         Ok(())
     }
 }
@@ -667,8 +669,6 @@ macro_rules! gpio_mem_mapped {
                 I: InstructionInterpreterPeripheralAccess<'a>,
                 <I as Deref>::Target: Peripherals<'a>,
             {
-                use lc3_traits::peripherals::gpio::GpioState::*;
-
                 let word = match Gpio::read(interp.get_peripherals(), $pin) {
                     Ok(val) => val as Word,
                     Err(err) => {
@@ -685,8 +685,6 @@ macro_rules! gpio_mem_mapped {
                 I: InstructionInterpreterPeripheralAccess<'a>,
                 <I as Deref>::Target: Peripherals<'a>,
             {
-                use lc3_traits::peripherals::gpio::GpioState::*;
-
                 let bit: bool = value.bit(0);
                 match Gpio::write(interp.get_peripherals_mut(), $pin, bit) {
                     Ok(()) => Ok(()),
@@ -859,7 +857,6 @@ macro_rules! adc_mem_mapped {
                 I: InstructionInterpreterPeripheralAccess<'a>,
                 <I as Deref>::Target: Peripherals<'a>,
             {
-                use lc3_traits::peripherals::adc::AdcState::*;
 
                 let word = match Adc::read(interp.get_peripherals(), $pin) {
                     Ok(val) => val as Word,
@@ -872,7 +869,7 @@ macro_rules! adc_mem_mapped {
                 Ok(Self::with_value(word))
             }
 
-            fn set<'a, I>(interp: &mut I, value: Word) -> WriteAttempt
+            fn set<'a, I>(_interp: &mut I, _value: Word) -> WriteAttempt
             where
                 I: InstructionInterpreterPeripheralAccess<'a>,
                 <I as Deref>::Target: Peripherals<'a>,
@@ -1006,8 +1003,6 @@ macro_rules! pwm_mem_mapped {
                 I: InstructionInterpreterPeripheralAccess<'a>,
                 <I as Deref>::Target: Peripherals<'a>,
             {
-                use lc3_traits::peripherals::pwm::PwmState::*;
-
                 let word = Pwm::get_duty_cycle(interp.get_peripherals(), $pin) as Word;
 
                 Ok(Self::with_value(word))

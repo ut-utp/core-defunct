@@ -15,19 +15,13 @@ use lazy_static::lazy_static;
 lazy_static! {
     /// The LC-3 OS this crate provides in [MemoryDump](lc3_isa::util::MemoryDump) form.
     pub static ref OS_IMAGE: MemoryDump = os().into();
-
-    /// The LC-3 OS this crate provides in raw
-    /// ([AssembledProgram](lc3_isa::util::AssembledProgram)) form. This can be turned
-    /// into a (Addr, Word) iterator over *only the words that are set.
-    pub static ref OS: AssembledProgram = os();
 }
 
-#[cfg_attr(all(docs, not(doctest)), doc(cfg(feature = "nightly-const")))]
-#[cfg(feature = "nightly-const")]
-pub const CONST_OS: AssembledProgram = os();
+/// The LC-3 OS this crate provides in raw ([`AssembledProgram`]) form. This can
+/// be turned into a `(Addr, Word)` iterator over *only the words that are set.
+pub const OS: AssembledProgram = os();
 
-crate::nightly_const! { [] => [
-fn os() -> AssembledProgram {
+const fn os() -> AssembledProgram {
     use Word as W;
 
     let os = lc3_isa::program! {
@@ -1816,7 +1810,7 @@ fn os() -> AssembledProgram {
     };
 
     AssembledProgram::new(os)
-}]}
+}
 
 // TODO: offer a variant of this that has the OS be silent (no HALT, ACV, etc. messages).
 

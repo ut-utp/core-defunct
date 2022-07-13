@@ -13,10 +13,9 @@ extern crate lazy_static;
 mod common;
 use common::*;
 
-use lc3_traits::peripherals::input::{Input, InputError};
 use lc3_shims::peripherals::input::{InputShim, Source};
 
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
 pub struct BufferedInput<Iter: Iterator<Item = u8>> {
     buffer: Mutex<Iter>,
@@ -92,6 +91,7 @@ fn byte_stream(elements: usize) -> impl Clone + Iterator<Item = u8> {
         .map(|i| match i { 13 => 10, i => i })
 }
 
+#[allow(unused)]
 fn checksum(iter: impl Iterator<Item = u8>) -> u128 {
     iter.fold(1u128, |acc, b| acc * ((b + 1) as u128))
 }
@@ -99,7 +99,7 @@ fn checksum(iter: impl Iterator<Item = u8>) -> u128 {
 pub fn program(num_elements: u64) -> AssembledProgram {
     let prog = program! {
         // Disable PUTS to suppress the HALT message.
-        .ORIG #(lc3_os::traps::builtin::PUTS as Word);
+        .ORIG #lc3_os::traps::builtin::PUTS as Word;
         .FILL @NEW_PUTS;
 
         .ORIG #0x4000;
@@ -248,7 +248,7 @@ pub fn raw_io_program(num_elements: u64) -> AssembledProgram {
 
 const SIZES: &[u64] = &[1, 10, 100, 1000, 10_000, 50_000];
 
-use criterion::{BatchSize, BenchmarkId, BenchmarkGroup, Bencher, Criterion, Throughput, PlotConfiguration, AxisScale};
+use criterion::{BenchmarkId, BenchmarkGroup, Criterion, Throughput, PlotConfiguration, AxisScale};
 use criterion::measurement::WallTime;
 use lc3_baseline_sim::interp::MachineState;
 

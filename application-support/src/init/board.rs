@@ -10,18 +10,16 @@ use lc3_traits::control::rpc::{
 };
 use lc3_device_support::{
     rpc::{
-        transport::uart_host::{HostUartTransport, SerialPortSettings},
+        transport::uart_host::{HostUartTransport, SerialPortBuilder},
         encoding::{PostcardEncode, PostcardDecode, Cobs},
     },
     util::Fifo,
 };
 
 use std::{
+    borrow::Cow,
     sync::Mutex,
-    thread::Builder as ThreadBuilder,
-    path::{Path, PathBuf},
     default::Default,
-    marker::PhantomData,
 };
 
 // Static data that we need:
@@ -32,6 +30,7 @@ lazy_static::lazy_static! {
         SyncEventFutureSharedState::new();
 }
 
+#[allow(type_alias_bounds)]
 type Cont<'ss, EncFunc: FnMut() -> Cobs<Fifo<u8>>> = Controller<
     'ss,
     HostUartTransport,
@@ -43,34 +42,26 @@ type Cont<'ss, EncFunc: FnMut() -> Cobs<Fifo<u8>>> = Controller<
 >;
 
 // #[derive(Debug)]
-pub struct BoardDevice<'ss, EncFunc = Box<dyn FnMut() -> Cobs<Fifo<u8>>>, P = &'static Path>
+pub struct BoardDevice<'ss, EncFunc = Box<dyn FnMut() -> Cobs<Fifo<u8>>>>
 where
     EncFunc: FnMut() -> Cobs<Fifo<u8>>,
-    P: AsRef<Path>,
 {
     controller: Cont<'ss, EncFunc>,
-    _p: PhantomData<P>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SerialSettings {
-    DefaultsWithBaudRate { baud_rate: u32 },
-    Custom(SerialPortSettings),
+    DefaultsWithBaudRate { baud_rate: u32, path: String, },
+    Custom(SerialPortBuilder),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BoardConfig<P: AsRef<Path>> {
-    pub path: P,
-    pub serial_settings: SerialSettings,
+pub struct BoardConfig {
+    pub settings: SerialSettings,
 }
 
 // TODO: use Strings instead?
-impl<P: AsRef<Path>> Default for BoardConfig<&'static P>
-where
-    &'static P: AsRef<Path>,
-    P: 'static,
-    str: AsRef<P>
-{
+impl Default for BoardConfig {
     fn default() -> Self {
         #[cfg(target_os = "windows")]
         { Self::detect_windows() }
@@ -82,15 +73,7 @@ where
         { Self::detect_linux() }
 
         #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
-        { Self::new(AsRef::<P>::as_ref("/dev/tm4c"), 1_500_000) }
-    }
-}
-
-// TODO: actually have this use the platform stuff (spin off the functions below into
-// things that just return a PathBuf, I think).
-impl Default for BoardConfig<PathBuf> {
-    fn default() -> Self {
-        Self::new(PathBuf::from("/dev/lm4f"), 1_500_000)
+        { Self::new("/dev/tm4c", 1_500_000) }
     }
 }
 
@@ -98,67 +81,61 @@ impl Default for BoardConfig<PathBuf> {
 //
 // [this script](https://github.com/ut-ras/Rasware/blob/f3750ff0b8f7f7791da2fee365462d4c78f62a49/RASLib/detect-board)
 
-impl<P: AsRef<Path>> BoardConfig<&'static P>
-where
-    &'static P: AsRef<Path>,
-    P: 'static,
-    str: AsRef<P>
-{
+impl BoardConfig {
+    #[cfg_attr(all(docs, not(doctest)), doc(cfg(target_os = "windows")))]
     #[cfg(target_os = "windows")]
     pub fn detect_windows() -> Self {
         unimplemented!()
     }
 
-    #[cfg(target_family = "unix")]
+    #[cfg_attr(all(docs, not(doctest)), doc(cfg(target_os = "linux")))]
+    #[cfg(target_os = "linux")]
     pub fn detect_linux() -> Self {
-        Self::new(AsRef::<P>::as_ref("/dev/lm4f"), 1_500_000)
+        Self::new("/dev/lm4f", 1_500_000)
     }
 
+    #[cfg_attr(all(docs, not(doctest)), doc(cfg(target_os = "macos")))]
     #[cfg(target_os = "macos")]
     pub fn detect_macos() -> Self {
         unimplemented!()
     }
 }
 
-impl<P: AsRef<Path>> BoardConfig<P> {
-    pub /*const*/ fn new(path: P, baud_rate: u32) -> Self {
+impl BoardConfig {
+    pub /*const*/ fn new<'a>(path: impl Into<Cow<'a, str>>, baud_rate: u32) -> Self {
         Self {
-            path,
-            serial_settings: SerialSettings::DefaultsWithBaudRate { baud_rate },
+            settings: SerialSettings::DefaultsWithBaudRate { baud_rate, path: path.into().to_string() }
         }
     }
 
-    pub /*const*/ fn new_with_config(path: P, config: SerialPortSettings) -> Self {
+    pub /*const*/ fn new_with_config(config: SerialPortBuilder) -> Self {
         Self {
-            path,
-            serial_settings: SerialSettings::Custom(config),
+            settings: SerialSettings::Custom(config),
         }
     }
 }
 
-impl<P: AsRef<Path>> BoardConfig<P> {
+impl BoardConfig {
     fn new_transport(self) -> HostUartTransport {
         // Note: we unwrap here! This is probably not great!
         // (TODO)
-        match self.serial_settings {
-            SerialSettings::DefaultsWithBaudRate { baud_rate } => {
-                HostUartTransport::new(self.path, baud_rate).unwrap()
+        match self.settings {
+            SerialSettings::DefaultsWithBaudRate { path, baud_rate } => {
+                HostUartTransport::new(path, baud_rate).unwrap()
             },
 
             SerialSettings::Custom(config) => {
-                HostUartTransport::new_with_config(self.path, config).unwrap()
+                HostUartTransport::new_with_config(config).unwrap()
             },
         }
     }
 }
 
-impl<'s, P> Init<'s> for BoardDevice<'static, Box<dyn FnMut() -> Cobs<Fifo<u8>>>, P>
+impl<'s> Init<'s> for BoardDevice<'static, Box<dyn FnMut() -> Cobs<Fifo<u8>>>>
 where
-    P: AsRef<Path>,
-    P: 'static,
-    BoardConfig<P>: Default,
+    BoardConfig: Default,
 {
-    type Config = BoardConfig<P>;
+    type Config = BoardConfig;
 
     // Until we get existential types (or `impl Trait` in type aliases) we can't
     // just say a type parameter is some specific type that we can't name (i.e.
@@ -172,7 +149,7 @@ where
 
     fn init_with_config(
         b: &'s mut BlackBox,
-        config: BoardConfig<P>,
+        config: BoardConfig,
     ) -> (
         &'s mut Self::ControlImpl,
         Option<Shims<'static>>,
@@ -188,7 +165,7 @@ where
             &*EVENT_FUTURE_SHARED_STATE_CONT
         );
 
-        let storage: &'s mut _ = b.put(BoardDevice::<_, P> { controller, _p: PhantomData });
+        let storage: &'s mut _ = b.put(BoardDevice::<_> { controller });
 
         (
             &mut storage.controller,

@@ -1,4 +1,4 @@
-use lc3_baseline_sim::interp::{Interpreter, InstructionInterpreter, InstructionInterpreterPeripheralAccess};
+use lc3_baseline_sim::interp::{Interpreter, InstructionInterpreter};
 
 mod reset {
     use super::*;

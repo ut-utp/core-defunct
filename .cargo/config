@@ -3,14 +3,181 @@
 # Ordinarily we would just set this but: we don't want to break regular
 # `cargo doc` for developers that don't have a nightly toolchain installed.
 # rustdocflags = ["--cfg", "docs"]
+#
+# Instead, we provide the `docs` alias.
+#
+# Similar to regular lints and clippy lints (below), we want to have one place
+# to stick our rustdoc lints.
+#
+# Sticking these in `rustdocflags` has two downsides:
+#   - these lints will not show up in your editor!
+#   - these lints block building docs!
+#
+# Unfortunately, I don't currently know of a better way.
+#
+# As a stopgap, we _do_ pass rustdoc `--cap-lints allow` in the `cargo docs`
+# alias below but that requires nightly Rust.
+rustdocflags = [
+    ### [rustdoc] https://doc.rust-lang.org/rustdoc/lints.html
+    "--deny", "rustdoc::broken_intra_doc_links",
+    "--deny", "missing-docs",
+    "--deny", "rustdoc::missing_crate_level_docs",
+    "--deny", "rustdoc::bare_urls",
+
+    # NOTE: `cargo` still sets `--cap-lints` when building docs for deps so
+    # these lints don't trigger there/break the docs build.
+]
+
+# TODO: in CI, set RUSTDOCFLAGS to `--cap-lints forbid`.
+# TODO: in CI, run rustdoc with "--show-coverage"
 
 [alias]
 # Requires `nightly` Rust!
 docs = [
-    "-Z", "unstable-options", '--config=build.rustdocflags=["--cfg", "docs"]',
-    "doc", "--all", "--document-private-items", "--all-features"
+    "-Z", "unstable-options",
+    "-Z", "rustdoc-scrape-examples=examples",
+    '--config=build.rustdocflags=["--cfg", "docs", "-Zunstable-options", "--show-type-layout", "--cap-lints=allow"]', # `--scrape-examples`, '--check-cfg', '--generate-link-to-definition'
+    "doc", "--workspace", "--document-private-items", "--all-features", # "--bins", "--examples",
 ]
 # Stable equivalent of the above.
 docs-stable = [
-    "doc", "--all", "--document-private-items"
+    "doc", "--workspace", "--document-private-items", "--all-features", # "--bins", "--examples"
 ]
+
+build-all = ["build", "--workspace", "--all-features", "--all-targets"]
+check-all = ["check", "--workspace", "--all-features", "--all-targets"]
+fmt-all = ["fmt", "--workspace"]
+test-all = ["test", "--workspace", "--all-features", "--all-targets", "--no-fail-fast"]
+
+# We put this list here instead of in `lib.rs`/`main.rs`/CI workflows for a
+# couple of reasons:
+#   1) We'd like to not have to duplicate/update this list in every crate in
+#      this workspace
+#   2) For local development, we want running these lints to be _opt in_.
+#      Having, for example, missing documentation prevent you from compiling
+#      and testing while you're still figuring out how to implement something
+#      is counterproductive.
+#
+#      These lints *are* enforced by CI however we don't want to put this list
+#      in the CI workflow definition either because: we still want to have an
+#      easy way for developers to run exactly the checks CI will run, locally.
+#
+# The downside to this approach, as detailed in `.vscode/core.code-workspace`,
+# is that this alias does not play well with rust analyzer so there isn't an
+# easy way for developers to see these errors in their editor.
+#
+# In the future we may want to switch to:
+#   - clippy.toml, when it is implemented
+#     + https://github.com/rust-lang/rust-clippy/issues/1313
+#     + https://github.com/rust-lang/cargo/issues/5034
+#   - `cargo-cranky`, if we decide we're okay requiring developers to install it
+#     + https://github.com/ericseppanen/cargo-cranky
+#     + this supports rustc lints and also plays well with `rust-analyzer`
+clippy-all = ["clippy", "--all", "--all-features", "--all-targets", "--",
+    ### [rustc] allow by default lints: https://doc.rust-lang.org/rustc/lints/listing/allowed-by-default.html
+    # "--warn", "fuzzy_provenance_casts", # nightly
+    "--deny", "keyword_idents",
+    # "--warn", "lossy_provenance_casts", # nightly
+    "--deny", "missing_abi",
+    "--deny", "missing_debug_implementations",
+    "--deny", "missing_docs",
+    # "--deny", "must_not_suspend", # nightly
+    # "--warn", "non_exhaustive_omitted_patterns", # TODO: might be too noisy # nightly
+    "--deny", "noop_method_call",
+    "--deny", "unreachable_pub",
+    "--deny", "unsafe_op_in_unsafe_fn", # We want separate "SAFETY" comments!
+    "--warn", "unused_crate_dependencies", # TODO: might be too noisy
+    "--warn", "unused_extern_crates",
+    "--deny", "unused_import_braces",
+    "--deny", "unused_lifetimes",
+    "--deny", "unused_macro_rules",
+    "--deny", "unused_qualifications",
+    "--deny", "unused_results",
+    "--deny", "variant_size_differences",
+
+    ### [rustc] warn by default lints: https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html
+    "--deny", "warnings", # TODO: maybe don't do this..
+    "--deny", "asm_sub_register",
+    "--deny", "bad_asm_style",
+    "--deny", "bindings_with_variant_name",
+    "--deny", "clashing_extern_declarations",
+    "--deny", "coherence_leak_check",
+    "--deny", "const_evaluatable_unchecked",
+    "--deny", "const_item_mutation",
+    "--deny", "dead_code",
+    "--deny", "deprecated",
+    "--deny", "deprecated_cfg_attr_crate_type_name",
+    "--deny", "deprecated_where_clause_location",
+    "--deny", "deref_into_dyn_supertrait",
+    "--deny", "deref_nullptr",
+    "--deny", "duplicate_macro_attributes",
+    "--deny", "exported_private_dependencies",
+    "--deny", "forbidden_lint_groups",
+    "--deny", "improper_ctypes",
+    "--deny", "improper_ctypes_definitions",
+    "--deny", "invalid_doc_attributes",
+    "--deny", "invalid_value",
+    "--deny", "irrefutable_let_patterns",
+    "--deny", "large_assignments",
+    "--deny", "legacy_derive_helpers",
+    "--deny", "no_mangle_generic_items",
+    "--deny", "non_camel_case_types",
+    "--deny", "non_shorthand_field_patterns",
+    "--deny", "non_snake_case",
+    "--deny", "non_upper_case_globals",
+    "--deny", "overlapping_range_endpoints",
+    "--deny", "path_statements",
+    "--deny", "private_in_public",
+    "--deny", "redundant_semicolons",
+    "--deny", "renamed_and_removed_lints",
+    "--deny", "semicolon_in_expressions_from_macros",
+    "--deny", "suspicious_auto_trait_impls",
+    "--allow", "type_alias_bounds",
+    "--deny", "unconditional_recursion",
+    # "--deny", "undefined_naked_function_abi", # nightly
+    "--deny", "unexpected_cfgs",
+    "--deny", "unknown_lints",
+    "--deny", "unnameable_test_items",
+    "--deny", "unreachable_code",
+    "--deny", "unreachable_patterns",
+    "--deny", "unstable_name_collisions",
+    "--deny", "unsupported_calling_conventions",
+    "--deny", "unused_allocation",
+    "--deny", "unused_assignments",
+    "--deny", "unused_attributes",
+    "--deny", "unused_braces",
+    "--deny", "unused_comparisons",
+    "--deny", "unused_doc_comments",
+    "--deny", "unused_features",
+    "--deny", "unused_imports",
+    "--deny", "unused_macros",
+    "--deny", "unused_must_use",
+    "--deny", "unused_mut",
+    "--deny", "unused_parens",
+    "--deny", "unused_variables",
+    "--deny", "where_clauses_object_safety",
+    "--deny", "while_true",
+
+    ### [rustc] deny by default lints: https://doc.rust-lang.org/rustc/lints/listing/deny-by-default.html
+    "--forbid", "macro_expanded_macro_exports_accessed_by_absolute_paths",
+    "--forbid", "unknown_crate_types",
+
+    ####### Clippy Lints: https://rust-lang.github.io/rust-clippy/master/ #######
+
+    ### [clippy] cargo
+    "--deny", "clippy::cargo_common_metadata",
+    "--warn", "clippy::multiple_crate_versions",
+    "--deny", "clippy::negative_feature_names",
+    "--deny", "clippy::redundant_feature_names",
+    "--deny", "clippy::wildcard_dependencies",
+
+    # TODO: peruse the other clippy lints (the defaults are pretty good though)
+]
+lint = ["clippy-all"]
+
+b = "build-all"
+c = "check-all"
+d = "docs-stable"
+f = "fmt-all"
+t = "test-all"
+l = "lint"

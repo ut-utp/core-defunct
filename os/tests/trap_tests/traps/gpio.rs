@@ -1,10 +1,6 @@
 use super::*;
 
-use lc3_traits::peripherals::gpio::{Gpio, GpioPin, GpioState, GPIO_PINS};
-use lc3_baseline_sim::mem_mapped::{
-    G0_INT_VEC, G1_INT_VEC, G2_INT_VEC, G3_INT_VEC,
-    G4_INT_VEC, G5_INT_VEC, G6_INT_VEC, G7_INT_VEC,
-};
+use lc3_traits::peripherals::gpio::{Gpio, GpioPin, GpioState};
 
 use GpioState::*;
 use GpioPin::*;
@@ -49,7 +45,7 @@ mod states {
             { TRAP #0x33 },
             { TRAP #0x25 },
         ],
-        pre: |p| { Gpio::set_state(p, G0, Output); },
+        pre: |p| { Gpio::set_state(p, G0, Output).unwrap() },
         post: |i| {
             let p = i.get_peripherals();
             eq!(Gpio::get_state(p, G0), Disabled);
@@ -66,7 +62,7 @@ mod states {
             { ST R0, #1 },
             { TRAP #0x25 },
         ],
-        pre: |p| { Gpio::set_state(p, G0, Output); },
+        pre: |p| { Gpio::set_state(p, G0, Output).unwrap() },
         post: |i| { eq!(i.get_word_unchecked(0x3004), 1); },
         with os { MemoryShim::new(**OS_IMAGE) } @ OS_START_ADDR
     }

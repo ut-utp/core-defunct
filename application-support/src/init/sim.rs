@@ -55,7 +55,9 @@ pub(crate) fn new_sim<'io>(shims: ShimPeripheralSet<'static, 'io>) -> Sim<'io> {
 
 pub struct SimDevice<'io> {
     sim: Option<Sim<'io>>,
+    #[allow(unused)] // TODO: see below
     input: Option<SourceShim>,
+    #[allow(unused)] // TODO: see below
     output: Option<Mutex<Vec<u8>>>,
 }
 

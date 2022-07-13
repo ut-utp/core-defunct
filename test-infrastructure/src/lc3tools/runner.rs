@@ -8,14 +8,14 @@ use crate::{
     InstructionInterpreter, Addr, Word, Reg,
 };
 
-use lc3_baseline_sim::interp::{MachineState, InterpreterBuilder};
+use lc3_baseline_sim::interp::InterpreterBuilder;
 use lc3_traits::memory::Memory;
 use lc3_traits::peripherals::Peripherals;
 
-use std::fs::{File, remove_file};
-use std::io::{self, BufReader, Write};
+use std::fs::File;
+use std::io::{self, Write};
 use std::process::Command;
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryInto;
 use std::iter::once;
 use std::env;
 
@@ -36,7 +36,6 @@ pub struct MemEntry {
 // TODO: we assume that there are no branches or control flow instructions! This
 // is very limiting!
 
-// TODO: actually check the final PC, PSR, CC, and MCR.
 
 const DEBUG: bool = false;
 
@@ -50,6 +49,8 @@ macro_rules! d {
     };
 }
 
+// TODO: actually check the final PC, PSR, CC, and MCR.
+#[allow(unused_assignments, unused_variables)]
 pub fn lc3tools_tester<'flags, M: Memory + Default + Clone, P: Peripherals<'flags>>
 (
     insns: Vec<Instruction>,
@@ -79,7 +80,7 @@ pub fn lc3tools_tester<'flags, M: Memory + Default + Clone, P: Peripherals<'flag
     }
 
     // Run the program in lc3tools and collect the trace.
-    let mut output = Command::new(format!("{}/lc3tools_executor.sh", OUT_DIR))
+    let output = Command::new(format!("{}/lc3tools_executor.sh", OUT_DIR))
         .arg(lc3_asm_file_path)
         .arg(lc3tools_bin_dir)
         .output()?
@@ -96,7 +97,7 @@ pub fn lc3tools_tester<'flags, M: Memory + Default + Clone, P: Peripherals<'flag
 
     // for `0x25` style formatting
     fn parse_hex_val(v: &str) -> u16 {
-        d!(v);
+        let _ = d!(v);
         Word::from_str_radix(&v[2..], 16).unwrap()
     }
 
@@ -208,7 +209,7 @@ pub fn lc3tools_tester<'flags, M: Memory + Default + Clone, P: Peripherals<'flag
     }
 
     for _ in 0..steps {
-        interp.step();
+        let _ = interp.step();
     }
 
      // Check registers:

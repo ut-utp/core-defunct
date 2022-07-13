@@ -100,7 +100,12 @@
             cargo-nightly
 
             cargo-bloat cargo-asm cargo-expand
-          ] ++ gdbPkgs;
+
+            # For `criterion`:
+            gnuplot
+          ] ++ gdbPkgs ++ lib.optionals (pkgs.stdenv.isDarwin) [
+            darwin.apple_sdk.frameworks.IOKit
+          ];
         };
       }
     );

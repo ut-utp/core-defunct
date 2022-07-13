@@ -8,8 +8,6 @@
 extern crate lc3_test_infrastructure as lti;
 use lti::*;
 
-use lti::Reg::*;
-
 use lti::assert_eq as eq;
 
 use lc3_baseline_sim::interp::InstructionInterpreter;

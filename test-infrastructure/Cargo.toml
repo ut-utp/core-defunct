@@ -2,7 +2,7 @@
 name = "lc3-test-infrastructure"
 version = "0.1.0"
 authors = ["UT UTP <ut.utp.group@gmail.com>"]
-edition = "2018"
+edition = "2021"
 publish = false # Only really useful for us
 
 workspace = ".."
@@ -35,8 +35,8 @@ lc3-shims = { path = "../shims", version = "0.1.0", default-features = false }
 lc3-traits = { path = "../traits", version = "0.1.0", default-features = false }
 lc3-application-support = { path = "../application-support", version = "0.1.0" }
 
-rand = "0.7.3"
-pretty_assertions = "0.6.1"
+rand = "0.8"
+pretty_assertions = "1.2"
 
 
 [features]

@@ -105,7 +105,7 @@ mod tests {
             "TEST FAULTY: new_val must not equal INIT_VALUE"
         );
         let mut shim = AdcShim::new();
-        shim.set_state(A0, AdcState::Enabled);
+        shim.set_state(A0, AdcState::Enabled).unwrap();
         let res = shim.set_value(A0, new_val);
         assert_eq!(res, Ok(()));
         let val = shim.read(A0);
@@ -114,7 +114,7 @@ mod tests {
 
     #[test]
     fn read_disabled() {
-        let mut shim = AdcShim::new();
+        let shim = AdcShim::new();
         let val = shim.read(A0);
         assert_eq!(val, Err(ReadError((A0, AdcState::Disabled))))
     }

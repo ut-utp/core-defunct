@@ -2,43 +2,6 @@
 //!
 //! TODO!
 
-// TODO: forbid
-#![warn(
-    bad_style,
-    const_err,
-    dead_code,
-    improper_ctypes,
-    legacy_directory_ownership,
-    non_shorthand_field_patterns,
-    no_mangle_generic_items,
-    overflowing_literals,
-    path_statements,
-    patterns_in_fns_without_body,
-    plugin_as_library,
-    private_in_public,
-    safe_extern_statics,
-    unconditional_recursion,
-    unused,
-    unused_allocation,
-    unused_lifetimes,
-    unused_comparisons,
-    unused_parens,
-    while_true
-)]
-// TODO: deny
-#![warn(
-    missing_debug_implementations,
-    intra_doc_link_resolution_failure,
-    missing_docs,
-    unsafe_code,
-    trivial_casts,
-    trivial_numeric_casts,
-    unused_extern_crates,
-    unused_import_braces,
-    unused_qualifications,
-    unused_results,
-    rust_2018_idioms
-)]
 #![doc(test(attr(deny(warnings))))]
 #![doc(html_logo_url = "")] // TODO!
 
@@ -47,34 +10,6 @@
 
 // Enable the `doc_cfg` feature when running rustdoc.
 #![cfg_attr(all(docs, not(doctest)), feature(doc_cfg))]
-
-// Note: this feature is not tested by CI (still dependent on nightly Rust) but
-// this is fine for now.
-#![cfg_attr(feature = "nightly-const", feature(const_if_match))]
-#![cfg_attr(feature = "nightly-const", feature(const_panic))]
-
-// Makes some an item const if the nightly-const feature is activated and not
-// const otherwise.
-#[macro_export]
-#[doc(hidden)]
-macro_rules! nightly_const {
-    (
-        $( $(#[$m:meta])+ )?
-        [$($vis:tt)*] => [$($rest:tt)*]
-    ) => (
-        #[cfg(not(feature = "nightly-const"))]
-        $( $(#[$m:meta])+ )?
-        ///
-        /// **NOTE**: This is only `const` when the `nightly-const` feature is enabled!
-        $($vis)* $($rest)*
-
-        #[cfg(feature = "nightly-const")]
-        $( $(#[$m:meta])+ )?
-        ///
-        /// **NOTE**: This is only `const` when the `nightly-const` feature is enabled!
-        $($vis)* const $($rest)*
-    );
-}
 
 extern crate static_assertions as sa;
 
@@ -142,6 +77,9 @@ mod fmt;
 mod isa;
 mod macros;
 mod misc;
+
+#[doc(hidden)]
+pub use macros::overlap_error as _macro_support;
 
 pub use isa::*;
 pub use misc::util;
