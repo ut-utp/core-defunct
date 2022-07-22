@@ -77,7 +77,7 @@ impl<T> IndexMut<AdcPin> for AdcPinArr<T> {
 
 
 /// Adc access for the interpreter.
-pub trait Adc: Default {
+pub trait Adc {
     fn set_state(&mut self, pin: AdcPin, state: AdcState) -> Result<(), AdcMiscError>;
     fn get_state(&self, pin: AdcPin) -> AdcState;
     #[inline]

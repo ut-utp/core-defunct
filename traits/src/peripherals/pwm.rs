@@ -72,7 +72,7 @@ impl<T> IndexMut<PwmPin> for PwmPinArr<T> {
 
 pub type PwmDutyCycle = u8;
 
-pub trait Pwm: Default {
+pub trait Pwm {
     fn set_state(&mut self, pin: PwmPin, state: PwmState);
     fn get_state(&self, pin: PwmPin) -> PwmState;
     #[inline]

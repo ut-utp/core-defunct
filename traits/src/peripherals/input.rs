@@ -5,7 +5,7 @@ use core::fmt::{self, Display};
 
 use serde::{Deserialize, Serialize};
 
-pub trait Input<'a>: Default {
+pub trait Input<'a> {
     // Warning! This is stateful!! It marks the current data as read.
     //
     // Also note: this is technically infallible (it's up to the
