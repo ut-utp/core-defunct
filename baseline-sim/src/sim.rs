@@ -597,39 +597,39 @@ where
     }
 
     fn get_gpio_states(&self) -> GpioPinArr<GpioState> {
-        Gpio::get_states(self.interp.get_peripherals())
+        Gpio::get_states(self.interp.get_gpio())
     }
 
     fn get_gpio_readings(&self) -> GpioPinArr<Result<bool, GpioReadError>> {
-        Gpio::read_all(self.interp.get_peripherals())
+        Gpio::read_all(self.interp.get_gpio())
     }
 
     fn get_adc_states(&self) -> AdcPinArr<AdcState> {
-        Adc::get_states(self.interp.get_peripherals())
+        Adc::get_states(self.interp.get_adc())
     }
 
     fn get_adc_readings(&self) -> AdcPinArr<Result<u8, AdcReadError>> {
-        Adc::read_all(self.interp.get_peripherals())
+        Adc::read_all(self.interp.get_adc())
     }
 
     fn get_timer_modes(&self) -> TimerArr<TimerMode> {
-        Timers::get_modes(self.interp.get_peripherals())
+        Timers::get_modes(self.interp.get_timers())
     }
 
     fn get_timer_states(&self) -> TimerArr<TimerState> {
-        Timers::get_states(self.interp.get_peripherals())
+        Timers::get_states(self.interp.get_timers())
     }
 
     fn get_pwm_states(&self) -> PwmPinArr<PwmState> {
-        Pwm::get_states(self.interp.get_peripherals())
+        Pwm::get_states(self.interp.get_pwm())
     }
 
     fn get_pwm_config(&self) -> PwmPinArr<u8> {
-        Pwm::get_duty_cycles(self.interp.get_peripherals())
+        Pwm::get_duty_cycles(self.interp.get_pwm())
     }
 
     fn get_clock(&self) -> Word {
-        Clock::get_milliseconds(self.interp.get_peripherals())
+        Clock::get_milliseconds(self.interp.get_clock())
     }
 
     fn get_device_info(&self) -> DeviceInfo {

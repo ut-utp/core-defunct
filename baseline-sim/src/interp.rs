@@ -74,30 +74,35 @@ where
         use lc3_traits::peripherals::clock::Clock;
 
         // TODO: do something with errors here?
+        let p = self.get_peripherals_mut();
 
+        let gpio = p.get_gpio_mut();
         for pin in GPIO_PINS.iter() {
-            let _ = Gpio::set_state(self.get_peripherals_mut(), *pin, GpioState::Disabled);
-            Gpio::reset_interrupt_flag(self.get_peripherals_mut(), *pin);
+            let _ = gpio.set_state(*pin, GpioState::Disabled);
+            gpio.reset_interrupt_flag(*pin);
         }
 
+        let adc = p.get_adc_mut();
         for pin in ADC_PINS.iter() {
-            let _ = Adc::set_state(self.get_peripherals_mut(), *pin, AdcState::Disabled);
+            let _ = adc.set_state(*pin, AdcState::Disabled);
         }
 
+        let pwm = p.get_pwm_mut();
         for pin in PWM_PINS.iter() {
-            Pwm::set_state(self.get_peripherals_mut(), *pin, PwmState::Disabled);
-            Pwm::set_duty_cycle(self.get_peripherals_mut(), *pin, 0);
+            pwm.set_state(*pin, PwmState::Disabled);
+            pwm.set_duty_cycle(*pin, 0);
         }
 
+        let timers = p.get_timers_mut();
         for id in TIMERS.iter() {
-            Timers::set_mode(self.get_peripherals_mut(), *id, TimerMode::SingleShot);
-            Timers::set_state(self.get_peripherals_mut(), *id, TimerState::Disabled);
-            Timers::reset_interrupt_flag(self.get_peripherals_mut(), *id);
+            timers.set_mode(*id, TimerMode::SingleShot);
+            timers.set_state(*id, TimerState::Disabled);
+            timers.reset_interrupt_flag(*id);
         }
 
-        Clock::set_milliseconds(self.get_peripherals_mut(), 0);
-        Input::reset_interrupt_flag(self.get_peripherals_mut());
-        Output::reset_interrupt_flag(self.get_peripherals_mut());
+        Clock::set_milliseconds(p.get_clock_mut(), 0);
+        Input::reset_interrupt_flag(p.get_input_mut());
+        Output::reset_interrupt_flag(p.get_output_mut());
     }
 }
 
@@ -680,10 +685,10 @@ impl<'a, M: Memory, P: Peripherals<'a>> InstructionInterpreterPeripheralAccess<'
 
 impl<'a, M: Memory, P: Peripherals<'a>> Interpreter<'a, M, P> {
     pub fn init(&mut self, flags: &'a PeripheralInterruptFlags) {
-        Gpio::<'a>::register_interrupt_flags(&mut self.peripherals, &flags.gpio);
-        Timers::<'a>::register_interrupt_flags(&mut self.peripherals, &flags.timers);
-        Input::<'a>::register_interrupt_flag(&mut self.peripherals, &flags.input);
-        Output::<'a>::register_interrupt_flag(&mut self.peripherals, &flags.output);
+        self.peripherals.get_gpio_mut().register_interrupt_flags(&flags.gpio);
+        self.peripherals.get_timers_mut().register_interrupt_flags(&flags.timers);
+        self.peripherals.get_input_mut().register_interrupt_flag(&flags.input);
+        self.peripherals.get_output_mut().register_interrupt_flag(&flags.output);
     }
 }
 
