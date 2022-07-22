@@ -1,11 +1,10 @@
 //! [`Input` device trait](Input) and related things.
 
-use core::sync::atomic::AtomicBool;
 use core::fmt::{self, Display};
 
 use serde::{Deserialize, Serialize};
 
-pub trait Input<'a> {
+pub trait Input {
     // Warning! This is stateful!! It marks the current data as read.
     //
     // Also note: this is technically infallible (it's up to the
@@ -18,7 +17,6 @@ pub trait Input<'a> {
     fn read_data(&self) -> Result<u8, InputError>;
     fn current_data_unread(&self) -> bool;
 
-    fn register_interrupt_flag(&mut self, flag: &'a AtomicBool);
     fn interrupt_occurred(&self) -> bool;
     fn reset_interrupt_flag(&mut self,);
 
@@ -57,11 +55,7 @@ using_std! {
 // TODO: roll this into the macro
 using_std! {
     use std::sync::{Arc, RwLock};
-    impl<'a, I: Input<'a>> Input<'a> for Arc<RwLock<I>> {
-        fn register_interrupt_flag(&mut self, flag: &'a AtomicBool) {
-            RwLock::write(self).unwrap().register_interrupt_flag(flag)
-        }
-
+    impl<I: Input> Input for Arc<RwLock<I>> {
         fn interrupt_occurred(&self) -> bool {
             RwLock::read(self).unwrap().interrupt_occurred()
         }
@@ -88,11 +82,7 @@ using_std! {
     }
 
     use std::sync::Mutex;
-    impl<'a, I: Input<'a>> Input<'a> for Arc<Mutex<I>> {
-        fn register_interrupt_flag(&mut self, flag: &'a AtomicBool) {
-            Mutex::lock(self).unwrap().register_interrupt_flag(flag)
-        }
-
+    impl<I: Input> Input for Arc<Mutex<I>> {
         fn interrupt_occurred(&self) -> bool {
             Mutex::lock(self).unwrap().interrupt_occurred()
         }

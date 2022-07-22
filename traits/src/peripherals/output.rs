@@ -1,11 +1,10 @@
 //! [`Output` device trait](Output) and friends.
 
-use core::sync::atomic::AtomicBool;
 use core::fmt::{self, Display};
 
 use serde::{Deserialize, Serialize};
 
-pub trait Output<'a> {
+pub trait Output {
     fn write_data(&mut self, c: u8) -> Result<(), OutputError>;
 
     // Gets set to high automagically when more data can be taken.
@@ -13,7 +12,6 @@ pub trait Output<'a> {
     // data is being written.
     fn current_data_written(&self) -> bool;
 
-    fn register_interrupt_flag(&mut self, flag: &'a AtomicBool);
     fn interrupt_occurred(&self) -> bool;
     fn reset_interrupt_flag(&mut self,);
 
@@ -51,11 +49,7 @@ using_std! {
 
 using_std! {
     use std::sync::{Arc, RwLock};
-    impl<'a, O: Output<'a>> Output<'a> for Arc<RwLock<O>> {
-        fn register_interrupt_flag(&mut self, flag: &'a AtomicBool) {
-            RwLock::write(self).unwrap().register_interrupt_flag(flag)
-        }
-
+    impl<O: Output> Output for Arc<RwLock<O>> {
         fn interrupt_occurred(&self) -> bool {
             RwLock::write(self).unwrap().interrupt_occurred()
         }
@@ -82,11 +76,7 @@ using_std! {
     }
 
     use std::sync::Mutex;
-    impl<'a, O: Output<'a>> Output<'a> for Arc<Mutex<O>> {
-        fn register_interrupt_flag(&mut self, flag: &'a AtomicBool) {
-            Mutex::lock(self).unwrap().register_interrupt_flag(flag)
-        }
-
+    impl<O: Output> Output for Arc<Mutex<O>> {
         fn interrupt_occurred(&self) -> bool {
             Mutex::lock(self).unwrap().interrupt_occurred()
         }

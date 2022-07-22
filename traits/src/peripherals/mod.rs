@@ -19,8 +19,6 @@ pub use output::Output;
 
 pub mod stubs;
 
-use core::marker::PhantomData;
-
 
 // the reason this trait exists is to accomodate implementations that wish to
 // share state between peripherals
@@ -70,14 +68,14 @@ use core::marker::PhantomData;
 // This nicely demonstrates the initial claim we made: for all but the _most extreme_ use cases, you're likely best served by `PeripheralsSet`.
 // In the rare case you want to share state between peripherals **and** cannot accept extra runtime cost (i.e. because you're on embedded or because you
 // don't have an allocator) or worse ergonomics, the `Peripherals` trait is the escape hatch you're looking for.
-pub trait Peripherals<'a> {
-    type Gpio: Gpio<'a>;
+pub trait Peripherals {
+    type Gpio: Gpio;
     type Adc: Adc;
     type Pwm: Pwm;
-    type Timers: Timers<'a>;
+    type Timers: Timers;
     type Clock: Clock;
-    type Input: Input<'a>;
-    type Output: Output<'a>;
+    type Input: Input;
+    type Output: Output;
 
     fn get_gpio(&self) -> &Self::Gpio;
     fn get_gpio_mut(&mut self) -> &mut Self::Gpio;
@@ -208,15 +206,15 @@ where
 }
 */
 
-pub struct PeripheralSet<'int, G, A, P, T, C, I, O>
+pub struct PeripheralSet<G, A, P, T, C, I, O>
 where
-    G: Gpio<'int>,
+    G: Gpio,
     A: Adc,
     P: Pwm,
-    T: Timers<'int>,
+    T: Timers,
     C: Clock,
-    I: Input<'int>,
-    O: Output<'int>,
+    I: Input,
+    O: Output,
 {
     gpio: G,
     adc: A,
@@ -225,18 +223,17 @@ where
     clock: C,
     input: I,
     output: O,
-    _marker: PhantomData<&'int ()>,
 }
 
-impl<'p, G, A, P, T, C, I, O> Default for PeripheralSet<'p, G, A, P, T, C, I, O/*, G, A, P, T, C, I, O*/>
+impl<G, A, P, T, C, I, O> Default for PeripheralSet<G, A, P, T, C, I, O>
 where
-    G: Default + Gpio<'p>,
+    G: Default + Gpio,
     A: Default + Adc,
     P: Default + Pwm,
-    T: Default + Timers<'p>,
+    T: Default + Timers,
     C: Default + Clock,
-    I: Default + Input<'p>,
-    O: Default + Output<'p>,
+    I: Default + Input,
+    O: Default + Output,
 {
     fn default() -> Self {
         Self {
@@ -247,20 +244,19 @@ where
             clock: C::default(),
             input: I::default(),
             output: O::default(),
-            _marker: PhantomData,
         }
     }
 }
 
-impl<'p, G, A, P, T, C, I, O> PeripheralSet<'p, G, A, P, T, C, I, O>
+impl<G, A, P, T, C, I, O> PeripheralSet<G, A, P, T, C, I, O>
 where
-    G: Gpio<'p>,
+    G: Gpio,
     A: Adc,
     P: Pwm,
-    T: Timers<'p>,
+    T: Timers,
     C: Clock,
-    I: Input<'p>,
-    O: Output<'p>,
+    I: Input,
+    O: Output,
 {
     pub fn new(gpio: G, adc: A, pwm: P, timers: T, clock: C, input: I, output: O) -> Self {
         Self {
@@ -271,20 +267,19 @@ where
             clock,
             input,
             output,
-            _marker: PhantomData,
         }
     }
 }
 
-impl<'p, G, A, P, T, C, I, O> Peripherals<'p> for PeripheralSet<'p, G, A, P, T, C, I, O>
+impl<G, A, P, T, C, I, O> Peripherals for PeripheralSet<G, A, P, T, C, I, O>
 where
-    G: Gpio<'p>,
+    G: Gpio,
     A: Adc,
     P: Pwm,
-    T: Timers<'p>,
+    T: Timers,
     C: Clock,
-    I: Input<'p>,
-    O: Output<'p>,
+    I: Input,
+    O: Output,
 {
     type Gpio = G;
     type Adc = A;
@@ -294,74 +289,34 @@ where
     type Input = I;
     type Output = O;
 
-    fn get_gpio(&self) -> &G {
-        &self.gpio
-    }
+    fn get_gpio(&self) -> &G { &self.gpio }
+    fn get_adc(&self) -> &A { &self.adc }
+    fn get_pwm(&self) -> &P { &self.pwm }
+    fn get_timers(&self) -> &T { &self.timers }
+    fn get_clock(&self) -> &C { &self.clock }
+    fn get_input(&self) -> &I { &self.input }
+    fn get_output(&self) -> &O { &self.output }
 
-    fn get_adc(&self) -> &A {
-        &self.adc
-    }
-
-    fn get_pwm(&self) -> &P {
-        &self.pwm
-    }
-
-    fn get_timers(&self) -> &T {
-        &self.timers
-    }
-
-    fn get_clock(&self) -> &C {
-        &self.clock
-    }
-
-    fn get_input(&self) -> &I {
-        &self.input
-    }
-
-    fn get_output(&self) -> &O {
-        &self.output
-    }
-
-    fn get_gpio_mut(&mut self) -> &mut Self::Gpio {
-        &mut self.gpio
-    }
-
-    fn get_adc_mut(&mut self) -> &mut Self::Adc {
-        &mut self.adc
-    }
-
-    fn get_pwm_mut(&mut self) -> &mut Self::Pwm {
-        &mut self.pwm
-    }
-
-    fn get_timers_mut(&mut self) -> &mut Self::Timers {
-        &mut self.timers
-    }
-
-    fn get_clock_mut(&mut self) -> &mut Self::Clock {
-        &mut self.clock
-    }
-
-    fn get_input_mut(&mut self) -> &mut Self::Input {
-        &mut self.input
-    }
-
-    fn get_output_mut(&mut self) -> &mut Self::Output {
-        &mut self.output
-    }
+    fn get_gpio_mut(&mut self) -> &mut Self::Gpio { &mut self.gpio }
+    fn get_adc_mut(&mut self) -> &mut Self::Adc { &mut self.adc }
+    fn get_pwm_mut(&mut self) -> &mut Self::Pwm { &mut self.pwm }
+    fn get_timers_mut(&mut self) -> &mut Self::Timers { &mut self.timers }
+    fn get_clock_mut(&mut self) -> &mut Self::Clock { &mut self.clock }
+    fn get_input_mut(&mut self) -> &mut Self::Input { &mut self.input }
+    fn get_output_mut(&mut self) -> &mut Self::Output { &mut self.output }
 }
 
 use crate::control::{Snapshot, SnapshotError};
 
-impl<'p, G, A, P, T, C, I, O> Snapshot for PeripheralSet<'p, G, A, P, T, C, I, O>
+impl<'p, G, A, P, T, C, I, O> Snapshot for PeripheralSet<G, A, P, T, C, I, O>
 where
-    G: Snapshot + Gpio<'p>,
+    G: Snapshot + Gpio,
     A: Snapshot + Adc,
     P: Snapshot + Pwm,
-    T: Snapshot + Timers<'p>,
+    T: Snapshot + Timers,
     C: Snapshot + Clock,
-    I: Snapshot + Input<'p>,
-    O: Snapshot + Output<'p>,
+    I: Snapshot + Input,
+    O: Snapshot + Output,
 
     // This shouldn't be needed since, in order to impl Snapshot your Err type has to
     // implement Into<SnapshotError>.

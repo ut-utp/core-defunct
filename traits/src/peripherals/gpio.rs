@@ -4,7 +4,6 @@ use lc3_macros::DisplayUsingDebug;
 
 use core::convert::TryFrom;
 use core::ops::{Deref, Index, IndexMut};
-use core::sync::atomic::AtomicBool;
 
 use serde::{Deserialize, Serialize};
 
@@ -209,7 +208,7 @@ pub struct GpioWriteErrors(pub GpioStateMismatches);
 /// There are [tests for this trait](crate::tests::gpio) in the [tests
 /// module](crate::tests) to help ensure that your implementation of this trait follows
 /// the rules above. (TODO: this isn't true anymore?)
-pub trait Gpio<'a> {
+pub trait Gpio {
     fn set_state(&mut self, pin: GpioPin, state: GpioState) -> Result<(), GpioMiscError>; // should probably be infallible
     fn get_state(&self, pin: GpioPin) -> GpioState;
 
@@ -261,7 +260,6 @@ pub trait Gpio<'a> {
         errors
     }
 
-    fn register_interrupt_flags(&mut self, flags: &'a GpioPinArr<AtomicBool>);
     fn interrupt_occurred(&self, pin: GpioPin) -> bool;
     fn reset_interrupt_flag(&mut self, pin: GpioPin);
     #[inline]
@@ -328,7 +326,7 @@ impl TryFrom<GpioPinArr<Result<(), GpioWriteError>>> for GpioWriteErrors {
 // TODO: roll this into the macro
 using_std! {
     use std::sync::{Arc, RwLock};
-    impl<'a, G: Gpio<'a>> Gpio<'a> for Arc<RwLock<G>> {
+    impl<G: Gpio> Gpio for Arc<RwLock<G>> {
         fn set_state(&mut self, pin: GpioPin, state: GpioState) -> Result<(), GpioMiscError> {
             RwLock::write(self).unwrap().set_state(pin, state)
         }
@@ -343,10 +341,6 @@ using_std! {
 
         fn write(&mut self, pin: GpioPin, bit: bool) -> Result<(), GpioWriteError> {
             RwLock::write(self).unwrap().write(pin, bit)
-        }
-
-        fn register_interrupt_flags(&mut self, flags: &'a GpioPinArr<AtomicBool>) {
-            RwLock::write(self).unwrap().register_interrupt_flags(flags)
         }
 
         fn interrupt_occurred(&self, pin: GpioPin) -> bool {

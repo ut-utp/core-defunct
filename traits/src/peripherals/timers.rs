@@ -4,7 +4,6 @@ use lc3_isa::Word;
 use lc3_macros::DisplayUsingDebug;
 
 use core::ops::{Deref, Index, IndexMut};
-use core::sync::atomic::AtomicBool;
 use core::num::NonZeroU16;
 
 use serde::{Deserialize, Serialize};
@@ -107,15 +106,16 @@ pub enum TimerState {
 /// full period. Instead, it provides an interrupt interface to signal to the
 /// simulator to trigger interrupts.
 ///
-/// Before anything else can work, a set of interrupt flags
-/// [must be registered](Timers::register_interrupt_flags) with the peripheral.
-/// These are to provide safe shared state between the simulator's process and
-/// the hardware's interrupt-handling processes. Until the flags are registered,
-/// the rest of the peripheral will not trigger interrupts. We recommend that
-/// operations that require the flags simply panic if they are not present.
-///
-/// All interrupt flags must initially be `false`, indicating that no interrupts
-/// have occurred.
+// TODO: update
+// /// Before anything else can work, a set of interrupt flags
+// /// [must be registered](Timers::register_interrupt_flags) with the peripheral.
+// /// These are to provide safe shared state between the simulator's process and
+// /// the hardware's interrupt-handling processes. Until the flags are registered,
+// /// the rest of the peripheral will not trigger interrupts. We recommend that
+// /// operations that require the flags simply panic if they are not present.
+// ///
+// /// All interrupt flags must initially be `false`, indicating that no interrupts
+// /// have occurred.
 ///
 /// Getting [whether an interrupt occurred](Timers::interrupt_occurred) returns
 /// `true` from when a timer's period has elapsed until that timer's interrupt
@@ -224,7 +224,7 @@ pub enum TimerState {
 /// [`Disabled`]: TimerState::Disabled
 /// [`Clock`]: super::Clock
 ///
-pub trait Timers<'a> {
+pub trait Timers {
     fn set_mode(&mut self, timer: TimerId, mode: TimerMode);
     fn get_mode(&self, timer: TimerId) -> TimerMode;
     #[inline]
@@ -251,7 +251,6 @@ pub trait Timers<'a> {
         states
     }
 
-    fn register_interrupt_flags(&mut self, flags: &'a TimerArr<AtomicBool>);
     fn interrupt_occurred(&self, timer: TimerId) -> bool;
     fn reset_interrupt_flag(&mut self, timer: TimerId);
     #[inline]
@@ -267,7 +266,7 @@ using_std! {
 
     // This is adequate if your `Timers` impl is _already_ `Sync`. If it's not,
     // you'll want the Mutex blanket impl below.
-    impl<'a, T: Timers<'a>> Timers<'a> for Arc<RwLock<T>> {
+    impl<T: Timers> Timers for Arc<RwLock<T>> {
         fn set_mode(&mut self, timer: TimerId, mode: TimerMode) {
             RwLock::write(self).unwrap().set_mode(timer, mode);
         }
@@ -284,10 +283,6 @@ using_std! {
             RwLock::read(self).unwrap().get_state(timer)
         }
 
-        fn register_interrupt_flags(&mut self, flags: &'a TimerArr<AtomicBool>) {
-            RwLock::write(self).unwrap().register_interrupt_flags(flags)
-        }
-
         fn interrupt_occurred(&self, timer: TimerId) -> bool {
             RwLock::read(self).unwrap().interrupt_occurred(timer)
         }
@@ -301,7 +296,7 @@ using_std! {
         }
     }
 
-    impl<'a, T: Timers<'a>> Timers<'a> for Arc<Mutex<T>> {
+    impl<T: Timers> Timers for Arc<Mutex<T>> {
         fn set_mode(&mut self, timer: TimerId, mode: TimerMode) {
             Mutex::lock(self).unwrap().set_mode(timer, mode);
         }
@@ -316,10 +311,6 @@ using_std! {
 
         fn get_state(&self, timer: TimerId) -> TimerState {
             Mutex::lock(self).unwrap().get_state(timer)
-        }
-
-        fn register_interrupt_flags(&mut self, flags: &'a TimerArr<AtomicBool>) {
-            Mutex::lock(self).unwrap().register_interrupt_flags(flags)
         }
 
         fn interrupt_occurred(&self, timer: TimerId) -> bool {
