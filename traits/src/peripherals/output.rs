@@ -1,12 +1,10 @@
 //! [`Output` device trait](Output) and friends.
-use crate::peripheral_trait;
 
 use core::sync::atomic::AtomicBool;
 use core::fmt::{self, Display};
 
 use serde::{Deserialize, Serialize};
 
-peripheral_trait! {output,
 pub trait Output<'a>: Default {
     fn write_data(&mut self, c: u8) -> Result<(), OutputError>;
 
@@ -21,7 +19,7 @@ pub trait Output<'a>: Default {
 
     fn set_interrupt_enable_bit(&mut self, bit: bool);
     fn interrupts_enabled(&self) -> bool;
-}}
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum OutputError {

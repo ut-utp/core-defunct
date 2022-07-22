@@ -1,7 +1,5 @@
 //! [`Adc` trait](Adc) and associated types.
 
-use crate::peripheral_trait;
-
 use lc3_macros::DisplayUsingDebug;
 
 use core::convert::TryFrom;
@@ -77,7 +75,6 @@ impl<T> IndexMut<AdcPin> for AdcPinArr<T> {
     }
 }
 
-peripheral_trait! {adc,
 
 /// Adc access for the interpreter.
 pub trait Adc: Default {
@@ -107,7 +104,7 @@ pub trait Adc: Default {
         readings
     }
 
-}}
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct AdcMiscError;

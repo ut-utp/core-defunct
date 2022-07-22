@@ -1,7 +1,5 @@
 //! [`Timers` trait](Timers) and related types.
 
-use crate::peripheral_trait;
-
 use lc3_isa::Word;
 use lc3_macros::DisplayUsingDebug;
 
@@ -82,7 +80,6 @@ pub enum TimerState {
     WithPeriod(Period)
 }
 
-peripheral_trait! {timers,
 /// A [Timer peripheral](Timers) for an LC-3 simulator.
 ///
 /// Used for scheduling actions (i.e. LC-3 routines). The peripheral consists of
@@ -262,7 +259,7 @@ pub trait Timers<'a>: Default {
         matches!(self.get_state(timer), TimerState::WithPeriod(_)) ||
         (self.get_state(timer) == TimerState::Disabled && self.interrupt_occurred(timer))
     }
-}}
+}
 
 // TODO: roll this into the macro
 using_std! {

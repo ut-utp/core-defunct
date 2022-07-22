@@ -1,7 +1,5 @@
 //! [`Pwm` trait](Pwm) and helpers.
 
-use crate::peripheral_trait;
-
 use lc3_macros::DisplayUsingDebug;
 
 use core::num::NonZeroU8;
@@ -74,7 +72,6 @@ impl<T> IndexMut<PwmPin> for PwmPinArr<T> {
 
 pub type PwmDutyCycle = u8;
 
-peripheral_trait! {pwm,
 pub trait Pwm: Default {
     fn set_state(&mut self, pin: PwmPin, state: PwmState);
     fn get_state(&self, pin: PwmPin) -> PwmState;
@@ -101,8 +98,7 @@ pub trait Pwm: Default {
 
         duty_cycles
     }
-}}
-
+}
 
 // TODO: roll this into the macro
 using_std! {

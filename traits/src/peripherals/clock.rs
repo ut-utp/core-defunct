@@ -1,7 +1,5 @@
 //! [`Clock` peripheral trait](Clock).
 
-use crate::peripheral_trait;
-
 use lc3_isa::Word;
 
 // We've limited ourselves to only being able to count ~65 and a
@@ -13,7 +11,6 @@ use lc3_isa::Word;
 // - Introduce more clocks
 //   - A low-precision (s) *and* high-precision (ms) clock
 
-peripheral_trait! {clock,
 /// A [Clock peripheral](Clock) for an LC-3 simulator.
 ///
 /// Used for measuring lengths of time.
@@ -73,7 +70,7 @@ pub trait Clock: Default {
     fn get_milliseconds(&self) -> Word;
 
     fn set_milliseconds(&mut self, ms: Word);
-}}
+}
 
 // TODO: roll this into the macro
 using_std! {

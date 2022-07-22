@@ -1,7 +1,5 @@
 //! [`Gpio` trait](Gpio) and friends.
 
-use crate::peripheral_trait;
-
 use lc3_macros::DisplayUsingDebug;
 
 use core::convert::TryFrom;
@@ -130,15 +128,15 @@ pub struct GpioReadErrors(pub GpioStateMismatches);
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct GpioWriteErrors(pub GpioStateMismatches);
 
-// #[derive(Copy, Clone)]
-// pub struct GpioInterruptRegisterError(GpioStateMismatch); // See comments below
+// TODO: impl Error on std
+
 
 // TODO: document all the weird cases
 //
 // Once a pin is set to output but before a write the pin is? 0? unknown? implementation defined?
 // Write to the register in input mode? Ignored
 // Read from the register in output mode? 0s? or do we cache the last written value?
-peripheral_trait! {gpio,
+
 /// GPIO access trait.
 ///
 /// Implementations of this trait must provide digital read, digital write, and rising
@@ -211,10 +209,10 @@ peripheral_trait! {gpio,
 /// There are [tests for this trait](crate::tests::gpio) in the [tests
 /// module](crate::tests) to help ensure that your implementation of this trait follows
 /// the rules above. (TODO: this isn't true anymore?)
-pub trait Gpio<'a>: Default {
-
+pub trait Gpio<'a> {
     fn set_state(&mut self, pin: GpioPin, state: GpioState) -> Result<(), GpioMiscError>; // should probably be infallible
     fn get_state(&self, pin: GpioPin) -> GpioState;
+
     #[inline]
     fn get_states(&self) -> GpioPinArr<GpioState> {
         let mut states = GpioPinArr([GpioState::Disabled; GpioPin::NUM_PINS]); // TODO (again)
@@ -270,7 +268,7 @@ pub trait Gpio<'a>: Default {
     fn interrupts_enabled(&self, pin: GpioPin) -> bool {
         matches!(self.get_state(pin), GpioState::Interrupt)
     }
-}}
+}
 
 impl TryFrom<GpioPinArr<Result<bool, GpioReadError>>> for GpioReadErrors {
     type Error = ();

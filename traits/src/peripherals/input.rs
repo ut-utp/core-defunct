@@ -1,12 +1,10 @@
 //! [`Input` device trait](Input) and related things.
-use crate::peripheral_trait;
 
 use core::sync::atomic::AtomicBool;
 use core::fmt::{self, Display};
 
 use serde::{Deserialize, Serialize};
 
-peripheral_trait! {input,
 pub trait Input<'a>: Default {
     // Warning! This is stateful!! It marks the current data as read.
     //
@@ -26,7 +24,7 @@ pub trait Input<'a>: Default {
 
     fn set_interrupt_enable_bit(&mut self, bit: bool);
     fn interrupts_enabled(&self) -> bool;
-}}
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum InputError {
