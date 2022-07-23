@@ -39,12 +39,12 @@ impl From<State> for GpioState {
 ///     mode.
 ///   - The state of a pin (input, output, interrupt, or disabled) can be
 ///     retrieved at any time.
-pub struct GpioShim<'gint> {
+pub struct GpioShim {
     states: GpioPinArr<State>,
-    flags: Option<&'gint GpioPinArr<AtomicBool>>,
+    flags: GpioPinArr<AtomicBool>,
 }
 
-impl Index<GpioPin> for GpioShim<'_> {
+impl Index<GpioPin> for GpioShim {
     type Output = State;
 
     fn index(&self, pin: GpioPin) -> &State {
@@ -52,22 +52,26 @@ impl Index<GpioPin> for GpioShim<'_> {
     }
 }
 
-impl IndexMut<GpioPin> for GpioShim<'_> {
+impl IndexMut<GpioPin> for GpioShim {
     fn index_mut(&mut self, pin: GpioPin) -> &mut State {
         &mut self.states[pin]
     }
 }
 
-impl Default for GpioShim<'_> {
+impl Default for GpioShim {
     fn default() -> Self {
+        const F: AtomicBool = AtomicBool::new(false);
+
         Self {
             states: GpioPinArr([State::Disabled; GpioPin::NUM_PINS]),
-            flags: None,
+            flags: GpioPinArr([F, F, F, F, F, F, F, F]),
         }
     }
 }
 
-impl GpioShim<'_> {
+// TODO: cleanup fallout from register_interrupt_flags
+
+impl GpioShim {
     pub fn new() -> Self {
         Self::default()
     }
@@ -99,10 +103,7 @@ impl GpioShim<'_> {
     }
 
     fn raise_interrupt(&self, pin: GpioPin) {
-        match self.flags {
-            Some(flags) => flags[pin].store(true, Ordering::SeqCst),
-            None => unreachable!(),
-        }
+        self.flags[pin].store(true, Ordering::SeqCst);
     }
 
     /// Gets the value of a pin.
@@ -123,7 +124,7 @@ impl GpioShim<'_> {
     }
 }
 
-impl<'a> Gpio<'a> for GpioShim<'a> {
+impl Gpio for GpioShim {
     fn set_state(&mut self, pin: GpioPin, state: GpioState) -> Result<(), GpioMiscError> {
         use GpioState::*;
 
@@ -176,34 +177,14 @@ impl<'a> Gpio<'a> for GpioShim<'a> {
         }
     }
 
-    // TODO: officially note that impls must accept register_interrupt_flags being
-    // called multiple times.
-    fn register_interrupt_flags(&mut self, flags: &'a GpioPinArr<AtomicBool>) {
-        self.flags = match self.flags {
-            None => Some(flags),
-            Some(_) => {
-                // warn!("re-registering interrupt flags!");
-                Some(flags)
-            }
-        }
-    }
-
     fn interrupt_occurred(&self, pin: GpioPin) -> bool {
-        match self.flags {
-            Some(flag) => {
-                let occurred = flag[pin].load(Ordering::SeqCst);
-                self.interrupts_enabled(pin) && occurred
-            }
-            None => unreachable!(),
-        }
+        let occurred = self.flags[pin].load(Ordering::SeqCst);
+        self.interrupts_enabled(pin) && occurred
     }
 
     // TODO: decide functionality when no previous flag registered
     fn reset_interrupt_flag(&mut self, pin: GpioPin) {
-        match self.flags {
-            Some(flags) => flags[pin].store(false, Ordering::SeqCst),
-            None => unreachable!(),
-        }
+        self.flags[pin].store(false, Ordering::SeqCst);
     }
 
     // TODO: make this default implementation?

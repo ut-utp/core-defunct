@@ -36,20 +36,22 @@ impl<S: Sink> Sink for Arc<S> {
     }
 }
 
+// TODO: cleanup fallout from flags
+
 // #[derive(Clone)] // TODO: Debug
-pub struct OutputShim<'out, 'int> {
+pub struct OutputShim<'out> {
     sink: OwnedOrRef<'out, dyn Sink + Send + Sync + 'out>,
-    flag: Option<&'int AtomicBool>,
+    flag: AtomicBool,
     interrupt_enable_bit: bool,
 }
 
-impl Default for OutputShim<'_, '_> {
+impl Default for OutputShim<'_> {
     fn default() -> Self {
         Self::using(Box::new(Mutex::new(stdout())))
     }
 }
 
-impl<'o, 'int> OutputShim<'o, 'int> {
+impl<'o> OutputShim<'o> {
     pub fn new() -> Self {
         Self::default()
     }
@@ -57,7 +59,7 @@ impl<'o, 'int> OutputShim<'o, 'int> {
     pub fn using(sink: Box<dyn Sink + Send + Sync + 'o>) -> Self {
         Self {
             sink: OwnedOrRef::Owned(sink),
-            flag: None,
+            flag: AtomicBool::new(true),
             interrupt_enable_bit: false,
         }
     }
@@ -65,7 +67,7 @@ impl<'o, 'int> OutputShim<'o, 'int> {
     pub fn with_ref(sink: &'o (dyn Sink + Send + Sync + 'o)) -> Self {
         Self {
             sink: OwnedOrRef::Ref(sink),
-            flag: None,
+            flag: AtomicBool::new(true),
             interrupt_enable_bit: false,
         }
     }
@@ -75,28 +77,13 @@ impl<'o, 'int> OutputShim<'o, 'int> {
     }
 }
 
-impl<'out, 'int> Output<'int> for OutputShim<'out, 'int> {
-    fn register_interrupt_flag(&mut self, flag: &'int AtomicBool) {
-        self.flag = match self.flag {
-            None => Some(flag),
-            Some(_) => {
-                // warn!("re-registering interrupt flags!");
-                Some(flag)
-            }
-        };
-
-        flag.store(true, Ordering::SeqCst);
-    }
-
+impl<'out> Output for OutputShim<'out> {
     fn interrupt_occurred(&self) -> bool {
         self.current_data_written()
     }
 
     fn reset_interrupt_flag(&mut self) {
-        match self.flag {
-            Some(flag) => flag.store(false, Ordering::SeqCst),
-            None => unreachable!(),
-        }
+        self.flag.store(false, Ordering::SeqCst);
     }
 
     fn set_interrupt_enable_bit(&mut self, bit: bool) {
@@ -114,29 +101,19 @@ impl<'out, 'int> Output<'int> for OutputShim<'out, 'int> {
         // }
         // ^ TODO!
 
-        match self.flag {
-            Some(f) => f.store(false, Ordering::SeqCst),
-            None => unreachable!(),
-        }
+        self.flag.store(false, Ordering::SeqCst);
         self.sink.put_char(c)?;
         self.sink.flush()?;
-        match self.flag {
-            Some(f) => f.store(true, Ordering::SeqCst),
-            None => unreachable!(),
-        }
+        self.flag.store(true, Ordering::SeqCst);
         Ok(())
     }
 
     fn current_data_written(&self) -> bool {
         // eprintln!("Output Polled for readiness: {:?}", self.flag.unwrap().load(Ordering::SeqCst));
 
-        let val = match self.flag {
-            Some(f) => f.load(Ordering::SeqCst),
-            None => unreachable!(),
-        };
-
+        let val = self.flag.load(Ordering::SeqCst);
         if !val {
-            self.flag.unwrap().store(true, Ordering::SeqCst);
+            self.flag.store(true, Ordering::SeqCst);
         }
 
         true
@@ -152,10 +129,8 @@ mod tests {
     #[test]
     fn write_one() {
         let vec = Vec::new();
-        let flag = AtomicBool::new(false);
         let mut sink = Mutex::new(vec);
         let mut shim = OutputShim::with_ref(&mut sink);
-        shim.register_interrupt_flag(&flag);
 
         // let mut shim = OutputShim { sink: OwnedOrRef::Ref(&mut sink) };
         let ch0 = 'A' as u8;
@@ -193,11 +168,9 @@ mod tests {
     // Annoyingly, this does not fail.
     fn write_too_much() {
         let mut buf: [u8; 1] = [0];
-        let flag = AtomicBool::new(false);
         let thing = &mut buf.as_mut();
         let sink = Mutex::new(thing);
         let mut shim = OutputShim::with_ref(&sink);
-        shim.register_interrupt_flag(&flag);
 
         let ch0 = 'Y' as u8;
         let ch1 = 'P' as u8;

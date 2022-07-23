@@ -71,9 +71,9 @@ impl Source for SourceShim {
 }
 
 // #[derive(Clone)] // TODO: Debug
-pub struct InputShim<'inp, 'int> {
+pub struct InputShim<'inp> {
     source: OwnedOrRef<'inp, dyn Source + Send + Sync + 'inp>,
-    flag: Option<&'int AtomicBool>,
+    flag: AtomicBool, // TODO: swap for `bool`
     interrupt_enable_bit: bool,
     data: Cell<Option<u8>>,
 }
@@ -96,13 +96,13 @@ impl Source for StdinSource {
 
 // By default this reads from something that will never produce new values; this
 // is effectively useless.
-impl Default for InputShim<'_, '_> {
+impl Default for InputShim<'_> {
     fn default() -> Self {
         Self::using(Box::new(SourceShim::new()))
     }
 }
 
-impl<'int, 'i> InputShim<'i, 'int> {
+impl<'i> InputShim<'i> {
     pub fn new() -> Self {
         Self::default()
     }
@@ -111,7 +111,7 @@ impl<'int, 'i> InputShim<'i, 'int> {
         Self {
             source,
             interrupt_enable_bit: false,
-            flag: None,
+            flag: AtomicBool::new(false),
             data: Cell::new(None),
         }
     }
@@ -130,10 +130,7 @@ impl<'int, 'i> InputShim<'i, 'int> {
         if let None = self.data.get() {
             if let Some(c) = self.source.get_char() {
                 self.data.set(Some(c));
-                match self.flag {
-                    Some(flag) => flag.store(true, Ordering::SeqCst),
-                    None => unreachable!(),
-                }
+                self.flag.store(true, Ordering::SeqCst);
             }
         }
     }
@@ -143,26 +140,13 @@ impl<'int, 'i> InputShim<'i, 'int> {
     }
 }
 
-impl<'inp, 'int> Input<'int> for InputShim<'inp, 'int> {
-    fn register_interrupt_flag(&mut self, flag: &'int AtomicBool) {
-        self.flag = match self.flag {
-            None => Some(flag),
-            Some(_) => {
-                // warn!("re-registering interrupt flags!");
-                Some(flag)
-            }
-        }
-    }
-
+impl<'inp> Input for InputShim<'inp> {
     fn interrupt_occurred(&self) -> bool {
         self.current_data_unread()
     }
 
     fn reset_interrupt_flag(&mut self) {
-        match self.flag {
-            Some(flag) => flag.store(false, Ordering::SeqCst),
-            None => unreachable!(),
-        }
+        self.flag.store(false, Ordering::SeqCst);
     }
 
     fn set_interrupt_enable_bit(&mut self, bit: bool) {
@@ -175,19 +159,13 @@ impl<'inp, 'int> Input<'int> for InputShim<'inp, 'int> {
 
     fn read_data(&self) -> Result<u8, InputError> {
         self.fetch_latest();
-        match self.flag {
-            Some(flag) => flag.store(false, Ordering::SeqCst),
-            None => unreachable!(),
-        }
+        self.flag.store(false, Ordering::SeqCst);
         self.data.take().ok_or(InputError::NoDataAvailable)
     }
 
     fn current_data_unread(&self) -> bool {
         self.fetch_latest();
-        match self.flag {
-            Some(flag) => flag.load(Ordering::SeqCst),
-            None => unreachable!(),
-        }
+        self.flag.load(Ordering::SeqCst)
     }
 }
 

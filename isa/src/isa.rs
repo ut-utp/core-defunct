@@ -420,7 +420,7 @@ impl Instruction {
         Instruction::Br { n, z, p, offset9 }
     }
 
-    /// Creates a new 'JMP' instruction ([`Instruction::JMP`]) with the provided
+    /// Creates a new 'JMP' instruction ([`Instruction::Jmp`]) with the provided
     /// base register.
     /// TODO!
     ///
@@ -436,7 +436,7 @@ impl Instruction {
         Instruction::Jmp { base }
     }
 
-    /// Creates a new `JSR` instruction ([`Instruction::JSR`]) with the provided
+    /// Creates a new `JSR` instruction ([`Instruction::Jsr`]) with the provided
     /// 11 bit signed PC-relative offset (`[-1024, 1024)`).
     /// TODO!
     ///
@@ -465,7 +465,7 @@ impl Instruction {
         Instruction::Jsr { offset11 }
     }
 
-    /// Creates a new 'JSRR' instruction ([`Instruction::JSRR`]) with the
+    /// Creates a new 'JSRR' instruction ([`Instruction::Jsrr`]) with the
     /// provided base register.
     /// TODO!
     ///
@@ -525,8 +525,8 @@ impl Instruction {
         Instruction::Not { dr, sr }
     }
 
-    /// Creates a new `RET` instruction ([`Instruction::RET`]) (equivalent to a
-    /// [`JMP`](Instruction::JMP) [`R7`](Reg::R7)).
+    /// Creates a new `RET` instruction ([`Instruction::Ret`]) (equivalent to a
+    /// [`JMP`](Instruction::Jmp) [`R7`](Reg::R7)).
     /// TODO!
     ///
     /// ```rust
@@ -537,7 +537,7 @@ impl Instruction {
         Instruction::Ret
     }
 
-    /// Creates a new `RTI` instruction ([`Instruction::RTI`]).
+    /// Creates a new `RTI` instruction ([`Instruction::Rti`]).
     /// TODO!
     ///
     /// ```rust

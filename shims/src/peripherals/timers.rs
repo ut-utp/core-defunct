@@ -10,11 +10,10 @@ use std::sync::{Arc, Mutex};
 use std::time::{Instant, Duration};
 use core::sync::atomic::{AtomicBool, Ordering};
 
-pub struct TimersShim<'tint> {
+pub struct TimersShim {
     states: Arc<TimerArr<Mutex<TimerState>>>,
     modes: TimerArr<TimerMode>,
 
-    external_flags: Option<&'tint TimerArr<AtomicBool>>,
     internal_flags: Arc<TimerArr<AtomicBool>>,
 
     guards: TimerArr<Option<timer::Guard>>,
@@ -25,13 +24,12 @@ pub struct TimersShim<'tint> {
 
 macro_rules! arr { ($v:expr) => { TimerArr([$v, $v]) }; }
 
-impl Default for TimersShim<'_> {
+impl Default for TimersShim {
     fn default() -> Self {
        Self {
             states: Arc::new(arr!(Mutex::new(TimerState::Disabled))),
             modes: arr!(TimerMode::SingleShot),
 
-            external_flags: None,
             internal_flags: Arc::new(arr!(AtomicBool::new(false))),
 
             guards: arr!(None),
@@ -42,7 +40,9 @@ impl Default for TimersShim<'_> {
     }
 }
 
-impl TimersShim<'_> {
+// TODO: cleanup fallout from register_interrupt_flags
+
+impl TimersShim {
     pub fn new() -> Self {
         Self::default()
     }
@@ -85,7 +85,7 @@ impl TimersShim<'_> {
 
 }
 
-impl<'a> Timers<'a> for TimersShim<'a> {
+impl Timers for TimersShim {
     fn set_mode(&mut self, timer: TimerId, mode: TimerMode) {
         self.set_state(timer, TimerState::Disabled);
         self.modes[timer] = mode;
@@ -113,23 +113,12 @@ impl<'a> Timers<'a> for TimersShim<'a> {
         *self.states[timer].lock().unwrap()
     }
 
-    fn register_interrupt_flags(&mut self, flags: &'a TimerArr<AtomicBool>) {
-        self.external_flags = match self.external_flags {
-            None => Some(flags),
-            Some(_) => {
-                // warn!("re-registering interrupt flags!");
-                Some(flags)
-            }
-        }
-    }
-
     // Whenever we're 'polled' about the state of a timer, we'll update the
     // external flags.
     fn interrupt_occurred(&self, timer: TimerId) -> bool {
         use Ordering::SeqCst;
 
         let occurred = self.internal_flags[timer].load(SeqCst);
-        self.external_flags.unwrap()[timer].store(occurred, SeqCst);
 
         /*self.interrupts_enabled(timer) && */occurred
     }
@@ -138,7 +127,6 @@ impl<'a> Timers<'a> for TimersShim<'a> {
     fn reset_interrupt_flag(&mut self, timer: TimerId) {
         use Ordering::SeqCst;
 
-        self.external_flags.unwrap()[timer].store(false, SeqCst);
         self.internal_flags[timer].store(false, SeqCst);
     }
 }
@@ -153,7 +141,7 @@ pub struct TimersSnapshot {
     snapshot_time: Instant,
 }
 
-impl<'a> Snapshot for TimersShim<'a> {
+impl Snapshot for TimersShim {
     type Snap = TimersSnapshot;
     type Err = core::convert::Infallible;
 
@@ -190,7 +178,6 @@ impl<'a> Snapshot for TimersShim<'a> {
 
         for t in TIMERS.iter() {
             self.internal_flags[*t].store(snap.flags[*t], Ordering::SeqCst);
-            self.external_flags.unwrap()[*t].store(snap.flags[*t], Ordering::SeqCst);
         }
 
         // The problem is dealing with timers that were already running at the
@@ -308,23 +295,11 @@ mod tests {
         assert_eq!(shim.get_mode(T1), SingleShot);
     }
 
-    macro_rules! shim {
-        () => {{
-            let mut _shim = TimersShim::new();
-            _shim.register_interrupt_flags(shim!(flags));
-            _shim
-        }};
-        (flags) => {{
-            static _FLAGS: TimerArr<AtomicBool> = arr!(AtomicBool::new(false));
-            &_FLAGS
-        }};
-    }
-
     macro_rules! p { ($expr:expr) => {WithPeriod(Period::new($expr).unwrap())}; }
 
     #[test]
     fn get_set_period_singleshot() {
-        let mut shim = shim!();
+        let mut shim = TimersShim::new();
 
         shim.set_mode(T0, SingleShot);
         shim.set_state(T0, p!(200));
@@ -338,7 +313,7 @@ mod tests {
 
     #[test]
     fn setting_mode_disables_timer() {
-        let mut shim = shim!();
+        let mut shim = TimersShim::new();
 
         shim.set_state(T0, p!(20_000));
         assert_eq!(shim.get_mode(T0), SingleShot);
@@ -352,7 +327,7 @@ mod tests {
 
     #[test]
     fn get_set_period_repeated() {
-        let mut shim = shim!();
+        let mut shim = TimersShim::new();
 
         shim.set_mode(T1, Repeated);
         shim.set_state(T1, p!(65_535));
@@ -366,7 +341,7 @@ mod tests {
 
     #[test]
     fn get_singleshot_interrupt_occurred() {
-        let mut shim = shim!();
+        let mut shim = TimersShim::new();
 
         shim.set_mode(T0, SingleShot);
         shim.set_state(T0, p!(200));
@@ -415,7 +390,7 @@ mod tests {
 
     #[test]
     fn concurrent_singleshot_and_repeated() {
-        let mut shim = shim!();
+        let mut shim = TimersShim::new();
 
         shim.set_mode(T0, SingleShot);
         shim.set_state(T0, p!(200));
@@ -480,7 +455,7 @@ mod tests {
 
     #[test]
     fn get_repeated_interrupt_occurred() {
-        let mut shim = shim!();
+        let mut shim = TimersShim::new();
 
         shim.set_mode(T0, Repeated);
         shim.set_state(T0, p!(200));
@@ -511,14 +486,13 @@ wasm! {
     use lc3_traits::peripherals::timers::{Timers, TimerId, TimerArr, TimerMode, TimerState};
     use core::sync::atomic::AtomicBool;
     use core::marker::PhantomData;
-    impl<'a> Timers<'a> for TimersShim<'a> {
+    impl Timers for TimersShim {
         fn set_mode(&mut self, _timer: TimerId, _mode: TimerMode) { }
         fn get_mode(&self, _timer: TimerId) -> TimerMode { TimerMode::SingleShot }
 
         fn set_state(&mut self, _timer: TimerId, _state: TimerState) { }
         fn get_state(&self, _timer: TimerId) -> TimerState { TimerState::Disabled }
 
-        fn register_interrupt_flags(&mut self, _flags: &'a TimerArr<AtomicBool>) {}
         fn interrupt_occurred(&self, _timer: TimerId) -> bool { false }
         fn reset_interrupt_flag(&mut self, _timer: TimerId) { }
     }

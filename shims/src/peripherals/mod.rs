@@ -24,18 +24,17 @@ pub use output::{OutputShim, Sink};
 use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, RwLock, Mutex};
 
-pub type ShareablePeripheralsShim<'int, 'io> = PeripheralSet<
-    'int,
-    Arc<RwLock<GpioShim<'int>>>,
+pub type ShareablePeripheralsShim<'io> = PeripheralSet<
+    Arc<RwLock<GpioShim>>,
     Arc<RwLock<AdcShim>>,
     Arc<Mutex<PwmShim>>,
-    Arc<Mutex<TimersShim<'int>>>,
+    Arc<Mutex<TimersShim>>,
     Arc<RwLock<ClockShim>>,
-    Arc<Mutex<InputShim<'io, 'int>>>,
-    Arc<Mutex<OutputShim<'io, 'int>>>,
+    Arc<Mutex<InputShim<'io>>>,
+    Arc<Mutex<OutputShim<'io>>>,
 >;
 
-sa::assert_impl_all!(ShareablePeripheralsShim<'_, '_>: Sync, Send);
+sa::assert_impl_all!(ShareablePeripheralsShim<'_>: Sync, Send);
 
 // The assumption here is that your interrupt flags and input source/output sink
 // live for the same amount of time (or, can be made to live for the same
@@ -44,14 +43,13 @@ sa::assert_impl_all!(ShareablePeripheralsShim<'_, '_>: Sync, Send);
 // This is usually (always?) fine; in the cases where it isn't you can ditch
 // this type alias and spell out the type manually.
 pub type PeripheralsShim<'s> = PeripheralSet<
-    's,
-    GpioShim<'s>,
+    GpioShim,
     AdcShim,
     PwmShim,
-    TimersShim<'s>,
+    TimersShim,
     ClockShim,
-    InputShim<'s, 's>,
-    OutputShim<'s, 's>,
+    InputShim<'s>,
+    OutputShim<'s>,
 >;
 
 #[derive(Debug)]
