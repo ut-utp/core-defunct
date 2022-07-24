@@ -1,5 +1,7 @@
 use lc3_traits::peripherals::adc::*;
+
 extern crate embedded_hal;
+
 use embedded_hal::adc::{Channel, OneShot};
 use core::marker::PhantomData;
 use core::cell::RefCell;
@@ -77,7 +79,9 @@ where
 	}
 }
 
-
+//For normalization to 8 bits, we assume the ADC reading we get via u16 is 12 bit ADC as this is true for most ADC modules.
+//low priority Todo: To be truly generic, it needs a max ADC reading const generic and should normalize based on that
+//but this will soon be changed anyway since the ADC trait definition output will be made u16 (12 bits) soon
 macro_rules! adc_read_pin {
 	($pin: ident, $self: ident, $adc_reading: ident) => {
 			 		let mut pin = $self.$pin.borrow_mut();
@@ -86,12 +90,11 @@ macro_rules! adc_read_pin {
 
 			    	match result{
 			    		Ok(value) => {
-			    			//value_debug = value.into();
-			    			$adc_reading = Ok((value.into() >> 1) as u8)
+			    			$adc_reading = Ok(((value.into() >> 4) & 0xFF) as u8)
 			    		},
 			    		_ => {
-			    			//adc_reading = Err(AdcReadError((pin, AdcState::Disabled))) would return this error
-			    			// TODO: This is not the correct eror type. should be miscallaneous error for HAL read fail?
+			    			// Err(AdcReadError((pin, AdcState::Disabled))) would return this error as this is the default value of $adc_reading
+			    			// TODO: This is not the correct eror type. should be miscallaneous error for HAL read fail? Requires a trait modification
 			    		},
 			    	}
 
@@ -186,14 +189,4 @@ where
         readings
     }
 
-}
-
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
 }
