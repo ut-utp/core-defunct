@@ -1,17 +1,10 @@
 use lc3_traits::peripherals::adc::*;
 extern crate embedded_hal;
-use embedded_hal as hal;
 use embedded_hal::adc::{Channel, OneShot};
 use core::marker::PhantomData;
 use core::cell::RefCell;
 
-pub struct Adc1;
-
-macro_rules! ambiguity {
-    ($($i:ident)* $j:ident) => { };
-}
-
-pub struct generic_adc_unit<U, A0, A1, A2, A3, A4, A5, WORD, ADC>
+pub struct GenericAdcUnit<U, A0, A1, A2, A3, A4, A5, WORD, ADC>
 where
 	  A0: Channel<ADC>,
 	  A1: Channel<ADC>,
@@ -41,7 +34,7 @@ where
 
 }
 
-impl <U, A0, A1, A2, A3, A4, A5, WORD, ADC> Default for generic_adc_unit<U, A0, A1, A2, A3, A4, A5, WORD, ADC>
+impl <U, A0, A1, A2, A3, A4, A5, WORD, ADC> Default for GenericAdcUnit<U, A0, A1, A2, A3, A4, A5, WORD, ADC>
 where
 	  A0: Channel<ADC>,
 	  A1: Channel<ADC>,
@@ -57,7 +50,7 @@ where
 	}
 }
 
-impl <U, A0, A1, A2, A3, A4, A5, WORD, ADC> generic_adc_unit<U, A0, A1, A2, A3, A4, A5, WORD, ADC>
+impl <U, A0, A1, A2, A3, A4, A5, WORD, ADC> GenericAdcUnit<U, A0, A1, A2, A3, A4, A5, WORD, ADC>
 where
 	  A0: Channel<ADC>,
 	  A1: Channel<ADC>,
@@ -105,7 +98,7 @@ macro_rules! adc_read_pin {
 	}
 }
 
-impl <U, A0, A1, A2, A3, A4, A5, WORD, ADC> Adc for generic_adc_unit<U, A0, A1, A2, A3, A4, A5, WORD, ADC>
+impl <U, A0, A1, A2, A3, A4, A5, WORD, ADC> Adc for GenericAdcUnit<U, A0, A1, A2, A3, A4, A5, WORD, ADC>
 where
 	  A0: Channel<ADC>,
 	  A1: Channel<ADC>,
@@ -154,9 +147,8 @@ where
     	//let mut pins = self.hal_pins.borrow_mut();
 
     	let mut adc_reading: Result<u8, AdcReadError> = Err(AdcReadError((pin, AdcState::Disabled)));
-    	let mut value_debug = 0;
 
-    	if(self.get_state(pin) == AdcState::Enabled){
+    	if self.get_state(pin) == AdcState::Enabled{
 
     		match pin {
     			AdcPin::A0 =>{
@@ -177,7 +169,6 @@ where
     			AdcPin::A5 => {
     				adc_read_pin!(a5, self, adc_reading);
     			}
-    			_ =>{},
     		}
 	    }
 
