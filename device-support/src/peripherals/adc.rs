@@ -27,7 +27,7 @@ where
 	  // U4: OneShot<ADC, WORD, A4>,
 	  // U5: OneShot<ADC, WORD, A5>,
 	  WORD: From<u16> +Into<u16> ,
-{ 
+{
 	adc_unit: RefCell<U>,
 	a0: RefCell<A0>,
 	a1: RefCell<A1>,
@@ -116,10 +116,10 @@ where
 	  U: OneShot<ADC, WORD, A0> + OneShot<ADC, WORD, A1> + OneShot<ADC, WORD, A2> + OneShot<ADC, WORD, A3> + OneShot<ADC, WORD, A4> + OneShot<ADC, WORD, A5>,
 
 	  WORD: From<u16> +Into<u16> , // This trait bound is the only additional constraint being imposed on the HAL generics
-	  								//to make them usable with our traits. This is necessary since the HAL trait definition 
+	  								//to make them usable with our traits. This is necessary since the HAL trait definition
 	  								//does not impose any bounds on WORD but we need to get an integer from it to use it with our platform
 	  								//Hence, this might require one small additional custom board specific implementation to the HAL traits to convert
-	  								//the WORD type they use to/from u16 (if the board specific hal impl doesn't already implement it for its WORD). 
+	  								//the WORD type they use to/from u16 (if the board specific hal impl doesn't already implement it for its WORD).
 	  								//u16 was picked as it seems like a reasonable type for adc readings, and the embedded-hal
 	  								//official example also uses u16 for adc reading.
 {
@@ -152,7 +152,7 @@ where
     fn read(&self, pin: AdcPin) -> Result<u8, AdcReadError>{
     	//let mut adc_unit = self.hal_adc.borrow_mut();
     	//let mut pins = self.hal_pins.borrow_mut();
-    	
+
     	let mut adc_reading: Result<u8, AdcReadError> = Err(AdcReadError((pin, AdcState::Disabled)));
     	let mut value_debug = 0;
 
@@ -197,3 +197,12 @@ where
 
 }
 
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn it_works() {
+        let result = 2 + 2;
+        assert_eq!(result, 4);
+    }
+}
