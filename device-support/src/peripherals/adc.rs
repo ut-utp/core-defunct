@@ -190,3 +190,170 @@ where
     }
 
 }
+
+#[cfg(test)]
+mod tests {
+	extern crate embedded_hal;
+	extern crate embedded_hal_mock;
+
+	use crate::peripherals::adc::GenericAdcUnit;
+
+	use embedded_hal::adc::OneShot;
+	use embedded_hal_mock::adc::Mock;
+	use embedded_hal_mock::adc::Transaction;
+	use embedded_hal_mock::adc::{MockChan0, MockChan1, MockChan2};
+
+	use lc3_traits::peripherals::adc::{Adc, AdcPin, AdcState, AdcReadError};
+
+    #[test]
+    fn basic_test() {
+
+	    let expectations = [
+	        Transaction::read(0, 0xa0),
+	        Transaction::read(1, 0xa0),
+	        Transaction::read(2, 0xa0),
+	        Transaction::read(0, 0xa0),
+	        Transaction::read(1, 0xa0),
+	        Transaction::read(2, 0xa0),
+	    ];
+
+    	let mut generic_adc = GenericAdcUnit::<_,_,_,_,_,_,_,_,_>::new(Mock::<u16>::new(&expectations), MockChan0, MockChan1, MockChan2, MockChan0.clone(), MockChan1.clone(), MockChan2.clone());
+	    generic_adc.set_state(AdcPin::A0, AdcState::Enabled);
+	    
+	    assert_eq!(generic_adc.read(AdcPin::A0), Ok(0xa0 >> 4));
+    }
+
+    #[test]
+    fn disabled_adc() {
+
+	    let expectations = [
+	        Transaction::read(0, 0xa0),
+	        Transaction::read(1, 0xa0),
+	        Transaction::read(2, 0xa0),
+	        Transaction::read(0, 0xa0),
+	        Transaction::read(1, 0xa0),
+	        Transaction::read(2, 0xa0),
+	    ];
+
+    	let mut generic_adc = GenericAdcUnit::<_,_,_,_,_,_,_,_,_>::new(Mock::<u16>::new(&expectations), MockChan0, MockChan1, MockChan2, MockChan0.clone(), MockChan1.clone(), MockChan2.clone());
+	    //generic_adc.set_state(AdcPin::A0, AdcState::Enabled);
+	    
+	    assert_eq!(generic_adc.read(AdcPin::A0), Err(AdcReadError((AdcPin::A0, AdcState::Disabled))));
+	    assert_eq!(generic_adc.read(AdcPin::A1), Err(AdcReadError((AdcPin::A1, AdcState::Disabled))));
+	    assert_eq!(generic_adc.read(AdcPin::A2), Err(AdcReadError((AdcPin::A2, AdcState::Disabled))));
+	    assert_eq!(generic_adc.read(AdcPin::A3), Err(AdcReadError((AdcPin::A3, AdcState::Disabled))));
+	    assert_eq!(generic_adc.read(AdcPin::A4), Err(AdcReadError((AdcPin::A4, AdcState::Disabled))));
+	    assert_eq!(generic_adc.read(AdcPin::A5), Err(AdcReadError((AdcPin::A5, AdcState::Disabled))));
+
+	    generic_adc.set_state(AdcPin::A0, AdcState::Disabled);
+	    generic_adc.set_state(AdcPin::A1, AdcState::Disabled);
+	    generic_adc.set_state(AdcPin::A2, AdcState::Disabled);
+	    generic_adc.set_state(AdcPin::A3, AdcState::Disabled);
+	    generic_adc.set_state(AdcPin::A4, AdcState::Disabled);
+	    generic_adc.set_state(AdcPin::A5, AdcState::Disabled);
+
+	    let readings = generic_adc.read_all().0;
+
+	    //A from<usize> for AdcPin impl would have simplified this
+		assert_eq!(readings[0], Err(AdcReadError((AdcPin::A0, AdcState::Disabled))));	    
+		assert_eq!(readings[1], Err(AdcReadError((AdcPin::A1, AdcState::Disabled))));
+		assert_eq!(readings[2], Err(AdcReadError((AdcPin::A2, AdcState::Disabled))));
+		assert_eq!(readings[3], Err(AdcReadError((AdcPin::A3, AdcState::Disabled))));
+		assert_eq!(readings[4], Err(AdcReadError((AdcPin::A4, AdcState::Disabled))));
+		assert_eq!(readings[5], Err(AdcReadError((AdcPin::A5, AdcState::Disabled))));
+    }
+
+    #[test]
+    fn readings_test() {
+
+	    let expectations = [
+	        Transaction::read(0, 0xa0),
+	        Transaction::read(1, 0xa0b1),
+	        Transaction::read(2, 0xb0c2),
+	        Transaction::read(0, 0xc0d3),
+	        Transaction::read(1, 0xd0e4),
+	        Transaction::read(2, 0xffff),
+	    ];
+
+    	let mut generic_adc = GenericAdcUnit::<_,_,_,_,_,_,_,_,_>::new(Mock::<u16>::new(&expectations), MockChan0, MockChan1, MockChan2, MockChan0.clone(), MockChan1.clone(), MockChan2.clone());
+	    generic_adc.set_state(AdcPin::A0, AdcState::Enabled);
+	    generic_adc.set_state(AdcPin::A1, AdcState::Enabled);
+	    generic_adc.set_state(AdcPin::A2, AdcState::Enabled);
+	    generic_adc.set_state(AdcPin::A3, AdcState::Enabled);
+	    generic_adc.set_state(AdcPin::A4, AdcState::Enabled);
+	    generic_adc.set_state(AdcPin::A5, AdcState::Enabled);
+
+	    let readings = generic_adc.read_all().0;
+	    
+	    assert_eq!(readings[0], Ok(0x0a));
+	    assert_eq!(readings[1], Ok(0x0b));
+	    assert_eq!(readings[2], Ok(0x0c));
+	    assert_eq!(readings[3], Ok(0x0d));
+	    assert_eq!(readings[4], Ok(0x0e));
+	    assert_eq!(readings[5], Ok(0xff));
+    }
+
+    //exercises set_state, get_state and get_states methods
+    #[test]
+    fn state_test() {
+
+	    let expectations = [
+	        Transaction::read(0, 0xa0),
+	        Transaction::read(1, 0xa0b1),
+	        Transaction::read(2, 0xb0c2),
+	        Transaction::read(0, 0xc0d3),
+	        Transaction::read(1, 0xd0e4),
+	        Transaction::read(2, 0xffff),
+	    ];
+
+    	let mut generic_adc = GenericAdcUnit::<_,_,_,_,_,_,_,_,_>::new(Mock::<u16>::new(&expectations), MockChan0, MockChan1, MockChan2, MockChan0.clone(), MockChan1.clone(), MockChan2.clone());
+	    generic_adc.set_state(AdcPin::A0, AdcState::Enabled);
+	    generic_adc.set_state(AdcPin::A1, AdcState::Enabled);
+	    generic_adc.set_state(AdcPin::A2, AdcState::Disabled);
+	    generic_adc.set_state(AdcPin::A3, AdcState::Enabled);
+	    generic_adc.set_state(AdcPin::A4, AdcState::Disabled);
+	    
+	    assert_eq!(generic_adc.get_state(AdcPin::A0), AdcState::Enabled);
+	    assert_eq!(generic_adc.get_state(AdcPin::A1), AdcState::Enabled);
+	    assert_eq!(generic_adc.get_state(AdcPin::A2), AdcState::Disabled);
+
+	    let states = generic_adc.get_states().0;
+	    assert_eq!(states[0], AdcState::Enabled);
+	    assert_eq!(states[1], AdcState::Enabled);
+	    assert_eq!(states[2], AdcState::Disabled);
+	    assert_eq!(states[3], AdcState::Enabled);
+	    assert_eq!(states[4], AdcState::Disabled);
+	    assert_eq!(states[5], AdcState::Disabled);
+    }
+
+    #[test]
+    fn mixed_test() {
+
+	    let expectations = [
+	        Transaction::read(0, 0x01),
+	        //Transaction::read(1, 0xa0b1),
+	        Transaction::read(2, 0xeee4),
+	        Transaction::read(0, 0xc0d3),
+	       // Transaction::read(1, 0xd0e4),
+	        Transaction::read(2, 0xffff),
+	    ];
+
+    	let mut generic_adc = GenericAdcUnit::<_,_,_,_,_,_,_,_,_>::new(Mock::<u16>::new(&expectations), MockChan0, MockChan1, MockChan2, MockChan0.clone(), MockChan1.clone(), MockChan2.clone());
+	    generic_adc.set_state(AdcPin::A0, AdcState::Enabled);
+	    //generic_adc.set_state(AdcPin::A1, AdcState::Enabled);
+	    generic_adc.set_state(AdcPin::A2, AdcState::Enabled);
+	    generic_adc.set_state(AdcPin::A3, AdcState::Enabled);
+	    //generic_adc.set_state(AdcPin::A4, AdcState::Enabled);
+	    generic_adc.set_state(AdcPin::A5, AdcState::Enabled);
+
+	    let readings = generic_adc.read_all().0;
+	    
+	    assert_eq!(readings[0], Ok(0x00));
+	    assert_eq!(readings[1], Err(AdcReadError((AdcPin::A1, AdcState::Disabled))));
+	    assert_eq!(readings[2], Ok(0xee));
+	    assert_eq!(readings[3], Ok(0x0d));
+	    assert_eq!(readings[4], Err(AdcReadError((AdcPin::A4, AdcState::Disabled))));
+	    assert_eq!(readings[5], Ok(0xff));
+    }
+
+}
