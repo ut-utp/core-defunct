@@ -181,3 +181,6 @@ d = "docs-stable"
 f = "fmt-all"
 t = "test-all"
 l = "lint"
+
+br = "build-all --release"
+tr = "test-all --release"

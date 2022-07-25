@@ -51,12 +51,12 @@ To check that the project _will_ build:
   - `cargo c` or `cargo check-all`
 
 To actually build the project:
-  - `cargo b` or `cargo build-all` to build everything
+  - `cargo b` or `cargo build-all` to build everything (`cargo br` for release mode)
   - `cargo build -p <crate name>` to build a particular crate
     + i.e. `cargo build -p lc3-isa`
 
 To run the project's tests:
-  - `cargo t` or `cargo test-all` to run all the tests
+  - `cargo t` or `cargo test-all` to run all the tests (`cargo tr` for release mode)
   - `cargo test -p <crate name>` to run a particular crate's tests
 
 To run the project's benchmarks:
