@@ -199,8 +199,7 @@ mod read {
 
     #[test]
     fn read_valid_states_test(){ with_larger_stack(None, || {
-
-        let valid_state_iter = [Input, Interrupt].iter(); // test when set to input or output
+        let valid_state_iter = [Input, Interrupt].iter(); // test when set to input
 
         let permutations = GPIO_PINS.iter()
             .map(|_| valid_state_iter.clone())
@@ -210,11 +209,12 @@ mod read {
             for iteration in 0..=255 { // test setting all pins to 1 or 0 -- all combinations
 
                 let val = format!("{:08b}", iteration);
+                eprintln!("{val}");
 
                 let gpio_vals: Vec<char> =  val.chars().collect();
                 let mut gpio_bools: Vec<u16> = Vec::<u16>::new();
                 for values in gpio_vals.iter() {
-                    gpio_bools.push((values.to_digit(2)).unwrap() as u16);
+                    gpio_bools.push(values.to_digit(2).unwrap() as u16);
                 }
 
                 single_test_inner! {
@@ -250,19 +250,18 @@ mod read {
                         R7: gpio_bools[7],
                     },
                     pre: |p| {
+                        let mut gp = (**p.get_gpio_mut()).write().unwrap();
 
                         for (num,  pin) in GPIO_PINS.iter().enumerate() {
-                            let _set = Gpio::set_state(p, *pin, Output).unwrap();
-                            let state = Gpio::get_state(p, *pin);
-                            eq!(state, Output);
+                            let state = *states[num];
+                            gp.set_state(*pin, state).unwrap();
+                            eq!(state, gp.get_state(*pin));
 
                             let pin_bool = gpio_bools[num] != 0;
-                            let write = Gpio::write(p, *pin, pin_bool);
+                            let write = gp.set_pin(*pin, pin_bool);
                             eq!(write, Ok(()), "Write failure at pin {:?}, setting value to {}\nTest case: {:?}", *pin, pin_bool, gpio_vals);
 
-
-                            let _set = Gpio::set_state(p, *pin, *states[num]).unwrap();
-
+                            eq!(gp.read(*pin), Ok(pin_bool));
                         }
                     },
                 }
@@ -495,7 +494,7 @@ mod write {
                 post: |i| {
                     for (pin, pin_val) in GPIO_PINS.iter().zip(gpio_bools.iter()) {
                         let exp_pin_val = pin_val != &0;
-                        let actual_pin_val = Gpio::read(i.get_peripherals(), *pin).unwrap();
+                        let actual_pin_val = i.peri().read(*pin).unwrap();
                         eq!(actual_pin_val, exp_pin_val, "Gpio Pin {:?}\nExpected {}, got {}\nTest Case {:?}", *pin, exp_pin_val, actual_pin_val, gpio_vals);
 
                     }
