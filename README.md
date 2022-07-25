@@ -64,9 +64,10 @@ To run the project's benchmarks:
   - `cargo bench --bench <benchmark name>` to run a particular benchmark
 
 To build the docs for the project:
-  - `cargo +nightly docs` (`cargo-nightly docs` if using `nix`)
+  - `cargo +nightly docs` (`cargo nightly docs` if using `nix`)
     + NOTE: this requires a nightly Rust toolchain!
     + If you're on stable you can instead run: `cargo d` (or `cargo docs-stable`) to get mostly identical output
+      * Note that this will _require_ that the docs pass all the lints (see [`.cargo/config`])
 
 To run the project's lints (that CI runs):
   - `cargo lint`

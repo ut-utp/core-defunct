@@ -6,7 +6,6 @@
 		"files.exclude": {
 			"target": true
 		},
-
 		"rust-analyzer": {
 			"cargo.features": "all",
 			"checkOnSave": {
@@ -54,6 +53,12 @@
 				"problemMatcher": ["$rustc"],
 			},
 			{
+				"label": "Open Docs (nightly)",
+				"type": "cargo",
+				"command": "nightly docs --open",
+				"problemMatcher": ["$rustc"],
+			},
+			{
 				"label": "Format Workspace",
 				"type": "cargo",
 				"command": "f",
@@ -77,6 +82,6 @@
 				"command": "bench",
 				"problemMatcher": ["$rustc"],
 			}
-		]
+		],
 	},
 }

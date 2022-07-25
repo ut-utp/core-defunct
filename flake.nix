@@ -80,15 +80,22 @@
         llvm-tools-preview = builtins.head (builtins.filter (p: p.pname == "llvm-tools-preview") rust-toolchain.paths);
 
         # Should bump this manually rather than always grab the newest, I think.
-        nightly-rust-toolchain = with pkgs.rust-bin; (nightly."2022-07-02".default);
+        nightly-rust-toolchain = with pkgs.rust-bin; (nightly."2022-07-11".default);
         # nightly-rust-toolchain = with pkgs.rust-bin; (selectLatestNightlyWith (toolchain: toolchain.default));
 
         cargo-nightly = pkgs.writeShellScriptBin "cargo-nightly" ''
+          export RUST_WRAPPER=""; # Using `sccache` breaks this (compiler version mismatch on artifacts)!
           export RUSTC="${nightly-rust-toolchain}/bin/rustc";
           export CARGO="${nightly-rust-toolchain}/bin/cargo";
           export RUSTDOC="${nightly-rust-toolchain}/bin/rustdoc";
           export RUSTFMT="${nightly-rust-toolchain}/bin/rustfmt";
           # TODO: clippy
+
+          # Support usage as `cargo nightly`:
+          if [[ $1 == "nightly" ]]; then
+            shift
+          fi
+
           exec "$CARGO" "$@"
         '';
       in
