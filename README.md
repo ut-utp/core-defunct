@@ -72,6 +72,9 @@ To build the docs for the project:
 To run the project's lints (that CI runs):
   - `cargo lint`
 
+To format the project:
+  - `cargo f` or `cargo fmt-all`
+  - `cargo fc` to just _check_ that the project is formatted
 
 TODO:
  - [ ] crate and doc badges on each crate

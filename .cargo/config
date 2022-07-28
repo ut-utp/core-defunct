@@ -46,7 +46,7 @@ docs-stable = [
 
 build-all = ["build", "--workspace", "--all-features", "--all-targets"]
 check-all = ["check", "--workspace", "--all-features", "--all-targets"]
-fmt-all = ["fmt", "--workspace"]
+fmt-all = ["fmt", "--all"]
 test-all = ["test", "--workspace", "--all-features", "--all-targets", "--no-fail-fast"]
 
 # We put this list here instead of in `lib.rs`/`main.rs`/CI workflows for a
@@ -184,3 +184,5 @@ l = "lint"
 
 br = "build-all --release"
 tr = "test-all --release"
+
+fc = "f --check"

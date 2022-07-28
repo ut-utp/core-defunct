@@ -21,8 +21,9 @@
 				// the errors CI will complain about *and* that there isn't an
 				// easy way for developers to see these errors in their editor.
 				"command": "clippy",
-			}
+			},
 		},
+		"npm.autoDetect": "off",
 	},
 	"extensions": {
         "recommendations": [
@@ -45,42 +46,91 @@
 				"type": "cargo",
 				"command": "b",
 				"problemMatcher": ["$rustc"],
+				"group": {
+					"kind": "build",
+				},
+			},
+			{
+				"label": "Build All (release)",
+				"type": "cargo",
+				"command": "br",
+				"problemMatcher": ["$rustc"],
+				"group": {
+					"kind": "build",
+				},
+			},
+			{
+				"label": "Check All",
+				"type": "cargo",
+				"command": "c",
+				"problemMatcher": ["$rustc"],
+				"group": {
+					"kind": "build",
+				},
 			},
 			{
 				"label": "Open Docs",
 				"type": "cargo",
 				"command": "d --open",
 				"problemMatcher": ["$rustc"],
+				"group": {
+					"kind": "build",
+				},
 			},
 			{
 				"label": "Open Docs (nightly)",
 				"type": "cargo",
 				"command": "nightly docs --open",
 				"problemMatcher": ["$rustc"],
+				"group": {
+					"kind": "build",
+				},
 			},
 			{
 				"label": "Format Workspace",
 				"type": "cargo",
 				"command": "f",
 				"problemMatcher": ["$rustc"],
+				"group": {
+					"kind": "build",
+				},
+			},
+			{
+				"label": "Format Workspace (Check)",
+				"type": "cargo",
+				"command": "fc",
+				"problemMatcher": ["$rustc"],
+				"group": {
+					"kind": "test",
+				},
 			},
 			{
 				"label": "Test All",
 				"type": "cargo",
 				"command": "t",
 				"problemMatcher": ["$rustc"],
+				"group": {
+					"kind": "test",
+
+				},
 			},
 			{
 				"label": "Lint All",
 				"type": "cargo",
 				"command": "l",
 				"problemMatcher": ["$rustc"],
+				"group": {
+					"kind": "test",
+				},
 			},
 			{
 				"label": "Run Benchmarks",
 				"type": "cargo",
 				"command": "bench",
 				"problemMatcher": ["$rustc"],
+				"group": {
+					"kind": "test",
+				},
 			}
 		],
 	},
