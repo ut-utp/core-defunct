@@ -221,7 +221,7 @@ pub mod gpio {
       /// [`R0`]: lc3_isa::Reg::R0
       /// [`NUM_GPIO_PINS`]: lc3_traits::peripherals::gpio::GpioPin::NUM_PINS
       /// [`G0`]: lc3_traits::peripherals::gpio::GpioPin::G0
-      [0x30] INPUT,
+      [0x90] INPUT,
       /// Puts a [GPIO] [Pin] in [Output] mode.
       ///
       /// ## Inputs
@@ -253,7 +253,7 @@ pub mod gpio {
       /// [`R0`]: lc3_isa::Reg::R0
       /// [`NUM_GPIO_PINS`]: lc3_traits::peripherals::gpio::GpioPin::NUM_PINS
       /// [`G0`]: lc3_traits::peripherals::gpio::GpioPin::G0
-      [0x31] OUTPUT,
+      [0x91] OUTPUT,
       /// Puts a [GPIO] [Pin] in [Interrupt] mode and sets the interrupt service
       /// routine address in the interrupt vector table.
       ///
@@ -317,7 +317,7 @@ pub mod gpio {
       /// [`R1`]: lc3_isa::Reg::R1
       /// [`NUM_GPIO_PINS`]: lc3_traits::peripherals::gpio::GpioPin::NUM_PINS
       /// [`G0`]: lc3_traits::peripherals::gpio::GpioPin::G0
-      [0x32] INTERRUPT,
+      [0x92] INTERRUPT,
       /// Puts a [GPIO] [Pin] in [Disabled] mode.
       ///
       /// ## Inputs
@@ -353,7 +353,7 @@ pub mod gpio {
       /// [`R1`]: lc3_isa::Reg::R1
       /// [`NUM_GPIO_PINS`]: lc3_traits::peripherals::gpio::GpioPin::NUM_PINS
       /// [`G0`]: lc3_traits::peripherals::gpio::GpioPin::G0
-      [0x33] DISABLED,
+      [0x93] DISABLED,
       /// Returns the mode of a [GPIO] [Pin].
       ///
       /// ## Inputs
@@ -402,7 +402,7 @@ pub mod gpio {
       /// [`R0`]: lc3_isa::Reg::R0
       /// [`NUM_GPIO_PINS`]: lc3_traits::peripherals::gpio::GpioPin::NUM_PINS
       /// [`G0`]: lc3_traits::peripherals::gpio::GpioPin::G0
-      [0x34] GET_MODE,
+      [0x94] GET_MODE,
       /// Writes data to a [GPIO] [Pin] in [Output] mode.
       ///
       /// ## Inputs
@@ -447,7 +447,7 @@ pub mod gpio {
       /// [`R1`]: lc3_isa::Reg::R1
       /// [`NUM_GPIO_PINS`]: lc3_traits::peripherals::gpio::GpioPin::NUM_PINS
       /// [`G0`]: lc3_traits::peripherals::gpio::GpioPin::G0
-      [0x35] WRITE,
+      [0x95] WRITE,
       /// Reads data from a [GPIO] [Pin] in [Input] or [Interrupt] mode.
       ///
       /// ## Inputs
@@ -488,7 +488,7 @@ pub mod gpio {
       /// [`R0`]: lc3_isa::Reg::R0
       /// [`NUM_GPIO_PINS`]: lc3_traits::peripherals::gpio::GpioPin::NUM_PINS
       /// [`G0`]: lc3_traits::peripherals::gpio::GpioPin::G0
-      [0x36] READ,
+      [0x96] READ,
   });
 }
 

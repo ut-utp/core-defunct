@@ -88,15 +88,21 @@ fn os() -> AssembledProgram {
         .FILL @UNKNOWN_TRAP; // 0x2D
         .FILL @UNKNOWN_TRAP; // 0x2E
         .FILL @UNKNOWN_TRAP; // 0x2F
-
-        .ORIG #GPIO_OFFSET as Word;
-        .ORIG #t::gpio::INPUT        as W;  .FILL @TRAP_SET_GPIO_INPUT;         // 0x30
-        .ORIG #t::gpio::OUTPUT       as W;  .FILL @TRAP_SET_GPIO_OUTPUT;        // 0x31
-        .ORIG #t::gpio::INTERRUPT    as W;  .FILL @TRAP_SET_GPIO_INTERRUPT;     // 0x32
-        .ORIG #t::gpio::DISABLED     as W;  .FILL @TRAP_SET_GPIO_DISABLED;      // 0x33
-        .ORIG #t::gpio::GET_MODE     as W;  .FILL @TRAP_READ_GPIO_MODE;         // 0x34
-        .ORIG #t::gpio::WRITE        as W;  .FILL @TRAP_WRITE_GPIO_DATA;        // 0x35
-        .ORIG #t::gpio::READ         as W;  .FILL @TRAP_READ_GPIO_DATA;         // 0x36
+        .FILL @UNKNOWN_TRAP; // 0x30
+        .FILL @UNKNOWN_TRAP; // 0x31
+        .FILL @UNKNOWN_TRAP; // 0x32
+        .FILL @UNKNOWN_TRAP; // 0x33
+        .FILL @UNKNOWN_TRAP; // 0x34
+        .FILL @UNKNOWN_TRAP; // 0x35
+        .FILL @UNKNOWN_TRAP; // 0x36
+        // .ORIG #GPIO_OFFSET as Word;
+        // .ORIG #t::gpio::INPUT        as W;  .FILL @TRAP_SET_GPIO_INPUT;         // 0x30
+        // .ORIG #t::gpio::OUTPUT       as W;  .FILL @TRAP_SET_GPIO_OUTPUT;        // 0x31
+        // .ORIG #t::gpio::INTERRUPT    as W;  .FILL @TRAP_SET_GPIO_INTERRUPT;     // 0x32
+        // .ORIG #t::gpio::DISABLED     as W;  .FILL @TRAP_SET_GPIO_DISABLED;      // 0x33
+        // .ORIG #t::gpio::GET_MODE     as W;  .FILL @TRAP_READ_GPIO_MODE;         // 0x34
+        // .ORIG #t::gpio::WRITE        as W;  .FILL @TRAP_WRITE_GPIO_DATA;        // 0x35
+        // .ORIG #t::gpio::READ         as W;  .FILL @TRAP_READ_GPIO_DATA;         // 0x36
         .FILL @UNKNOWN_TRAP; // 0x37
         .FILL @UNKNOWN_TRAP; // 0x38
         .FILL @UNKNOWN_TRAP; // 0x39
@@ -195,13 +201,16 @@ fn os() -> AssembledProgram {
         .FILL @UNKNOWN_TRAP; // 0x8D
         .FILL @UNKNOWN_TRAP; // 0x8E
         .FILL @UNKNOWN_TRAP; // 0x8F
-        .FILL @UNKNOWN_TRAP; // 0x90
-        .FILL @UNKNOWN_TRAP; // 0x91
-        .FILL @UNKNOWN_TRAP; // 0x92
-        .FILL @UNKNOWN_TRAP; // 0x93
-        .FILL @UNKNOWN_TRAP; // 0x94
-        .FILL @UNKNOWN_TRAP; // 0x95
-        .FILL @UNKNOWN_TRAP; // 0x96
+
+        .ORIG #GPIO_OFFSET as Word;
+        .ORIG #t::gpio::INPUT        as W;  .FILL @TRAP_SET_GPIO_INPUT;         // 0x90
+        .ORIG #t::gpio::OUTPUT       as W;  .FILL @TRAP_SET_GPIO_OUTPUT;        // 0x91
+        .ORIG #t::gpio::INTERRUPT    as W;  .FILL @TRAP_SET_GPIO_INTERRUPT;     // 0x92
+        .ORIG #t::gpio::DISABLED     as W;  .FILL @TRAP_SET_GPIO_DISABLED;      // 0x93
+        .ORIG #t::gpio::GET_MODE     as W;  .FILL @TRAP_READ_GPIO_MODE;         // 0x94
+        .ORIG #t::gpio::WRITE        as W;  .FILL @TRAP_WRITE_GPIO_DATA;        // 0x95
+        .ORIG #t::gpio::READ         as W;  .FILL @TRAP_READ_GPIO_DATA;         // 0x96
+        
         .FILL @UNKNOWN_TRAP; // 0x97
         .FILL @UNKNOWN_TRAP; // 0x98
         .FILL @UNKNOWN_TRAP; // 0x99
@@ -1073,7 +1082,8 @@ fn os() -> AssembledProgram {
             STR R7, R6, #0;
 
             AND R4, R4, #0;                 // Set R4 to # of GPIO pins
-            ADD R4, R4, #lc3_traits::peripherals::gpio::GpioPin::NUM_PINS as i16;
+            ADD R4, R4, #12;//#lc3_traits::peripherals::gpio::GpioPin::NUM_PINS as i16;
+            ADD R4, R4, #12;
             JSR @CHECK_OUT_OF_BOUNDS;
             BRn @SKIP_SET_GPIO_MODE;
 
@@ -1127,7 +1137,8 @@ fn os() -> AssembledProgram {
             STR R7, R6, #0;
 
             AND R4, R4, #0;                 // Set R4 to # of GPIO pins
-            ADD R4, R4, #lc3_traits::peripherals::gpio::GpioPin::NUM_PINS as i16;
+            ADD R4, R4, #12;//#lc3_traits::peripherals::gpio::GpioPin::NUM_PINS as i16;
+            ADD R4, R4, #12;
             JSR @CHECK_OUT_OF_BOUNDS;
             BRn @SKIP_SET_GPIO_INTERRUPT;
 
@@ -1171,7 +1182,8 @@ fn os() -> AssembledProgram {
             STR R7, R6, #0;
 
             AND R4, R4, #0;                 // Set R4 to # of GPIO pins
-            ADD R4, R4, #lc3_traits::peripherals::gpio::GpioPin::NUM_PINS as i16;
+            ADD R4, R4, #12;//#lc3_traits::peripherals::gpio::GpioPin::NUM_PINS as i16;
+            ADD R4, R4, #12;
             JSR @CHECK_OUT_OF_BOUNDS;
             BRn @SKIP_READ_GPIO_MODE;
 
@@ -1194,7 +1206,8 @@ fn os() -> AssembledProgram {
             STR R7, R6, #0;
 
             AND R4, R4, #0;                 // Set R4 to # of GPIO pins
-            ADD R4, R4, #lc3_traits::peripherals::gpio::GpioPin::NUM_PINS as i16;
+            ADD R4, R4, #12;//#lc3_traits::peripherals::gpio::GpioPin::NUM_PINS as i16;
+            ADD R4, R4, #12;
             JSR @CHECK_OUT_OF_BOUNDS;
             BRn @SKIP_WRITE_GPIO_DATA;
 
@@ -1218,7 +1231,8 @@ fn os() -> AssembledProgram {
             STR R7, R6, #0;
 
             AND R4, R4, #0;                 // Set R4 to # of GPIO pins
-            ADD R4, R4, #lc3_traits::peripherals::gpio::GpioPin::NUM_PINS as i16;
+            ADD R4, R4, #12;//#lc3_traits::peripherals::gpio::GpioPin::NUM_PINS as i16;
+            ADD R4, R4, #12;
             JSR @CHECK_OUT_OF_BOUNDS;
             BRn @SKIP_READ_GPIO_DATA;
 

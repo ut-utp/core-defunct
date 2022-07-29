@@ -25,15 +25,19 @@ use serde::{Deserialize, Serialize};
 #[rustfmt::skip]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[derive(DisplayUsingDebug)]
-pub enum GpioPin { G0, G1, G2, G3, G4, G5, G6, G7 }
+pub enum GpioPin { G0, G1, G2, G3, G4, G5, G6, G7,
+                    G8, G9, G10, G11, G12, G13, G14, G15,
+                    G16, G17, G18, G19, G20, G21, G22, G23 }
 
 impl GpioPin {
-    pub const NUM_PINS: usize = 8; // G0 - G7; TODO: derive macro (also get it to impl Display)
+    pub const NUM_PINS: usize = 24; // G0 - G7; TODO: derive macro (also get it to impl Display)
 }
 
 pub const GPIO_PINS: GpioPinArr<GpioPin> = {
     use GpioPin::*;
-    GpioPinArr([G0, G1, G2, G3, G4, G5, G6, G7])
+    GpioPinArr([G0, G1, G2, G3, G4, G5, G6, G7,
+                G8, G9, G10, G11, G12, G13, G14, G15,
+                G16, G17, G18, G19, G20, G21, G22, G23])
 }; // TODO: once we get the derive macro, get rid of this.
 
 // TODO: macro!!
@@ -50,6 +54,22 @@ impl From<GpioPin> for usize {
             G5 => 5,
             G6 => 6,
             G7 => 7,
+            G8 => 8,
+            G9 => 9,
+            G10 => 10,
+            G11 => 11,
+            G12 => 12,
+            G13 => 13,
+            G14 => 14,
+            G15 => 15,
+            G16 => 16,
+            G17 => 17,
+            G18 => 18,
+            G19 => 19,
+            G20 => 20,
+            G21 => 21,
+            G22 => 22,
+            G23 => 23,
         }
     }
 }

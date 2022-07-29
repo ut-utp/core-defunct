@@ -193,7 +193,9 @@ impl PeripheralInterruptFlags {
 
         // TODO: make this less gross..
         Self {
-            gpio: GpioPinArr([b!(), b!(), b!(), b!(), b!(), b!(), b!(), b!()]),
+            gpio: GpioPinArr([b!(), b!(), b!(), b!(), b!(), b!(), b!(), b!(),
+                              b!(), b!(), b!(), b!(), b!(), b!(), b!(), b!(),
+                              b!(), b!(), b!(), b!(), b!(), b!(), b!(), b!()]),
             timers: TimerArr([b!(), b!()]),
             input: AtomicBool::new(false),
             output: AtomicBool::new(false),
