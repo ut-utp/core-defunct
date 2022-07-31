@@ -23,9 +23,6 @@ use lc3_traits::peripherals::pwm::{Pwm, PwmPinArr, PwmState};
 use lc3_traits::peripherals::timers::{Timers, TimerArr, TimerMode, TimerState};
 use lc3_traits::peripherals::Peripherals;
 
-// use core::future::Future;
-use core::marker::PhantomData;
-use core::ops::Deref;
 use core::fmt::{self, Debug};
 // use core::pin::Pin;
 // use core::task::{Context, Poll};
@@ -63,10 +60,7 @@ impl Debug for LoadApiState {
 }
 
 #[derive(Debug, Clone)]
-pub struct Simulator<'int, 'ss, I: InstructionInterpreter + InstructionInterpreterPeripheralAccess<'int>, S: EventFutureSharedStatePorcelain = SimpleEventFutureSharedState>
-where
-    <I as Deref>::Target: Peripherals<'int>,
-{
+pub struct Simulator<'ss, I: InstructionInterpreter + InstructionInterpreterPeripheralAccess, S: EventFutureSharedStatePorcelain = SimpleEventFutureSharedState> {
     interp: I,
     breakpoints: [Option<Addr>; MAX_BREAKPOINTS],
     watchpoints: [Option<(Addr, Word)>; MAX_MEMORY_WATCHPOINTS], // TODO: change to throw these when the location being watched to written to; not just when the value is changed...
@@ -76,21 +70,16 @@ where
     state: State,
     shared_state: Option<&'ss S>,
     load_api_state: LoadApiState,
-    _i: PhantomData<&'int ()>,
 }
 
-impl<'a, 's, I: InstructionInterpreterPeripheralAccess<'a> + Default, S: EventFutureSharedStatePorcelain> Default for Simulator<'a, 's, I, S>
-where
-    <I as Deref>::Target: Peripherals<'a>,
+impl<'s, I: InstructionInterpreterPeripheralAccess + Default, S: EventFutureSharedStatePorcelain> Default for Simulator<'s, I, S>
 {
     fn default() -> Self {
         Self::new(I::default())
     }
 }
 
-impl<'a, 's, I: InstructionInterpreterPeripheralAccess<'a>, S: EventFutureSharedStatePorcelain> Simulator<'a, 's, I, S>
-where
-    <I as Deref>::Target: Peripherals<'a>,
+impl<'s, I: InstructionInterpreterPeripheralAccess, S: EventFutureSharedStatePorcelain> Simulator<'s, I, S>
 {
     // No longer public.
     fn new(interp: I) -> Self {
@@ -104,7 +93,6 @@ where
             state: State::Paused,
             shared_state: None,
             load_api_state: LoadApiState::default(),
-            _i: PhantomData,
         }
     }
 
@@ -129,10 +117,7 @@ where
 //     }
 // }
 
-impl<'a, 's, I: InstructionInterpreterPeripheralAccess<'a>, S: EventFutureSharedStatePorcelain> Control for Simulator<'a, 's, I, S>
-where
-    <I as Deref>::Target: Peripherals<'a>,
-{
+impl<'s, I: InstructionInterpreterPeripheralAccess, S: EventFutureSharedStatePorcelain> Control for Simulator<'s, I, S> {
     type EventFuture = EventFuture<'s, S>;
 
     fn get_pc(&self) -> Addr {
@@ -359,9 +344,11 @@ where
     }
 
     fn run_until_event(&mut self) -> <Self as Control>::EventFuture {
-        //! Note: the same batching rules that apply to the shared state apply here (see
-        //! [`SharedStateState`]; basically `S` controls how this handles multiple
-        //! active `run_until_event` Futures and for now `SharedStateState` is what we
+        //! Note: the same batching rules that apply to the shared state apply
+        //! here (see
+        //! [`SharedStateState`](lc3_traits::control::rpc::futures::SharedStateState);
+        //! basically `S` controls how this handles multiple active
+        //! `run_until_event` Futures and for now `SharedStateState` is what we
         //! are using).
         let s = self.shared_state.expect("The Simulator must be provided with a shared \
             state instance if `run_until_event` is to be used.");

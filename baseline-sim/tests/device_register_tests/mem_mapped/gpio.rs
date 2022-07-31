@@ -1,6 +1,5 @@
 use super::*;
 
-use lc3_traits::peripherals::gpio::{Gpio, GpioPin, GpioState, GPIO_PINS};
 use lc3_baseline_sim::interp::InstructionInterpreter;
 use lc3_baseline_sim::mem_mapped::{
     G0CR_ADDR, G0DR_ADDR, /* G0_INT_VEC, */ // TODO!
@@ -13,9 +12,10 @@ use lc3_baseline_sim::mem_mapped::{
     G7CR_ADDR, G7DR_ADDR, /* G7_INT_VEC, */ // TODO!
     // GPIODR_ADDR, // TODO!
 };
+use lc3_traits::peripherals::gpio::{Gpio, GpioPin, GpioState, GPIO_PINS};
 
-use GpioState::*;
 use GpioPin::*;
+use GpioState::*;
 
 mod states {
     use super::*;
@@ -25,7 +25,6 @@ mod states {
     //
     // And then to individually test some specific edge cases (everything but
     // the first function below).
-
 
     #[test]
     fn exhaustive_state_testing() { with_larger_stack(None, || {
@@ -183,10 +182,11 @@ mod states {
         regs: { R0: 0b1101 },
         post: |i| { eq!(Output, Gpio::get_state(i.get_peripherals(), G0)); }
     }
-
 }
 
 mod read {
+    use lc3_traits::peripherals::Peripherals;
+
     use super::*;
 
     // Test that reads of [0, 1] work for all the pins when everything is
@@ -198,10 +198,11 @@ mod read {
     // TODO: clean this up!
 
     #[test]
-    fn read_valid_states_test(){ with_larger_stack(None, || {
+    fn read_valid_states_test() { with_larger_stack(None, || {
         let valid_state_iter = [Input, Interrupt].iter(); // test when set to input
 
-        let permutations = GPIO_PINS.iter()
+        let permutations = GPIO_PINS
+            .iter()
             .map(|_| valid_state_iter.clone())
             .multi_cartesian_product();
 
@@ -211,7 +212,7 @@ mod read {
                 let val = format!("{:08b}", iteration);
                 eprintln!("{val}");
 
-                let gpio_vals: Vec<char> =  val.chars().collect();
+                let gpio_vals: Vec<char> = val.chars().collect();
                 let mut gpio_bools: Vec<u16> = Vec::<u16>::new();
                 for values in gpio_vals.iter() {
                     gpio_bools.push(values.to_digit(2).unwrap() as u16);
@@ -267,7 +268,6 @@ mod read {
                 }
             }
         }
-
     })}
 
 
@@ -296,35 +296,23 @@ mod read {
     // Should also test that reads for the whole port do the right thing when
     // *some* of the pins are in interrupt mode
 
-
-
     #[test]
     fn read_output_testing() { with_larger_stack(None, || {
-
         let state_iter = [Disabled, Output, Input, Interrupt].iter();
 
-
-        let permutations = GPIO_PINS.iter()
+        let permutations = GPIO_PINS
+            .iter()
             .map(|_| state_iter.clone())
             .multi_cartesian_product();
 
-
         fn match_state(s: GpioState) -> u16 {
             match s {
-                Disabled | Output => {
-                    32768
-                },
-                Input | Interrupt => {
-                    0
-                },
-
+                Disabled | Output => 32768,
+                Input | Interrupt => 0,
             }
         }
 
-
             for states in permutations {
-
-
                 single_test_inner! {
                     prefill: {
                         0x3010: G0DR_ADDR,
@@ -364,12 +352,8 @@ mod read {
                         }
                     },
                 }
-
             }
-
     })}
-
-
 }
 
 mod write {
@@ -378,7 +362,6 @@ mod write {
     // test that when you write in output mode that you can read the values back in
     #[test]
     fn write_output_testing() { with_larger_stack(None, || {
-
         fn state_to_word(s: GpioState) -> SignedWord {
             match s {
                 Disabled => 0b00,
@@ -388,12 +371,10 @@ mod write {
             }
         }
 
-
         for iteration in 0..=255 {
-
             let val = format!("{:08b}", iteration);
 
-            let gpio_vals: Vec<char> =  val.chars().collect();
+            let gpio_vals: Vec<char> = val.chars().collect();
             let mut gpio_bools: Vec<u16> = Vec::<u16>::new();
             for values in gpio_vals.iter() {
                 gpio_bools.push((values.to_digit(2)).unwrap() as u16);
@@ -489,27 +470,22 @@ mod write {
                     for pin in GPIO_PINS.iter() {
                         let _set = Gpio::set_state(p, *pin, Output);
                     }
-
                 }
                 post: |i| {
                     for (pin, pin_val) in GPIO_PINS.iter().zip(gpio_bools.iter()) {
                         let exp_pin_val = pin_val != &0;
                         let actual_pin_val = i.peri().read(*pin).unwrap();
-                        eq!(actual_pin_val, exp_pin_val, "Gpio Pin {:?}\nExpected {}, got {}\nTest Case {:?}", *pin, exp_pin_val, actual_pin_val, gpio_vals);
-
+                        eq!(
+                            actual_pin_val, exp_pin_val,
+                            "Gpio Pin {:?}\nExpected {exp_pin_val}, got {actual_pin_val}\nTest Case {gpio_vals:?}",
+                            *pin,
+                        );
                     }
-
-
                 }
-
-
             }
-        }
-    })}
-
-
-
-
+            }
+        })
+    }
 }
 
 mod interrupt {
@@ -551,15 +527,12 @@ mod interrupt {
     //
     // If the handlers trigger in the right order, the values in 0x1000..0x1007
     // should be sequential; if the handlers get run out of order they won't be.
-
-
-
 }
 
 mod errors {
     use super::*;
-    use lc3_traits::peripherals::gpio::{GpioWriteError, GpioReadError};
     use lc3_traits::error::Error;
+    use lc3_traits::peripherals::gpio::{GpioReadError, GpioWriteError};
 
     single_test! {
         gpio_write_error_disabled,

@@ -18,11 +18,8 @@ macro_rules! lc3_sequence {
             let mut insns: Vec<Instruction> = Vec::new();
             $(insns.push(insn!($($insn)*));)*
 
-            let flags = PeripheralInterruptFlags::new();
-
             $crate::lc3tools::lc3tools_tester::<MemoryShim, PeripheralsShim>(
                 insns,
-                &flags,
                 None
             )
         })}

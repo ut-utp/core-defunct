@@ -50,7 +50,7 @@ impl<'s> Init<'s> for SimWithRpcDevice<'static> {
         _config: Self::Config,
     ) -> (
         &'s mut Self::ControlImpl,
-        Option<Shims<'static>>,
+        Option<Shims>,
         Option<&'s Self::Input>,
         Option<&'s Self::Output>,
     ) {
@@ -60,7 +60,7 @@ impl<'s> Init<'s> for SimWithRpcDevice<'static> {
             Box::leak(Box::new(Mutex::new(Vec::new())));
 
         let (shims, _, _) =
-            new_shim_peripherals_set::<'static, 'static, _, _>(input, output);
+            new_shim_peripherals_set::<'static, _, _>(input, output);
         let shim_copy = Shims::from_peripheral_set(&shims);
 
         let (controller, device) = mpsc_sync_pair::<

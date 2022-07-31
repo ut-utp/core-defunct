@@ -105,7 +105,7 @@ pub trait Init<'s> {
         b: &'s mut BlackBox,
     ) -> (
         &'s mut Self::ControlImpl,
-        Option<Shims<'static>>,
+        Option<Shims>,
         Option<&'s Self::Input>,
         Option<&'s Self::Output>,
     ) {
@@ -117,7 +117,7 @@ pub trait Init<'s> {
         config: Self::Config,
     ) -> (
         &'s mut Self::ControlImpl,
-        Option<Shims<'static>>,
+        Option<Shims>,
         Option<&'s Self::Input>,
         Option<&'s Self::Output>,
     );

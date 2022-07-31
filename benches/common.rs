@@ -106,19 +106,17 @@ pub use lc3_traits::control::Control;
 use lc3_traits::peripherals::stubs::PeripheralsStub;
 
 #[allow(unused)]
-pub fn bare_interpreter<'a, 'b>(
+pub fn bare_interpreter(
     program: MemoryDump,
-    flags: &'b PeripheralInterruptFlags,
-) -> Interpreter<'b, MemoryShim, PeripheralsStub<'b>> {
+) -> Interpreter<MemoryShim, PeripheralsStub> {
     let memory = MemoryShim::new(*program);
 
-    let mut interp: Interpreter<'b, MemoryShim, PeripheralsStub<'b>> = InterpreterBuilder::new()
+    let mut interp: Interpreter<MemoryShim, PeripheralsStub> = InterpreterBuilder::new()
         .with_defaults()
         .with_memory(memory)
         .build();
 
     interp.reset();
-    interp.init(flags);
 
     interp
 }
@@ -130,10 +128,10 @@ lazy_static! {
     static ref SIM_STATE: SyncEventFutureSharedState = SyncEventFutureSharedState::new();
 }
 
-type Sim<'a> = Simulator<'a, 'static, Interpreter<'a, MemoryShim, PeripheralsStub<'a>>, SyncEventFutureSharedState>;
+type Sim = Simulator<'static, Interpreter<MemoryShim, PeripheralsStub>, SyncEventFutureSharedState>;
 
-pub fn simulator<'a>(program: MemoryDump, flags: &'a PeripheralInterruptFlags) -> Sim<'a> {
-    let mut sim = Simulator::new_with_state(bare_interpreter(program, flags), &*SIM_STATE);
+pub fn simulator(program: MemoryDump) -> Sim {
+    let mut sim = Simulator::new_with_state(bare_interpreter(program), &*SIM_STATE);
     sim.reset();
 
     sim
@@ -141,10 +139,9 @@ pub fn simulator<'a>(program: MemoryDump, flags: &'a PeripheralInterruptFlags) -
 
 use std::thread::Builder as ThreadBuilder;
 
-pub static FLAGS: PeripheralInterruptFlags = PeripheralInterruptFlags::new();
 fn device_thread<ReqDec: 'static, RespEnc: 'static, Transp: 'static>(
     rx: Receiver<()>,
-    mut device: Device<Transp, Sim<'static>, RequestMessage, ResponseMessage, ReqDec, RespEnc>,
+    mut device: Device<Transp, Sim, RequestMessage, ResponseMessage, ReqDec, RespEnc>,
     program: MemoryDump,
 ) where
     ReqDec: Decode<RequestMessage> + Send,
@@ -155,7 +152,7 @@ fn device_thread<ReqDec: 'static, RespEnc: 'static, Transp: 'static>(
         .name("Device Thread".to_string())
         .stack_size(1024 * 1024 * 4)
         .spawn(move || {
-            let mut sim = simulator(program, &FLAGS);
+            let mut sim = simulator(program);
 
             loop {
                 device.step(&mut sim);

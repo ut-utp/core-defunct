@@ -82,12 +82,10 @@ macro_rules! single_test_inner {
         #[allow(unused_imports)]
         use std::sync::{Arc, Mutex};
 
-        let flags = PeripheralInterruptFlags::new();
-
-        type Per<'int, 'io> = $crate::__perip_type! {
-            ShareablePeripheralsShim<'int, 'io>
-            | io: $($inp ShareablePeripheralsShim<'int, 'io>)?
-            | custom: $($custom_per_ty<'int, 'io>)?
+        type Per<'io> = $crate::__perip_type! {
+            ShareablePeripheralsShim<'io>
+            | io: $($inp ShareablePeripheralsShim<'io>)?
+            | custom: $($custom_per_ty<'io>)?
         };
 
         #[allow(unused_mut)]
@@ -116,7 +114,7 @@ macro_rules! single_test_inner {
         $(let os = Some(($os, $os_addr));)?
 
         #[allow(unused)]
-        let custom_peripherals: Option<Per<'_, '_>> = None;
+        let custom_peripherals: Option<Per<'_>> = None;
 
         $(
             #[allow(unused)]
@@ -124,7 +122,7 @@ macro_rules! single_test_inner {
             #[allow(unused)]
             let $out = Arc::new(Mutex::new(Vec::<u8>::new()));
 
-            let (custom_peripherals, _, _): (Per<'_, '_>, _, _) =
+            let (custom_peripherals, _, _): (Per<'_>, _, _) =
                 new_shim_peripherals_set(&$inp, &$out);
             #[allow(unused)]
             let custom_peripherals = Some(custom_peripherals);
@@ -135,26 +133,26 @@ macro_rules! single_test_inner {
             let custom_peripherals = Some(custom_peripherals);
         )?
 
-        fn setup_func_cast<'flags, S>(func: S, _f: &'flags PeripheralInterruptFlags) -> S
-        where for<'p> S: FnOnce(&'p mut Per<'flags, '_>) {
+        fn setup_func_cast<S>(func: S) -> S
+        where for<'p> S: FnOnce(&'p mut Per<'_>) {
             func
         }
 
-        fn teardown_func_cast<'flags, T>(func: T, _f: &'flags PeripheralInterruptFlags) -> T
-        where for<'i> T: FnOnce(&'i Interpreter<'flags, MemoryShim, Per<'flags, '_>>) {
+        fn teardown_func_cast<T>(func: T) -> T
+        where for<'i> T: FnOnce(&'i mut Interpreter<MemoryShim, Per<'_>>) {
             func
         }
 
         #[allow(unused)]
-        let setup_func = setup_func_cast(|_p: &mut Per<'_, '_>| { }, &flags); // no-op if not specified
-        $(let setup_func = setup_func_cast(|$peripherals_s: &mut Per<'_, '_>| $setup, &flags);)?
+        let setup_func = setup_func_cast(|_p: &mut Per<'_>| { }); // no-op if not specified
+        $(let setup_func = setup_func_cast(|$peripherals_s: &mut Per<'_>| $setup);)?
 
         #[allow(unused)]
-        let teardown_func = teardown_func_cast(|_p: &Interpreter<'_, MemoryShim, Per<'_, '_>>| { }, &flags); // no-op if not specified
-        $(let teardown_func = teardown_func_cast(|$peripherals_t: &Interpreter<'_, MemoryShim, Per<'_, '_>>| $teardown, &flags);)?
+        let teardown_func = teardown_func_cast(|_p: &mut Interpreter<MemoryShim, Per<'_>>| { }); // no-op if not specified
+        $(let teardown_func = teardown_func_cast(|$peripherals_t: &mut Interpreter<MemoryShim, Per<'_>>| $teardown);)?
 
 
-        $crate::interp_test_runner::<'_, MemoryShim, Per<'_, '_>, _, _>(
+        $crate::interp_test_runner::<MemoryShim, Per<'_>, _, _>(
             prefill,
             insns,
             steps,
@@ -163,7 +161,6 @@ macro_rules! single_test_inner {
             checks,
             setup_func,
             teardown_func,
-            &flags,
             os,
             custom_peripherals,
         );
@@ -205,7 +202,7 @@ mod smoke_tests {
     }
 
     #[allow(unused_lifetimes)]
-    type PeripheralsStubAlias<'int, 'io> = PeripheralsStub<'int>;
+    type PeripheralsStubAlias<'io> = PeripheralsStub;
 
     #[test]
     fn custom_perip() {

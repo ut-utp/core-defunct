@@ -4,7 +4,7 @@
 //! [lc3tools]: https://github.com/chiragsakhuja/lc3tools
 
 use crate::{
-    Instruction, PeripheralInterruptFlags, Interpreter,
+    Instruction, Interpreter,
     InstructionInterpreter, Addr, Word, Reg,
 };
 
@@ -51,10 +51,9 @@ macro_rules! d {
 
 // TODO: actually check the final PC, PSR, CC, and MCR.
 #[allow(unused_assignments, unused_variables)]
-pub fn lc3tools_tester<'flags, M: Memory + Default + Clone, P: Peripherals<'flags>>
+pub fn lc3tools_tester<M: Memory + Default + Clone, P: Default + Peripherals>
 (
     insns: Vec<Instruction>,
-    flags: &'flags PeripheralInterruptFlags,
     alt_memory: Option<(M, Addr)>,
 ) -> io::Result<()> {
     let mut rng = rand::thread_rng();
@@ -178,8 +177,8 @@ pub fn lc3tools_tester<'flags, M: Memory + Default + Clone, P: Peripherals<'flag
     // Run the program on the UTP simulator:
     let mut addr = 0x3000;
 
-    let mut interp: Interpreter<'flags, M, P> = if let Some((mem, addr)) = alt_memory {
-        let mut int: Interpreter<'flags, M, P> = InterpreterBuilder::new()
+    let mut interp: Interpreter<M, P> = if let Some((mem, addr)) = alt_memory {
+        let mut int: Interpreter<M, P> = InterpreterBuilder::new()
             .with_defaults()
             .with_memory(mem.clone())
             .build();
@@ -196,8 +195,6 @@ pub fn lc3tools_tester<'flags, M: Memory + Default + Clone, P: Peripherals<'flag
 
         int
     };
-
-    interp.init(flags);
 
     // TODO: we assume that there are no branches or control flow instructions!
     // This is very limiting!

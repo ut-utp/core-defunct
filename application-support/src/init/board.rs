@@ -152,7 +152,7 @@ where
         config: BoardConfig,
     ) -> (
         &'s mut Self::ControlImpl,
-        Option<Shims<'static>>,
+        Option<Shims>,
         Option<&'s Self::Input>,
         Option<&'s Self::Output>,
     ) {

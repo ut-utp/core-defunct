@@ -9,7 +9,7 @@ use lc3_isa::{
     PRIVILEGE_MODE_VIOLATION_EXCEPTION_VECTOR, TRAP_VECTOR_TABLE_START_ADDR,
     USER_PROGRAM_START_ADDR,
 };
-use lc3_traits::control::metadata::{Identifier, ProgramMetadata, Version, version_from_crate};
+use lc3_traits::{control::metadata::{Identifier, ProgramMetadata, Version, version_from_crate}, peripherals::{PeripheralsWrapper, PeripheralsExt}};
 use lc3_traits::control::load::{PageIndex, PAGE_SIZE_IN_WORDS};
 use lc3_traits::control::control::MAX_CALL_STACK_DEPTH;
 use lc3_traits::peripherals::{gpio::GpioPinArr, timers::TimerArr};
@@ -28,18 +28,49 @@ use core::cell::Cell;
 
 // TODO: Break up this file!
 
-// TODO: name?
-pub trait InstructionInterpreterPeripheralAccess<'a>:
-    InstructionInterpreter + Deref + DerefMut
+// use the usual trick to bound an associated type without having the bound link
+// into users of the trait
+//
+// See: https://stackoverflow.com/a/69386814
+// An example: https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=709222486f15d4f46290d387b9d92652
+
+pub trait DerefsIntoPeripherals: DerefMut + Deref<Target = Self::P> {
+    type P: Peripherals + Sized;
+}
+
+impl<P: Deref + DerefMut> DerefsIntoPeripherals for P
 where
-    <Self as Deref>::Target: Peripherals<'a>,
+    <P as Deref>::Target: Peripherals + Sized,
 {
+    type P = <P as Deref>::Target;
+}
+
+// TODO: name?
+pub trait InstructionInterpreterPeripheralAccess:
+    InstructionInterpreter + DerefsIntoPeripherals
+    // TODO: revisit...
+where {
     fn get_peripherals(&self) -> &<Self as Deref>::Target {
         self.deref()
     }
 
     fn get_peripherals_mut(&mut self) -> &mut <Self as Deref>::Target {
         self.deref_mut()
+    }
+
+    // TODO: explain
+    //
+    // this gives you a type that, for convenience, has proxied impls of all the
+    // peripheral traits on it.
+    //
+    // requires `&mut` though which is why we don't use it in the interpreter's
+    // source code
+    fn peripherals_wrapper(&mut self) -> PeripheralsWrapper<'_, Self::Target> {
+        PeripheralsExt::get_peripherals_wrapper(self)
+    }
+
+    fn peri(&mut self) -> PeripheralsWrapper<'_, Self::Target> {
+        self.peripherals_wrapper()
     }
 
     fn get_device_reg<M: MemMapped>(&self) -> Result<M, Acv> {
@@ -178,15 +209,17 @@ impl Default for MachineState {
 
 #[derive(Debug)]
 pub struct PeripheralInterruptFlags {
-    gpio: GpioPinArr<AtomicBool>, // No payload; just tell us if a rising edge has happened
+    pub gpio: GpioPinArr<AtomicBool>, // No payload; just tell us if a rising edge has happened
     // adc: AdcPinArr<bool>, // We're not going to have Adc Interrupts
     // pwm: PwmPinArr<bool>, // No Pwm Interrupts
-    timers: TimerArr<AtomicBool>, // No payload; timers don't actually expose counts anyways
+    pub timers: TimerArr<AtomicBool>, // No payload; timers don't actually expose counts anyways
     // clock: bool, // No Clock Interrupt
-    input: AtomicBool, // No payload; check KBDR for the current character
-    output: AtomicBool, // Technically this has an interrupt, but I have no idea why; UPDATE: it interrupts when it's ready to accept more data
+    pub input: AtomicBool, // No payload; check KBDR for the current character
+    pub output: AtomicBool, // Technically this has an interrupt, but I have no idea why; UPDATE: it interrupts when it's ready to accept more data
                         // display: bool, // Unless we're exposing vsync/hsync or something, this doesn't need an interrupt
 }
+
+// TODO: move ^ to device support?
 
 impl PeripheralInterruptFlags {
     pub const fn new() -> Self {
@@ -211,44 +244,6 @@ impl Default for PeripheralInterruptFlags {
         Self::new()
     }
 }
-
-// TODO: Either find a `core` replacement for this or pull it out into a `util`
-// mod or something.
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Clone)]
-pub enum OwnedOrRef<'a, T> {
-    Owned(T),
-    Ref(&'a T),
-}
-
-impl<T: Default> Default for OwnedOrRef<'_, T> {
-    fn default() -> Self {
-        Self::Owned(Default::default())
-    }
-}
-
-impl<T> Deref for OwnedOrRef<'_, T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        use OwnedOrRef::*;
-
-        match self {
-            Owned(inner) => inner,
-            Ref(inner) => inner,
-        }
-    }
-}
-
-// impl<T> DerefMut for OwnedOrRef<'_, T> {
-//     fn deref_mut(&mut self) -> &mut Self::Target {
-//         use OwnedOrRef::*;
-
-//         match self {
-//             Owned(inner) => inner,
-//             Ref(inner) => inner,
-//         }
-//     }
-// }
 
 #[derive(Debug)]
 pub struct CallStack {
@@ -307,11 +302,9 @@ impl CallStack {
 
 // #[derive(Debug, Default, Clone)] // TODO: Clone
 #[derive(Debug)]
-pub struct Interpreter<'per, M: Memory, P: Peripherals<'per>> {
+pub struct Interpreter<M: Memory, P: Peripherals> {
     memory: M,
     peripherals: P,
-    // flags: OwnedOrRef<'a, PeripheralInterruptFlags>,
-    flags: PhantomData<OwnedOrRef<'per, PeripheralInterruptFlags>>,
     regs: [Word; Reg::NUM_REGS],
     pc: Word, //TODO: what should the default for this be
     state: MachineState,
@@ -319,7 +312,7 @@ pub struct Interpreter<'per, M: Memory, P: Peripherals<'per>> {
     call_stack: CallStack,
 }
 
-impl<'a, M: Memory + Default, P: Peripherals<'a>> Default for Interpreter<'a, M, P> {
+impl<M: Memory + Default, P: Peripherals + Default> Default for Interpreter<M, P> {
     fn default() -> Self {
         InterpreterBuilder::new()
             .with_defaults()
@@ -327,19 +320,20 @@ impl<'a, M: Memory + Default, P: Peripherals<'a>> Default for Interpreter<'a, M,
     }
 }
 
+// TODO: replace with a builder macro...
+
 #[derive(Debug)]
 pub struct Set;
 #[derive(Debug)]
 pub struct NotSet;
 
 #[derive(Debug)]
-struct InterpreterBuilderData<'a, M: Memory, P>
+struct InterpreterBuilderData<M: Memory, P>
 where
-    P: Peripherals<'a>,
+    P: Peripherals,
 {
     memory: Option<M>,
     peripherals: Option<P>,
-    flags: Option<OwnedOrRef<'a, PeripheralInterruptFlags>>,
     regs: Option<[Word; Reg::NUM_REGS]>,
     pc: Option<Word>,
     state: Option<MachineState>,
@@ -347,38 +341,34 @@ where
 
 #[derive(Debug)]
 pub struct InterpreterBuilder<
-    'a,
     M: Memory,
     P,
     Mem = NotSet,
     Perip = NotSet,
-    Flags = NotSet,
     Regs = NotSet,
     Pc = NotSet,
     State = NotSet,
 > where
-    P: Peripherals<'a>,
+    P: Peripherals,
 {
-    data: InterpreterBuilderData<'a, M, P>,
-    _mem: PhantomData<&'a Mem>,
-    _perip: PhantomData<&'a Perip>,
-    _flags: PhantomData<&'a Flags>,
-    _regs: PhantomData<&'a Regs>,
-    _pc: PhantomData<&'a Pc>,
-    _state: PhantomData<&'a State>,
+    data: InterpreterBuilderData<M, P>,
+    _mem: PhantomData<Mem>,
+    _perip: PhantomData<Perip>,
+    _regs: PhantomData<Regs>,
+    _pc: PhantomData<Pc>,
+    _state: PhantomData<State>,
 }
 
-impl<'a, M: Memory, P, Mem, Perip, Flags, Regs, Pc, State>
-    InterpreterBuilder<'a, M, P, Mem, Perip, Flags, Regs, Pc, State>
+impl<M: Memory, P, Mem, Perip, Regs, Pc, State>
+    InterpreterBuilder<M, P, Mem, Perip, Regs, Pc, State>
 where
-    P: Peripherals<'a>,
+    P: Peripherals,
 {
-    fn with_data(data: InterpreterBuilderData<'a, M, P>) -> Self {
+    fn with_data(data: InterpreterBuilderData<M, P>) -> Self {
         Self {
             data,
             _mem: PhantomData,
             _perip: PhantomData,
-            _flags: PhantomData,
             _regs: PhantomData,
             _pc: PhantomData,
             _state: PhantomData,
@@ -386,23 +376,21 @@ where
     }
 }
 
-impl<'a, M: Memory, P> InterpreterBuilder<'a, M, P, NotSet, NotSet, NotSet, NotSet, NotSet, NotSet>
+impl<M: Memory, P> InterpreterBuilder<M, P, NotSet, NotSet, NotSet, NotSet, NotSet>
 where
-    P: Peripherals<'a>,
+    P: Peripherals,
 {
     pub fn new() -> Self {
         Self {
             data: InterpreterBuilderData {
                 memory: None,
                 peripherals: None,
-                flags: None,
                 regs: None,
                 pc: None,
                 state: None,
             },
             _mem: PhantomData,
             _perip: PhantomData,
-            _flags: PhantomData,
             _regs: PhantomData,
             _pc: PhantomData,
             _state: PhantomData,
@@ -410,16 +398,17 @@ where
     }
 }
 
-impl<'a, M: Memory + Default, P, Mem, Perip, Flags, Regs, Pc, State>
-    InterpreterBuilder<'a, M, P, Mem, Perip, Flags, Regs, Pc, State>
+impl<M: Memory, P, Mem, Perip, Regs, Pc, State>
+    InterpreterBuilder<M, P, Mem, Perip, Regs, Pc, State>
 where
-    P: Peripherals<'a>,
+    P: Peripherals,
+    P: Default,
+    M: Default,
 {
-    pub fn with_defaults(self) -> InterpreterBuilder<'a, M, P, Set, Set, Set, Set, Set, Set> {
+    pub fn with_defaults(self) -> InterpreterBuilder<M, P, Set, Set, Set, Set, Set> {
         InterpreterBuilder::with_data(InterpreterBuilderData {
             memory: Some(Default::default()),
             peripherals: Some(Default::default()),
-            flags: Some(Default::default()),
             regs: Some(Default::default()),
             pc: Some(Default::default()),
             state: Some(Default::default()),
@@ -427,16 +416,15 @@ where
     }
 }
 
-// impl<'a, M: Memory, P, Perip, Flags, Regs, Pc, State> InterpreterBuilder<'a, M, P, NotSet, Perip, Flags, Regs, Pc, State>
-impl<'a, M: Memory, P, Mem, Perip, Flags, Regs, Pc, State>
-    InterpreterBuilder<'a, M, P, Mem, Perip, Flags, Regs, Pc, State>
+impl<M: Memory, P, Mem, Perip, Regs, Pc, State>
+    InterpreterBuilder<M, P, Mem, Perip, Regs, Pc, State>
 where
-    P: Peripherals<'a>,
+    P: Peripherals,
 {
     pub fn with_memory(
         self,
         memory: M,
-    ) -> InterpreterBuilder<'a, M, P, Set, Perip, Flags, Regs, Pc, State> {
+    ) -> InterpreterBuilder<M, P, Set, Perip, Regs, Pc, State> {
         InterpreterBuilder::with_data(InterpreterBuilderData {
             memory: Some(memory),
             ..self.data
@@ -444,29 +432,27 @@ where
     }
 }
 
-// impl<'a, M: Memory + Default, P, Perip, Flags, Regs, Pc, State> InterpreterBuilder<'a, M, P, NotSet, Perip, Flags, Regs, Pc, State>
-impl<'a, M: Memory + Default, P, Mem, Perip, Flags, Regs, Pc, State>
-    InterpreterBuilder<'a, M, P, Mem, Perip, Flags, Regs, Pc, State>
+impl<M: Memory + Default, P, Mem, Perip, Regs, Pc, State>
+    InterpreterBuilder<M, P, Mem, Perip, Regs, Pc, State>
 where
-    P: Peripherals<'a>,
+    P: Peripherals,
 {
     pub fn with_default_memory(
         self,
-    ) -> InterpreterBuilder<'a, M, P, Set, Perip, Flags, Regs, Pc, State> {
+    ) -> InterpreterBuilder<M, P, Set, Perip, Regs, Pc, State> {
         self.with_memory(Default::default())
     }
 }
 
-// impl<'a, M: Memory, P, Mem, Flags, Regs, Pc, State> InterpreterBuilder<'a, M, P, Mem, NotSet, Flags, Regs, Pc, State>
-impl<'a, M: Memory, P, Mem, Perip, Flags, Regs, Pc, State>
-    InterpreterBuilder<'a, M, P, Mem, Perip, Flags, Regs, Pc, State>
+impl<M: Memory, P, Mem, Perip, Regs, Pc, State>
+    InterpreterBuilder<M, P, Mem, Perip, Regs, Pc, State>
 where
-    P: Peripherals<'a>,
+    P: Peripherals,
 {
     pub fn with_peripherals(
         self,
         peripherals: P,
-    ) -> InterpreterBuilder<'a, M, P, Mem, Set, Flags, Regs, Pc, State> {
+    ) -> InterpreterBuilder<M, P, Mem, Set, Regs, Pc, State> {
         InterpreterBuilder::with_data(InterpreterBuilderData {
             peripherals: Some(peripherals),
             ..self.data
@@ -475,55 +461,22 @@ where
 
     pub fn with_default_peripherals(
         self,
-    ) -> InterpreterBuilder<'a, M, P, Mem, Set, Flags, Regs, Pc, State> {
+    ) -> InterpreterBuilder<M, P, Mem, Set, Regs, Pc, State> where P: Default {
         self.with_peripherals(Default::default())
     }
 }
 
-// impl<'a, M: Memory, P, Mem, Perip, Regs, Pc, State> InterpreterBuilder<'a, M, P, Mem, Perip, NotSet, Regs, Pc, State>
-impl<'a, M: Memory, P, Mem, Perip, Flags, Regs, Pc, State>
-    InterpreterBuilder<'a, M, P, Mem, Perip, Flags, Regs, Pc, State>
-where
-    P: Peripherals<'a>,
-{
-    pub fn with_interrupt_flags_by_ref(
-        self,
-        flags: &'a PeripheralInterruptFlags,
-    ) -> InterpreterBuilder<'a, M, P, Mem, Perip, Set, Regs, Pc, State> {
-        InterpreterBuilder::with_data(InterpreterBuilderData {
-            flags: Some(OwnedOrRef::Ref(&flags)),
-            ..self.data
-        })
-    }
-
-    pub fn with_owned_interrupt_flags(
-        self,
-        flags: PeripheralInterruptFlags,
-    ) -> InterpreterBuilder<'a, M, P, Mem, Perip, Set, Regs, Pc, State> {
-        InterpreterBuilder::with_data(InterpreterBuilderData {
-            flags: Some(OwnedOrRef::Owned(flags)),
-            ..self.data
-        })
-    }
-
-    pub fn with_default_interrupt_flags(
-        self,
-    ) -> InterpreterBuilder<'a, M, P, Mem, Perip, Set, Regs, Pc, State> {
-        self.with_owned_interrupt_flags(Default::default())
-    }
-}
 
 // TODO: do we want to allow people to set the starting register values?
-// impl<'a, M: Memory, P, Mem, Perip, Flags, Pc, State> InterpreterBuilder<'a, M, P, Mem, Perip, Flags, NotSet, Pc, State>
-impl<'a, M: Memory, P, Mem, Perip, Flags, Regs, Pc, State>
-    InterpreterBuilder<'a, M, P, Mem, Perip, Flags, Regs, Pc, State>
+impl<M: Memory, P, Mem, Perip, Regs, Pc, State>
+    InterpreterBuilder<M, P, Mem, Perip, Regs, Pc, State>
 where
-    P: Peripherals<'a>,
+    P: Peripherals,
 {
     pub fn with_regs(
         self,
         regs: [Word; Reg::NUM_REGS],
-    ) -> InterpreterBuilder<'a, M, P, Mem, Perip, Flags, Set, Pc, State> {
+    ) -> InterpreterBuilder<M, P, Mem, Perip, Set, Pc, State> {
         InterpreterBuilder::with_data(InterpreterBuilderData {
             regs: Some(regs),
             ..self.data
@@ -532,22 +485,21 @@ where
 
     pub fn with_default_regs(
         self,
-    ) -> InterpreterBuilder<'a, M, P, Mem, Perip, Flags, Set, Pc, State> {
+    ) -> InterpreterBuilder<M, P, Mem, Perip, Set, Pc, State> {
         self.with_regs(Default::default())
     }
 }
 
 // TODO: do we want to allow people to set the starting pc?
-// impl<'a, M: Memory, P, Mem, Perip, Flags, Regs, State> InterpreterBuilder<'a, M, P, Mem, Perip, Flags, Regs, NotSet, State>
-impl<'a, M: Memory, P, Mem, Perip, Flags, Regs, Pc, State>
-    InterpreterBuilder<'a, M, P, Mem, Perip, Flags, Regs, Pc, State>
+impl<M: Memory, P, Mem, Perip, Regs, Pc, State>
+    InterpreterBuilder<M, P, Mem, Perip, Regs, Pc, State>
 where
-    P: Peripherals<'a>,
+    P: Peripherals,
 {
     pub fn with_pc(
         self,
         pc: Word,
-    ) -> InterpreterBuilder<'a, M, P, Mem, Perip, Flags, Regs, Set, State> {
+    ) -> InterpreterBuilder<M, P, Mem, Perip, Regs, Set, State> {
         InterpreterBuilder::with_data(InterpreterBuilderData {
             pc: Some(pc),
             ..self.data
@@ -556,22 +508,21 @@ where
 
     pub fn with_default_pc(
         self,
-    ) -> InterpreterBuilder<'a, M, P, Mem, Perip, Flags, Regs, Set, State> {
+    ) -> InterpreterBuilder<M, P, Mem, Perip, Regs, Set, State> {
         self.with_pc(Default::default())
     }
 }
 
 // TODO: do we want to allow people to set the starting machine state?
-// impl<'a, M: Memory, P, Mem, Perip, Flags, Regs, Pc> InterpreterBuilder<'a, M, P, Mem, Perip, Flags, Regs, Pc, NotSet>
-impl<'a, M: Memory, P, Mem, Perip, Flags, Regs, Pc, State>
-    InterpreterBuilder<'a, M, P, Mem, Perip, Flags, Regs, Pc, State>
+impl<M: Memory, P, Mem, Perip, Regs, Pc, State>
+    InterpreterBuilder<M, P, Mem, Perip, Regs, Pc, State>
 where
-    P: Peripherals<'a>,
+    P: Peripherals,
 {
     pub fn with_state(
         self,
         state: MachineState,
-    ) -> InterpreterBuilder<'a, M, P, Mem, Perip, Flags, Regs, Pc, Set> {
+    ) -> InterpreterBuilder<M, P, Mem, Perip, Regs, Pc, Set> {
         InterpreterBuilder::with_data(InterpreterBuilderData {
             state: Some(state),
             ..self.data
@@ -580,20 +531,19 @@ where
 
     pub fn with_default_state(
         self,
-    ) -> InterpreterBuilder<'a, M, P, Mem, Perip, Flags, Regs, Pc, Set> {
+    ) -> InterpreterBuilder<M, P, Mem, Perip, Regs, Pc, Set> {
         self.with_state(Default::default())
     }
 }
 
-impl<'a, M: Memory, P> InterpreterBuilder<'a, M, P, Set, Set, Set, Set, Set, Set>
+impl<M: Memory, P> InterpreterBuilder<M, P, Set, Set, Set, Set, Set>
 where
-    P: Peripherals<'a>,
+    P: Peripherals,
 {
-    pub fn build(self) -> Interpreter<'a, M, P> {
+    pub fn build(self) -> Interpreter<M, P> {
         Interpreter::new(
             self.data.memory.unwrap(),
             self.data.peripherals.unwrap(),
-            self.data.flags.unwrap(),
             self.data.regs.unwrap(),
             self.data.pc.unwrap(),
             self.data.state.unwrap(),
@@ -601,22 +551,17 @@ where
     }
 }
 
-impl<'a, M: Memory, P: Peripherals<'a>> Interpreter<'a, M, P> {
+impl<M: Memory, P: Peripherals> Interpreter<M, P> {
     pub fn new(
         memory: M,
         peripherals: P,
-        flags: OwnedOrRef<'a, PeripheralInterruptFlags>,
         regs: [Word; Reg::NUM_REGS],
         pc: Word,
         state: MachineState,
     ) -> Self {
-        // TODO: propagate flags to the peripherals!
-        // TODO: maybe eventually don't even hold flags; just pass it along
-
         let mut interp = Self {
             memory,
             peripherals,
-            flags: PhantomData,
             regs,
             pc,
             state,
@@ -624,34 +569,12 @@ impl<'a, M: Memory, P: Peripherals<'a>> Interpreter<'a, M, P> {
             call_stack: CallStack::new(),
         };
 
-        // TODO: we can't call this.
-        // This is a problem; we need to drop the `flags` field from `Interpreter` and
-        // make the builder ensure that flags (that live long enough) are actually
-        // passed in.
-        //
-        // Or rather we can have the flags field be of type
-        // `&'a PeripheralInterruptFlags`; the Default impl can use Box::leak to provide
-        // this.
-        //
-        // interp.init(&interp.flags);
-
-        // For now, the following workaround:
-        if let OwnedOrRef::Ref(r) = flags {
-            interp.init(r);
-        } else {
-            // warn!("unsupported, sorry!");
-            // TODO: let's just do this instead of using OwnedOrRef.
-            // at some point we should just strip out all of the OwnedOrRef stuff.
-            static INTERNAL_INACCESSIBLE_PERIPHERAL_FLAGS: PeripheralInterruptFlags = PeripheralInterruptFlags::new();
-            interp.init(&INTERNAL_INACCESSIBLE_PERIPHERAL_FLAGS);
-        }
-
         interp.reset(); // TODO: remove pc/regs options from the interpreter builder
         interp
     }
 }
 
-impl<'a, M: Memory, P: Peripherals<'a>> Index<Reg> for Interpreter<'a, M, P> {
+impl<M: Memory, P: Peripherals> Index<Reg> for Interpreter<M, P> {
     type Output = Word;
 
     fn index(&self, reg: Reg) -> &Self::Output {
@@ -659,13 +582,13 @@ impl<'a, M: Memory, P: Peripherals<'a>> Index<Reg> for Interpreter<'a, M, P> {
     }
 }
 
-impl<'a, M: Memory, P: Peripherals<'a>> IndexMut<Reg> for Interpreter<'a, M, P> {
+impl<M: Memory, P: Peripherals> IndexMut<Reg> for Interpreter<M, P> {
     fn index_mut(&mut self, reg: Reg) -> &mut Self::Output {
         &mut self.regs[TryInto::<usize>::try_into(Into::<u8>::into(reg)).unwrap()]
     }
 }
 
-impl<'a, M: Memory, P: Peripherals<'a>> Deref for Interpreter<'a, M, P> {
+impl<M: Memory, P: Peripherals> Deref for Interpreter<M, P> {
     type Target = P;
 
     fn deref(&self) -> &Self::Target {
@@ -673,26 +596,17 @@ impl<'a, M: Memory, P: Peripherals<'a>> Deref for Interpreter<'a, M, P> {
     }
 }
 
-impl<'a, M: Memory, P: Peripherals<'a>> DerefMut for Interpreter<'a, M, P> {
+impl<M: Memory, P: Peripherals> DerefMut for Interpreter<M, P> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.peripherals
     }
 }
 
-impl<'a, M: Memory, P: Peripherals<'a>> InstructionInterpreterPeripheralAccess<'a>
-    for Interpreter<'a, M, P>
+impl<M: Memory, P: Peripherals> InstructionInterpreterPeripheralAccess
+    for Interpreter<M, P>
 { }
 
-impl<'a, M: Memory, P: Peripherals<'a>> Interpreter<'a, M, P> {
-    pub fn init(&mut self, flags: &'a PeripheralInterruptFlags) {
-        self.peripherals.get_gpio_mut().register_interrupt_flags(&flags.gpio);
-        self.peripherals.get_timers_mut().register_interrupt_flags(&flags.timers);
-        self.peripherals.get_input_mut().register_interrupt_flag(&flags.input);
-        self.peripherals.get_output_mut().register_interrupt_flag(&flags.output);
-    }
-}
-
-impl<'a, M: Memory, P: Peripherals<'a>> Interpreter<'a, M, P> {
+impl<M: Memory, P: Peripherals> Interpreter<M, P> {
     fn set_cc(&mut self, word: Word) {
         <PSR as MemMapped>::from(self).unwrap().set_cc(self, word)
     }
@@ -1069,7 +983,7 @@ use super::mem_mapped::{
 use lc3_traits::error::Error::SystemStackOverflow;
 use lc3_traits::control::ProcessorMode;
 
-impl<'a, M: Memory, P: Peripherals<'a>> InstructionInterpreter for Interpreter<'a, M, P> {
+impl<M: Memory, P: Peripherals> InstructionInterpreter for Interpreter<M, P> {
     const ID: Identifier = Identifier::new_from_str_that_crashes_on_invalid_inputs("Base");
     const VER: Version = version_from_crate!();
 
@@ -1259,7 +1173,7 @@ impl<'a, M: Memory, P: Peripherals<'a>> InstructionInterpreter for Interpreter<'
     }
 
     fn type_id() -> TypeId {
-        TypeId::of::<Interpreter<'static, lc3_traits::memory::MemoryStub, lc3_traits::peripherals::stubs::PeripheralsStub<'static>>>()
+        TypeId::of::<Interpreter<lc3_traits::memory::MemoryStub, lc3_traits::peripherals::stubs::PeripheralsStub>>()
     }
 }
 

@@ -36,7 +36,6 @@ use std::pin::Pin;
 use std::future::Future;
 
 fn bench_fib(c: &mut Criterion) {
-    let flags = PeripheralInterruptFlags::new();
     let mut group = c.benchmark_group("fib(24)");
 
     let plot_config = PlotConfiguration::default()
@@ -65,7 +64,7 @@ fn bench_fib(c: &mut Criterion) {
             BenchmarkId::new("Bare Interpreter - step", *num_iter),
             num_iter,
             |b, num| {
-                let mut int = bare_interpreter(build_fib_memory_image(*num), &flags);
+                let mut int = bare_interpreter(build_fib_memory_image(*num));
                 b.iter(|| {
                     int.reset();
                     while let MachineState::Running = int.step() {}
@@ -77,7 +76,7 @@ fn bench_fib(c: &mut Criterion) {
             BenchmarkId::new("Simulator - step", *num_iter),
             num_iter,
             |b, num| {
-                let mut sim = simulator(build_fib_memory_image(*num), &flags);
+                let mut sim = simulator(build_fib_memory_image(*num));
                 b.iter(|| {
                     sim.reset();
 
@@ -93,7 +92,7 @@ fn bench_fib(c: &mut Criterion) {
             BenchmarkId::new("Simulator - run_until_event", *num_iter),
             num_iter,
             |b, num| {
-                let sim = simulator(build_fib_memory_image(*num), &FLAGS);
+                let sim = simulator(build_fib_memory_image(*num));
                 let (chan, halt, next) = executor_thread(sim);
 
                 b.iter(|| {
@@ -180,7 +179,7 @@ fn bench_fib(c: &mut Criterion) {
             BenchmarkId::new("Simulator - run_until_event [no separate thread]", *num_iter),
             num_iter,
             |b, num| {
-                let mut sim = simulator(build_fib_memory_image(*num), &FLAGS);
+                let mut sim = simulator(build_fib_memory_image(*num));
 
                 b.iter(|| {
                     sim.reset();

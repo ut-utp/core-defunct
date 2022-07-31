@@ -2,10 +2,12 @@
 
 use lc3_macros::DisplayUsingDebug;
 
-use core::convert::TryFrom;
+use core::convert::{TryFrom, Infallible};
 use core::ops::{Deref, Index, IndexMut};
 
 use serde::{Deserialize, Serialize};
+
+use crate::control::Snapshot;
 
 // Switched to using enums to identify peripheral pin numbers; this way
 // referring to invalid/non-existent pin numbers isn't an error that peripheral
@@ -27,6 +29,7 @@ pub enum GpioPin { G0, G1, G2, G3, G4, G5, G6, G7 }
 impl GpioPin {
     pub const NUM_PINS: usize = 8; // G0 - G7; TODO: derive macro (also get it to impl Display)
 }
+// sa::const_assert_eq!(core::mem::variant_count::<GpioPin>(), GpioPin::NUM_PINS);
 
 pub const GPIO_PINS: GpioPinArr<GpioPin> = {
     use GpioPin::*;
@@ -51,6 +54,8 @@ impl From<GpioPin> for usize {
     }
 }
 
+// TODO: TryFrom impl
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[derive(DisplayUsingDebug)]
 pub enum GpioState {
@@ -64,7 +69,7 @@ pub enum GpioState {
     // 10 -> Input
     // 11 -> Interrupt (Rising Edge)
     Disabled,
-}
+} // TODO: impl Into<Word>
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct GpioPinArr<T>(pub [T; GpioPin::NUM_PINS]);
@@ -107,6 +112,8 @@ impl<T> IndexMut<GpioPin> for GpioPinArr<T> {
 
 // pub type GpioPinArr<T> = [T; GpioPin::NUM_PINS];
 
+//////////////////////////////////////////////////////////////////////////////////////
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct GpioMiscError;
 
@@ -140,11 +147,6 @@ pub struct GpioWriteErrors(pub GpioStateMismatches);
 ///
 /// Implementations of this trait must provide digital read, digital write, and rising
 /// edge trigger interrupt functionality for 8 GPIO pins which we'll call G0 - G7.
-///
-/// Additionally, implementors of this trait must also provide an implementation of
-/// [`Default`](core::default::Default). Implementors are also free (and encouraged!) to
-/// provide inherent methods on their implementation that allow for configuration of the
-/// peripheral.
 ///
 /// ### State
 /// The interpreter (user of this trait) will set the states of all the pins to
@@ -208,6 +210,7 @@ pub struct GpioWriteErrors(pub GpioStateMismatches);
 /// There are [tests for this trait](crate::tests::gpio) in the [tests
 /// module](crate::tests) to help ensure that your implementation of this trait follows
 /// the rules above. (TODO: this isn't true anymore?)
+#[ambassador::delegatable_trait]
 pub trait Gpio {
     fn set_state(&mut self, pin: GpioPin, state: GpioState) -> Result<(), GpioMiscError>; // should probably be infallible
     fn get_state(&self, pin: GpioPin) -> GpioState;
@@ -223,6 +226,7 @@ pub trait Gpio {
         states
     }
 
+    // TODO: take &mut self?
     fn read(&self, pin: GpioPin) -> Result<bool, GpioReadError>; // errors on state mismatch (i.e. you tried to read but the pin is configured as an output)
     #[inline]
     fn read_all(&self) -> GpioPinArr<Result<bool, GpioReadError>> {
@@ -265,6 +269,26 @@ pub trait Gpio {
     #[inline]
     fn interrupts_enabled(&self, pin: GpioPin) -> bool {
         matches!(self.get_state(pin), GpioState::Interrupt)
+    }
+}
+
+// unconstructible by design
+pub enum MissingGpio { }
+
+// quick way to get a `Gpio` impl (this will never be used though)
+#[ambassador::delegate_to_methods]
+#[delegate(Gpio, target_ref = "get", target_mut = "get_mut")]
+impl MissingGpio {
+    fn get(&self) -> &super::stubs::GpioStub { unreachable!() }
+    fn get_mut(&mut self) -> &mut super::stubs::GpioStub { unreachable!() }
+}
+
+impl Snapshot for MissingGpio {
+    type Snap = ();
+    type Err = Infallible;
+    fn record(&self) -> Result<Self::Snap, Self::Err> { Ok(()) }
+    fn restore(&mut self, _snap: Self::Snap) -> Result<(), Self::Err> {
+        Ok(())
     }
 }
 

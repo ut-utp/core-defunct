@@ -1,6 +1,6 @@
 use super::*;
 
-use lc3_traits::peripherals::adc::{Adc, AdcPin, AdcState};
+use lc3_traits::peripherals::{Peripherals, adc::{Adc, AdcPin, AdcState}};
 use lc3_shims::peripherals::AdcShim;
 
 use AdcState::*;

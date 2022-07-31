@@ -6,25 +6,25 @@ use lc3_shims::peripherals::{
     AdcShim, ClockShim, GpioShim, InputShim, OutputShim, PwmShim, TimersShim,
 };
 use lc3_shims::peripherals::{ShareablePeripheralsShim, Sink, Source};
-use lc3_traits::peripherals::PeripheralSet;
+use lc3_traits::peripherals::{PeripheralSet, Peripherals};
 
 use std::sync::{Arc, Mutex, RwLock};
 
-pub type ShimPeripheralSet<'int, 'io> = ShareablePeripheralsShim<'int, 'io>;
+pub type ShimPeripheralSet<'io> = ShareablePeripheralsShim<'io>;
 
-pub struct Shims<'int> {
-    pub gpio: Arc<RwLock<GpioShim<'int>>>,
+pub struct Shims {
+    pub gpio: Arc<RwLock<GpioShim>>,
     pub adc: Arc<RwLock<AdcShim>>,
     pub pwm: Arc<Mutex<PwmShim>>,
-    pub timers: Arc<Mutex<TimersShim<'int>>>,
+    pub timers: Arc<Mutex<TimersShim>>,
     pub clock: Arc<RwLock<ClockShim>>,
 }
 
-pub fn new_shim_peripherals_set<'int, 'io, I, O>(
+pub fn new_shim_peripherals_set<'io, I, O>(
     input: &'io I,
     output: &'io O,
 ) -> (
-    ShimPeripheralSet<'int, 'io>,
+    ShimPeripheralSet<'io>,
     &'io impl InputSink,
     &'io impl OutputSource,
 )
@@ -56,8 +56,8 @@ where
     )
 }
 
-impl<'int> Shims<'int> {
-    pub fn from_peripheral_set<'io>(p: &ShimPeripheralSet<'int, 'io>) -> Self {
+impl Shims {
+    pub fn from_peripheral_set<'io>(p: &ShimPeripheralSet<'io>) -> Self {
         Self {
             gpio: p.get_gpio().clone(),
             adc: p.get_adc().clone(),
@@ -67,3 +67,6 @@ impl<'int> Shims<'int> {
         }
     }
 }
+
+
+// TODO: why does this exist as more than a type alias?

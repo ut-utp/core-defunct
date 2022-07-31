@@ -41,23 +41,20 @@ use lc3_shims::peripherals::output::{OutputShim, Sink};
 use lc3_shims::memory::MemoryShim;
 use lc3_isa::util::MemoryDump;
 
-pub fn interpreter<'b, 's>(
+pub fn interpreter<'s>(
     program: &MemoryDump,
-    flags: &'b PeripheralInterruptFlags,
     inp: impl Iterator<Item = u8> + Send + 's,
     out: impl Sink + Send + Sync + 's,
 ) -> Interpreter<
-    'b,
     MemoryShim,
     PeripheralSet<
-        'b,
         GpioStub,
         AdcStub,
         PwmStub,
         TimersStub,
         ClockStub,
-        InputShim<'s, 'b>,
-        OutputShim<'s, 'b>,
+        InputShim<'s>,
+        OutputShim<'s>,
     >
 > {
     let memory = MemoryShim::new(**program);
@@ -72,21 +69,20 @@ pub fn interpreter<'b, 's>(
         OutputShim::using(Box::new(out)),
     );
 
-    let mut interp: Interpreter::<'b, MemoryShim, _> = InterpreterBuilder::new()
+    let mut interp: Interpreter::<MemoryShim, _> = InterpreterBuilder::new()
         .with_defaults()
         .with_peripherals(peripherals)
         .with_memory(memory)
         .build();
 
     interp.reset();
-    interp.init(flags);
 
     interp
 }
 
 fn byte_stream(elements: usize) -> impl Clone + Iterator<Item = u8> {
     (0..elements)
-        .map(|i| (((i % 256) + (i * i * i) - (i + 12)) % 256) as u8)
+        .map(|i| ((((i % 256) + (i * i * i)).wrapping_sub(i + 12)) % 256) as u8)
         // lc3tools remaps 13s to 10s (i.e. '\r' → '\n') so we have to do this
         .map(|i| match i { 13 => 10, i => i })
 }
@@ -255,7 +251,6 @@ use lc3_baseline_sim::interp::MachineState;
 use std::time::{Duration, Instant};
 
 fn bench_io(c: &mut Criterion) {
-    let flags = PeripheralInterruptFlags::new();
     let mut group = c.benchmark_group("i/o throughput");
 
     let plot_config = PlotConfiguration::default()
@@ -318,7 +313,6 @@ fn bench_io(c: &mut Criterion) {
             group: &mut BenchmarkGroup<WallTime>,
             name: impl Into<String>,
             size: &u64,
-            flags: &PeripheralInterruptFlags,
             input_stream: &Vec<u8>,
             image: &MemoryDump,
         ) {
@@ -332,7 +326,7 @@ fn bench_io(c: &mut Criterion) {
                         for _ in 0..iters {
                             let mut output = Vec::<u8>::with_capacity(*size as usize);
                             let borrow = Mutex::new(&mut output);
-                            let mut int = interpreter(&image, &flags, input_stream.iter().copied(), borrow);
+                            let mut int = interpreter(&image, input_stream.iter().copied(), borrow);
 
                             let start = Instant::now();
                             while let MachineState::Running = int.step() {}
@@ -352,7 +346,6 @@ fn bench_io(c: &mut Criterion) {
             &mut group,
             "Bare Interpreter w/TRAPs",
             size,
-            &flags,
             &input_stream,
             &image_traps,
         );
@@ -361,7 +354,6 @@ fn bench_io(c: &mut Criterion) {
             &mut group,
             "Bare Interpreter w/raw IO",
             size,
-            &flags,
             &input_stream,
             &image_raw,
         );

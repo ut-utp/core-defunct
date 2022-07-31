@@ -32,6 +32,7 @@ impl Display for SnapshotError {
 
 using_std! { impl std::error::Error for SnapshotError { } }
 
+#[ambassador::delegatable_trait]
 pub trait Snapshot {
     type Snap;
     type Err: Debug + Into<SnapshotError>;

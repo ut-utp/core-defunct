@@ -66,7 +66,8 @@ use lc3_isa::Word;
 ///
 /// [`Clock`]: Clock
 /// [`Timers`]: super::Timers
-pub trait Clock: Default {
+#[ambassador::delegatable_trait]
+pub trait Clock {
     fn get_milliseconds(&self) -> Word;
 
     fn set_milliseconds(&mut self, ms: Word);

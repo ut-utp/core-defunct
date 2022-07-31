@@ -9,7 +9,6 @@ use crate::{
 use lc3_baseline_sim::{
     interp::{
         InstructionInterpreter, Interpreter, InterpreterBuilder,
-        PeripheralInterruptFlags,
     },
     sim::Simulator,
 };
@@ -26,16 +25,13 @@ lazy_static::lazy_static! {
         SyncEventFutureSharedState::new();
 }
 
-static FLAGS: PeripheralInterruptFlags = PeripheralInterruptFlags::new();
-
 type Interp<'io> =
-    Interpreter<'static, MemoryShim, ShimPeripheralSet<'static, 'io>>;
+    Interpreter<MemoryShim, ShimPeripheralSet<'io>>;
 pub(crate) type Sim<'io> =
-    Simulator<'static, 'static, Interp<'io>, SyncEventFutureSharedState>;
+    Simulator<'static, Interp<'io>, SyncEventFutureSharedState>;
 
-pub(crate) fn new_sim<'io>(shims: ShimPeripheralSet<'static, 'io>) -> Sim<'io> {
-    let mut interp: Interpreter<'_, _, _> = InterpreterBuilder::new()
-        .with_interrupt_flags_by_ref(&FLAGS)
+pub(crate) fn new_sim<'io>(shims: ShimPeripheralSet<'io>) -> Sim<'io> {
+    let mut interp: Interpreter<_, _> = InterpreterBuilder::new()
         .with_peripherals(shims)
         .with_default_memory()
         .with_default_regs()
@@ -44,7 +40,6 @@ pub(crate) fn new_sim<'io>(shims: ShimPeripheralSet<'static, 'io>) -> Sim<'io> {
         .build();
 
     interp.reset();
-    interp.init(&FLAGS);
 
     let mut sim: Sim<'io> =
         Simulator::new_with_state(interp, &*EVENT_FUTURE_SHARED_STATE);
@@ -78,7 +73,7 @@ impl<'s> Init<'s> for SimDevice<'static> {
         _config: Self::Config,
     ) -> (
         &'s mut Self::ControlImpl,
-        Option<Shims<'static>>,
+        Option<Shims>,
         Option<&'s Self::Input>,
         Option<&'s Self::Output>,
     ) {
@@ -138,7 +133,7 @@ impl<'s> Init<'s> for SimDevice<'static> {
         /*  */
 
         let (shims, _, _) =
-            new_shim_peripherals_set::<'static, 'static, _, _>(input, output);
+            new_shim_peripherals_set::<'static, _, _>(input, output);
         let shim_copy = Shims::from_peripheral_set(&shims);
 
         storage.sim = Some(new_sim(shims));

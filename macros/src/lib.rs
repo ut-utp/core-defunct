@@ -59,6 +59,7 @@ impl Parse for LifetimeVarDecl {
 }
 
 #[proc_macro]
+/// s
 pub fn create_label(tokens: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(tokens as LifetimeVarDecl);
 
@@ -77,6 +78,7 @@ use syn::DeriveInput;
 //  - optionally, an array type w/Deref+Index impls
 //  - a display impl (indep of Debug? not sure)
 #[proc_macro_derive(DisplayUsingDebug)]
+/// s
 pub fn derive_display_from_debug(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let item = parse_macro_input!(item as DeriveInput);
     let ty_name = item.ident;

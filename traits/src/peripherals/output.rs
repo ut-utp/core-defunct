@@ -4,6 +4,7 @@ use core::fmt::{self, Display};
 
 use serde::{Deserialize, Serialize};
 
+#[ambassador::delegatable_trait]
 pub trait Output {
     fn write_data(&mut self, c: u8) -> Result<(), OutputError>;
 

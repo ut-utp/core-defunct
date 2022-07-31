@@ -1,5 +1,5 @@
 //! A file backed [`Memory` trait](lc3_traits::memory::Memory) implementation called
-//! [`FileBackedMemoryShim`](memory::FileBackedMemoryShim).
+//! [`FileBackedMemoryShim`](FileBackedMemoryShim).
 //! (TODO!)
 
 use std::convert::TryInto;

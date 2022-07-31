@@ -27,8 +27,7 @@ impl From<State> for GpioState {
     }
 }
 
-/// A simple reference implementation of the [`Gpio` peripheral
-/// trait](crate::peripherals::Gpio).
+/// A simple reference implementation of the [`Gpio` peripheral trait](Gpio).
 ///
 /// Some implementation details:
 ///   - The value of a pin is set to 0 when the pin is switched to input,
@@ -82,8 +81,8 @@ impl GpioShim {
 
     /// Sets a pin if it's in input or interrupt mode.
     ///
-    /// Returns `Some(())` on success and `None` on failure.
-    pub fn set_pin(&mut self, pin: GpioPin, bit: bool) -> Option<()> {
+    /// Returns `Ok(())` on success and `Err(())` on failure.
+    pub fn set_pin(&mut self, pin: GpioPin, bit: bool) -> Result<(), ()> {
         use State::*;
 
         self[pin] = match self[pin] {
@@ -96,10 +95,10 @@ impl GpioShim {
 
                 Interrupt(bit)
             }
-            Output(_) | Disabled => return None,
+            Output(_) | Disabled => return Err(()),
         };
 
-        Some(())
+        Ok(())
     }
 
     fn raise_interrupt(&self, pin: GpioPin) {

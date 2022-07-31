@@ -143,10 +143,8 @@ mod tests {
     #[test]
     fn write_multiple() {
         let vec = Vec::new();
-        let flag = AtomicBool::new(false);
         let mut sink = Mutex::new(vec);
         let mut shim = OutputShim::with_ref(&mut sink);
-        shim.register_interrupt_flag(&flag);
 
         let ch0 = 'L' as u8;
         let ch1 = 'C' as u8;

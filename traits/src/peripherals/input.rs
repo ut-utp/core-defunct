@@ -4,6 +4,7 @@ use core::fmt::{self, Display};
 
 use serde::{Deserialize, Serialize};
 
+#[ambassador::delegatable_trait]
 pub trait Input {
     // Warning! This is stateful!! It marks the current data as read.
     //
@@ -15,6 +16,10 @@ pub trait Input {
     //
     // Must use interior mutability.
     fn read_data(&self) -> Result<u8, InputError>;
+
+    // this is a separate method than `read_data` because for interrupts we want
+    // to be able to ask if there is any pending data without actually
+    // _consuming_ it
     fn current_data_unread(&self) -> bool;
 
     fn interrupt_occurred(&self) -> bool;

@@ -4,15 +4,15 @@
 use lc3_isa::{Addr, Instruction, Word};
 use lc3_traits::memory::Memory;
 use lc3_traits::peripherals::Peripherals;
-use lc3_baseline_sim::interp::{PeripheralInterruptFlags, InstructionInterpreter,
-    Interpreter, InterpreterBuilder, MachineState
+use lc3_baseline_sim::interp::{
+    InstructionInterpreter, Interpreter, InterpreterBuilder, MachineState
 };
 use core::convert::TryInto;
 
 use pretty_assertions::assert_eq;
 
 #[inline]
-pub fn interp_test_runner<'flags, M: Memory + Default + Clone, P: Peripherals<'flags>, PF, TF>
+pub fn interp_test_runner<M: Memory + Default + Clone, P: Default + Peripherals, PF, TF>
 (
     prefilled_memory_locations: Vec<(Addr, Word)>,
     insns: Vec<Instruction>,
@@ -22,15 +22,14 @@ pub fn interp_test_runner<'flags, M: Memory + Default + Clone, P: Peripherals<'f
     memory_locations: Vec<(Addr, Word)>,
     setup_func: PF,
     teardown_func: TF,
-    flags: &'flags PeripheralInterruptFlags,
     alt_memory: Option<(M, Addr)>,
     alt_peripherals: Option<P>,
 )
 where
     for<'p> PF: FnOnce(&'p mut P),
-    for<'i> TF: FnOnce(&'i Interpreter<'flags, M, P>), // Note: we could pass by value
-                                                       // since this is the last thing
-                                                       // we do.
+    for<'i> TF: FnOnce(&'i mut Interpreter<M, P>), // Note: we could pass by value
+                                                   // since this is the last thing
+                                                   // we do.
 {
     let mut addr = 0x3000;
 
@@ -42,8 +41,8 @@ where
         interp_builder
     };
 
-    let mut interp: Interpreter<'flags, M, P> = if let Some((mem, addr)) = alt_memory {
-        let mut int: Interpreter<'flags, M, P> = interp_builder
+    let mut interp: Interpreter<M, P> = if let Some((mem, addr)) = alt_memory {
+        let mut int: Interpreter<M, P> = interp_builder
             .with_memory(mem)
             .build();
 
@@ -59,8 +58,6 @@ where
 
         int
     };
-
-    interp.init(flags);
 
     // Run the setup func:
     setup_func(&mut *interp);
@@ -132,5 +129,5 @@ where
     }
 
     // Run the teardown func:
-    teardown_func(&interp);
+    teardown_func(&mut interp);
 }

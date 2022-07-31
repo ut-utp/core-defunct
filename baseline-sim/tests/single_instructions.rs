@@ -1,7 +1,7 @@
 extern crate lc3_test_infrastructure as lti;
 
 use lti::{insn, Addr, Instruction, Reg, Word};
-use lti::{MemoryShim, PeripheralsShim, PeripheralInterruptFlags};
+use lti::{MemoryShim, PeripheralsShim};
 
 #[cfg(test)]
 mod single_instructions {
@@ -14,39 +14,44 @@ mod single_instructions {
     // Test that the unimplemented instructions do <something>
 
     macro_rules! sequence {
-        ($(|$panics:literal|)? $name:ident, insns: [ $({ $($insn:tt)* }),* ], steps: $steps:expr, ending_pc: $pc:literal, regs: { $($r:tt: $v:expr),* }, memory: { $($addr:literal: $val:expr),* }) => {
-        $(#[doc = $panics] #[should_panic])?
-        #[test]
-        fn $name() { with_larger_stack(/*Some(stringify!($name).to_string())*/ None, || {
+        ( $(|$panics:literal|)?
+            $name:ident,
+            insns: [ $({ $($insn:tt)* }),* ],
+            steps: $steps:expr,
+            ending_pc: $pc:literal,
+            regs: { $($r:tt: $v:expr),* },
+            memory: { $($addr:literal: $val:expr),* }
+        ) => {
+            $(#[doc = $panics] #[should_panic])?
+            #[test]
+            fn $name() { with_larger_stack(/*Some(stringify!($name).to_string())*/ None, || {
 
-            #[allow(unused_mut)]
-            let mut regs: [Option<Word>; Reg::NUM_REGS] = [None, None, None, None, None, None, None, None];
-            $(regs[Into::<u8>::into($r) as usize] = Some($v);)*
+                #[allow(unused_mut)]
+                let mut regs: [Option<Word>; Reg::NUM_REGS] = [None, None, None, None, None, None, None, None];
+                $(regs[Into::<u8>::into($r) as usize] = Some($v);)*
 
-            #[allow(unused_mut)]
-            let mut checks: Vec<(Addr, Word)> = Vec::new();
-            $(checks.push(($addr, $val));)*
+                #[allow(unused_mut)]
+                let mut checks: Vec<(Addr, Word)> = Vec::new();
+                $(checks.push(($addr, $val));)*
 
-            #[allow(unused_mut)]
-            let mut insns: Vec<Instruction> = Vec::new();
-            $(insns.push(insn!($($insn)*));)*
+                #[allow(unused_mut)]
+                let mut insns: Vec<Instruction> = Vec::new();
+                $(insns.push(insn!($($insn)*));)*
 
-            let flags = PeripheralInterruptFlags::new();
-
-            interp_test_runner::<MemoryShim, PeripheralsShim, _, _>(
-                Vec::new(),
-                insns,
-                $steps,
-                regs,
-                Some($pc),
-                checks,
-                (|_p| {}), // (no-op)
-                (|_p| {}), // (no-op)
-                &flags,
-                None,
-                None,
-            );
-        })}};
+                interp_test_runner::<MemoryShim, PeripheralsShim, _, _>(
+                    Vec::new(),
+                    insns,
+                    $steps,
+                    regs,
+                    Some($pc),
+                    checks,
+                    (|_p| {}), // (no-op)
+                    (|_p| {}), // (no-op)
+                    None,
+                    None,
+                );
+            })}
+        };
     }
 
     // TODO: test macro like above but takes a program instead of a sequence of instructions (and uses the loadable! macro or the program macro).
@@ -649,7 +654,7 @@ mod single_instructions {
 
         sequence! {
             trap_0,
-            insns: [ { ADD R6, R6, #15}, {TRAP #1} ],
+            insns: [ { ADD R6, R6, #15 }, { TRAP #1 } ],
             steps: Some(2),
             ending_pc: 0x0000,
             regs: {R6: 13},

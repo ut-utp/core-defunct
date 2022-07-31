@@ -149,15 +149,15 @@ pub enum TimerState {
 /// period.
 ///
 /// There are two modes:
-/// - [`SingleShot`]: after being set to this mode, when the timer is set to
-///   [a state with a period](TimerState::WithPeriod), it must show that an
+/// - [`SingleShot`]: after being set to this mode, when the timer is set to [a
+///   state with a period](TimerState::WithPeriod), it must show that an
 ///   interrupt has occurred as soon as that period of time has elapsed from
-///   that point, and then set itself to a
-///   [disabled state](TimerState::Disabled).
+///   that point, and then set itself to a [disabled
+///   state](TimerState::Disabled).
 /// - [`Repeated`]: after being set to this mode, when the timer is set to a
-///   [state with a period](TimerState::WithPeriod), it must
-///   [show that an interrupt has occurred](Timers::interrupt_occurred) every
-///   time that period of time elapses from that point.
+///   [state with a period](TimerState::WithPeriod), it must [show that an
+///   interrupt has occurred](Timers::interrupt_occurred) every time that period
+///   of time elapses from that point.
 ///    + This is perhaps subtle: the count for a timer in [`Repeated`] starts
 ///      again **as soon as the count runs out** and not after the interrupt
 ///      that was raised is actually processed.
@@ -171,21 +171,21 @@ pub enum TimerState {
 ///
 /// Each timer initially returns [`Disabled`] when the state is read.
 ///
-/// The state returned for a timer does not change until the state is
-/// [set to a different one](Timers::set_state), unless
-/// [disabled by a change in the mode](#modes).
+/// The state returned for a timer does not change until the state is [set to a
+/// different one](Timers::set_state), unless [disabled by a change in the
+/// mode](#modes).
 ///
-/// Each timer holds two possible main states. Either the timer
-/// [has a period](TimerState::WithPeriod), representing how much time must
-/// elapse before an interrupt or the timer is [disabled](TimerState::Disabled),
+/// Each timer holds two possible main states. Either the timer [has a
+/// period](TimerState::WithPeriod), representing how much time must elapse
+/// before an interrupt or the timer is [disabled](TimerState::Disabled),
 /// indicating it will not cause any interrupts until it is next set.
 ///
 /// Whenever the period is set (even if it's set to the current period value),
 /// the interval count that the timer maintains is reset. For example, if timer
-/// [`T0`](TimerId::T0) was configured with in [`SingleShot`] mode with a period
-/// of 100ms, 50ms ago and we go and set [`T0`]'s period to 100ms again,
-/// [`T0`]'s interrupt won't fire until 100ms from now, even though there _were_
-/// only 50ms left on [`T0`]'s count.
+/// [`T0`] was configured with in [`SingleShot`] mode with a period of 100ms,
+/// 50ms ago and we go and set [`T0`]'s period to 100ms again, [`T0`]'s
+/// interrupt won't fire until 100ms from now, even though there _were_ only
+/// 50ms left on [`T0`]'s count.
 ///
 /// When the state is set to [`Disabled`], no interrupts will occur.
 ///
@@ -216,14 +216,15 @@ pub enum TimerState {
 /// is that we offer no way to read the running 'count' of a timer. This is
 /// intentional (for the sake of simplicity). We do appreciate that there are
 /// use cases that require this (i.e. measuring the time between events or the
-/// duration of an event) and for those situations we offer the
-/// [`Clock` peripheral](super::Clock).
+/// duration of an event) and for those situations we offer the [`Clock`
+/// peripheral](super::Clock).
 ///
 /// [`SingleShot`]: TimerMode::SingleShot
 /// [`Repeated`]: TimerMode::Repeated
 /// [`Disabled`]: TimerState::Disabled
 /// [`Clock`]: super::Clock
-///
+/// [`T0`]: TimerId::T0
+#[ambassador::delegatable_trait]
 pub trait Timers {
     fn set_mode(&mut self, timer: TimerId, mode: TimerMode);
     fn get_mode(&self, timer: TimerId) -> TimerMode;

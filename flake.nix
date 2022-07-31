@@ -37,6 +37,38 @@
           };
         };
 
+        # TODO: make this a nixpkg of it's own:
+        #   - split output derivation: out, cli, gui
+        #   - where:
+        #     + out: { bin, lib } (has everything)
+        #     + cli: { bin }
+        #     + gui: { bin }
+        #   - and where cli and gui are `passthru`
+        lc3tools = {
+          stdenv
+        , lib
+        , fetchFromGithub
+        }: stdenv.mkDerivation rec {
+          pname = "LC3Tools";
+          version = "2.0.2";
+          src = fetchFromGithub {
+            owner = "chiragsakhuja";
+            repo = pname;
+            rev = version;
+            # sha256 = null;
+          };
+
+          meta = with lib; {
+            longDescription = '''';
+            description = "";
+            homepage = "";
+            license = null;
+            maintainers = with maintainers; [/* TODO */];
+            mainProgram = "";
+            platforms = with lib.platforms; unix + windows;
+          };
+        };
+
         overlays = [ (import rust-overlay) nur.overlay ];
         pkgs = import nixpkgs {
           inherit system overlays;
@@ -114,6 +146,11 @@
             darwin.apple_sdk.frameworks.IOKit
           ];
         };
+
+        shellHook = ''
+          # For the tests in `baseline-sim/tests/lc3tools_tests.rs`.
+          export LC3TOOLS_BIN="${lc3tools}/bin"
+        '';
       }
     );
 }

@@ -19,7 +19,6 @@ use criterion::{BenchmarkId, Criterion, Throughput, PlotConfiguration, AxisScale
 use lc3_baseline_sim::interp::MachineState;
 
 fn bench_fib(c: &mut Criterion) {
-    let flags = PeripheralInterruptFlags::new();
     let mut group = c.benchmark_group("execution speed: fib(24)");
 
     let plot_config = PlotConfiguration::default()
@@ -50,7 +49,7 @@ fn bench_fib(c: &mut Criterion) {
             |b, num| {
                 // eprintln!("hello!");
                 // println!("hello!");
-                let mut int = black_box(bare_interpreter(build_fib_memory_image(*num), &flags));
+                let mut int = black_box(bare_interpreter(build_fib_memory_image(*num)));
                 b.iter(|| {
                     int.reset();
                     while let MachineState::Running = int.step() {}
@@ -65,7 +64,7 @@ fn bench_fib_alt() {
     let flags = PeripheralInterruptFlags::default();
 
     for num_iter in ITERS.iter() {
-        let mut int = black_box(bare_interpreter(build_fib_memory_image(*num_iter), &flags));
+        let mut int = black_box(bare_interpreter(build_fib_memory_image(*num_iter)));
         int.reset();
 
         while let MachineState::Running = int.step() {}

@@ -1,5 +1,5 @@
 //! An extremely naïve, terrible [`Memory` trait](lc3_traits::memory::Memory)
-//! implementation called [`MemoryShim`](memory::MemoryShim).
+//! implementation called [`MemoryShim`](MemoryShim).
 
 use std::convert::TryInto;
 use std::ops::{Index, IndexMut};
