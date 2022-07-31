@@ -21,7 +21,6 @@ pub use output::Output;
 
 pub mod stubs;
 
-
 // the reason this trait exists is to accommodate implementations that wish to
 // share state between peripherals
 //
@@ -305,7 +304,7 @@ where
     gpio_bank_c: GC,
 }
 
-pub trait Bool { // TODO: seal
+pub trait Bool: sealed::Sealed { // TODO: seal
     const B: bool;
 }
 pub struct True; impl Bool for True { const B: bool = true; }
@@ -313,19 +312,18 @@ pub struct False; impl Bool for False { const B: bool = false; }
 type T = True;
 type F = False;
 
-pub struct TypeTernary<Cond: Bool, IfTrue, IfFalse>(PhantomData<(Cond, IfTrue, IfFalse)>);
-#[allow(type_alias_bounds)]
-pub type Ternary<C: Bool, A, B> = <TypeTernary<C, A, B> as Eval>::Out;
+mod sealed {
+    pub trait Sealed { }
 
-pub trait Eval {
-    type Out;
+    impl Sealed for super::True { }
+    impl Sealed for super::False { }
+
+    impl<T> Sealed for super::Present<T> {}
+    impl<T: ?Sized> Sealed for super::NotPresent<T> {}
 }
 
-impl<A, B> Eval for TypeTernary<T, A, B> { type Out = A; }
-impl<A, B> Eval for TypeTernary<F, A, B> { type Out = B; }
-
-pub trait OptionalPeripheral { // TODO: sealed
-    type Inner;
+pub trait OptionalPeripheral: sealed::Sealed {
+    type Inner: ?Sized;
 
     // Requires that this be _statically_ known (PeripheralSet, that is).
     type Present: Bool;
@@ -350,18 +348,18 @@ type OptPresent<P: OptionalPeripheral> = <P as OptionalPeripheral>::Present;
 // ```
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct NotPresent<T>(PhantomData<T>);
-impl<T> Default for NotPresent<T> {
+pub struct NotPresent<T: ?Sized>(PhantomData<T>);
+impl<T: ?Sized> Default for NotPresent<T> {
     fn default() -> Self {
         Self(PhantomData)
     }
 }
-impl<T> OptionalPeripheral for NotPresent<T> {
+impl<T: ?Sized> OptionalPeripheral for NotPresent<T> {
     type Inner = T;
     type Present = False;
 }
 
-impl<T> Snapshot for NotPresent<T> {
+impl<T: ?Sized> Snapshot for NotPresent<T> {
     type Snap = ();
     type Err = Infallible;
     fn record(&self) -> Result<Self::Snap, Self::Err> { Ok(()) }
@@ -376,8 +374,8 @@ pub struct Present<T>(pub T);
 impl<T> OptionalPeripheral for Present<T> {
     type Inner = T;
     type Present = True;
-    fn get(&self) -> Option<&T> { None }
-    fn get_mut(&mut self) -> Option<&mut T> { None }
+    fn get(&self) -> Option<&T> { self.0 }
+    fn get_mut(&mut self) -> Option<&mut T> { self.0 }
 }
 
 impl<G, A, P, T, C, I, O, GB, GC> Default for PeripheralSet<G, A, P, T, C, I, O, GB, GC>
@@ -554,20 +552,6 @@ where
 
 use crate::control::{Snapshot, SnapshotError};
 
-// /// where
-// /// OptTy<OptPeri>: Gpio + Snapshot
-// pub type SnapDataOr<OptPeri: OptionalPeripheral, Default = ()> = TypeTernary<
-//     OptPresent<OptPeri>,
-//     <OptTy<OptPeri> as Snapshot>::Snap,
-//     Default,
-// >;
-
-// pub type GetSnapDataOr<OptPeri: OptionalPeripheral, Default = ()> = <
-//     SnapDataOr<OptPeri, Default>
-//     as
-//     Eval
-// >::Out;
-
 impl<'p, G, A, P, T, C, I, O, GB, GC> Snapshot for PeripheralSet<G, A, P, T, C, I, O, GB, GC>
 where
     G: Snapshot + Gpio,
@@ -582,19 +566,6 @@ where
     OptTy<GB>: Gpio,
     GC: Snapshot + OptionalPeripheral,
     OptTy<GC>: Gpio,
-
-    // SnapDataOr<GB>: Eval,
-    // SnapDataOr<GC>: Eval,
-
-    // This shouldn't be needed since, in order to impl Snapshot your Err type has to
-    // implement Into<SnapshotError>.
-    // SnapshotError: From<<G as Snapshot>::Err>,
-    // SnapshotError: From<<A as Snapshot>::Err>,
-    // SnapshotError: From<<P as Snapshot>::Err>,
-    // SnapshotError: From<<T as Snapshot>::Err>,
-    // SnapshotError: From<<C as Snapshot>::Err>,
-    // SnapshotError: From<<I as Snapshot>::Err>,
-    // SnapshotError: From<<O as Snapshot>::Err>,
 {
     type Snap = (
         <G as Snapshot>::Snap,
@@ -604,8 +575,6 @@ where
         <C as Snapshot>::Snap,
         <I as Snapshot>::Snap,
         <O as Snapshot>::Snap,
-        // GetSnapDataOr<GB>,
-        // GetSnapDataOr<GC>,
         <GB as Snapshot>::Snap,
         <GC as Snapshot>::Snap,
     );
