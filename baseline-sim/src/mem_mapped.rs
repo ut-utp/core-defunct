@@ -79,7 +79,7 @@ const fn gpio_dr_addr(i: u16) -> Addr {
 
 pub const GPIODR_ADDR: Addr = GPIO_MEM_MAPPED_BASE + GPIO_PIN_ADDRS * 8 + 0;
 
-pub const GPIO_BASE_INT_VEC: Addr = INTERRUPT_SERVICE_ROUTINES_START_ADDR + (GPIO_OFFSET as Addr); // x1B0
+pub const GPIO_BASE_INT_VEC: Addr = INTERRUPT_SERVICE_ROUTINES_START_ADDR + (0x30 as Addr); // 0x1B0 - 0x30 = INTERRUPT_SERVICE_ROUTINES_START_ADDR = 0x180
 pub const G0_INT_VEC: u8 = 0xB0;
 pub const G1_INT_VEC: u8 = 0xB1;
 pub const G2_INT_VEC: u8 = 0xB2;
