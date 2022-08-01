@@ -863,7 +863,11 @@ impl<'a, M: Memory, P: Peripherals<'a>> Interpreter<'a, M, P> {
         }
 
         int_devices!(
-            KBSR, DSR, G0CR, G1CR, G2CR, G3CR, G4CR, G5CR, G6CR, G7CR, T0CR, T1CR
+            KBSR, DSR, 
+            G0CR, G1CR, G2CR, G3CR, G4CR, G5CR, G6CR, G7CR,
+            G8CR, G9CR, G10CR, G11CR, G12CR, G13CR, G14CR, G15CR,
+            G16CR, G17CR, G18CR, G19CR, G20CR, G21CR, G22CR, G23CR,
+            T0CR, T1CR
         );
         false
     }
@@ -1071,6 +1075,8 @@ use super::mem_mapped::{
     DSR, DDR,
     BSP, PSR,
     G0CR, G0DR, G1CR, G1DR, G2CR, G2DR, G3CR, G3DR, G4CR, G4DR, G5CR, G5DR, G6CR, G6DR, G7CR, G7DR,
+    G8CR, G8DR, G9CR, G9DR, G10CR, G10DR, G11CR, G11DR, G12CR, G12DR, G13CR, G13DR, G14CR, G14DR, G15CR, G15DR,
+    G16CR, G16DR, G17CR, G17DR, G18CR, G18DR, G19CR, G19DR, G20CR, G20DR, G21CR, G21DR, G22CR, G22DR, G23CR, G23DR,
     A0CR, A0DR, A1CR, A1DR, A2CR, A2DR, A3CR, A3DR, A4CR, A4DR, A5CR, A5DR,
     P0CR, P0DR, P1CR, P1DR,
     CLKR,
@@ -1157,6 +1163,8 @@ impl<'a, M: Memory, P: Peripherals<'a>> InstructionInterpreter for Interpreter<'
                 DSR, DDR,
                 BSP, PSR, MCR,
                 G0CR, G0DR, G1CR, G1DR, G2CR, G2DR, G3CR, G3DR, G4CR, G4DR, G5CR, G5DR, G6CR, G6DR, G7CR, G7DR,
+                G8CR, G8DR, G9CR, G9DR, G10CR, G10DR, G11CR, G11DR, G12CR, G12DR, G13CR, G13DR, G14CR, G14DR, G15CR, G15DR,
+                G16CR, G16DR, G17CR, G17DR, G18CR, G18DR, G19CR, G19DR, G20CR, G20DR, G21CR, G21DR, G22CR, G22DR, G23CR, G23DR,
                 A0CR, A0DR, A1CR, A1DR, A2CR, A2DR, A3CR, A3DR, A4CR, A4DR, A5CR, A5DR,
                 P0CR, P0DR, P1CR, P1DR,
                 CLKR,
@@ -1186,6 +1194,8 @@ impl<'a, M: Memory, P: Peripherals<'a>> InstructionInterpreter for Interpreter<'
                 DSR, DDR,
                 BSP, PSR, MCR,
                 G0CR, G0DR, G1CR, G1DR, G2CR, G2DR, G3CR, G3DR, G4CR, G4DR, G5CR, G5DR, G6CR, G6DR, G7CR, G7DR,
+                G8CR, G8DR, G9CR, G9DR, G10CR, G10DR, G11CR, G11DR, G12CR, G12DR, G13CR, G13DR, G14CR, G14DR, G15CR, G15DR,
+                G16CR, G16DR, G17CR, G17DR, G18CR, G18DR, G19CR, G19DR, G20CR, G20DR, G21CR, G21DR, G22CR, G22DR, G23CR, G23DR,
                 A0CR, A0DR, A1CR, A1DR, A2CR, A2DR, A3CR, A3DR, A4CR, A4DR, A5CR, A5DR,
                 P0CR, P0DR, P1CR, P1DR,
                 CLKR,
