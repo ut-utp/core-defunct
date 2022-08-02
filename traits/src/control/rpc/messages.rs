@@ -173,7 +173,7 @@ pub enum ResponseMessage { // messages for everything but tick()
     GetGpioStates(GpioPinArr<GpioState>),
     GetGpioReadings(GpioPinArr<Result<bool, GpioReadError>>),
     GetAdcStates(AdcPinArr<AdcState>),
-    GetAdcReadings(AdcPinArr<Result<u8, AdcReadError>>),
+    GetAdcReadings(AdcPinArr<Result<u16, AdcReadError>>),
     GetTimerModes(TimerArr<TimerMode>),
     GetTimerStates(TimerArr<TimerState>),
     GetPwmStates(PwmPinArr<PwmState>),

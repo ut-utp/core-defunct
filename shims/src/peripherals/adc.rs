@@ -10,7 +10,7 @@ pub struct AdcShim {
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum State {
-    Enabled(u8),
+    Enabled(u16),
     Disabled,
 }
 
@@ -24,7 +24,7 @@ impl From<State> for AdcState {
     }
 }
 
-const INIT_VALUE: u8 = 0;
+const INIT_VALUE: u16 = 0;
 
 impl Default for AdcShim {
     fn default() -> Self {
@@ -42,7 +42,7 @@ impl AdcShim {
         Self::default()
     }
 
-    pub fn set_value(&mut self, pin: Pin, value: u8) -> Result<(), SetError> {
+    pub fn set_value(&mut self, pin: Pin, value: u16) -> Result<(), SetError> {
         use State::*;
         self.states[pin] = match self.states[pin] {
             Enabled(_) => Enabled(value),
@@ -66,7 +66,7 @@ impl Adc for AdcShim {
         self.states[pin].into()
     }
 
-    fn read(&self, pin: Pin) -> Result<u8, ReadError> {
+    fn read(&self, pin: Pin) -> Result<u16, ReadError> {
         use State::*;
         match self.states[pin] {
             Enabled(value) => Ok(value),

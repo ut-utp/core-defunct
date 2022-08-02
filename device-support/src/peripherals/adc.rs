@@ -149,11 +149,11 @@ where
 
 
 
-    fn read(&self, pin: AdcPin) -> Result<u8, AdcReadError>{
+    fn read(&self, pin: AdcPin) -> Result<u16, AdcReadError>{
     	//let mut adc_unit = self.hal_adc.borrow_mut();
     	//let mut pins = self.hal_pins.borrow_mut();
     	
-    	let mut adc_reading: Result<u8, AdcReadError> = Err(AdcReadError((pin, AdcState::Disabled)));
+    	let mut adc_reading: Result<u16, AdcReadError> = Err(AdcReadError((pin, AdcState::Disabled)));
     	let mut value_debug = 0;
 
     	if(self.get_state(pin) == AdcState::Enabled){
@@ -184,9 +184,9 @@ where
     	adc_reading
     }
     #[inline]
-    fn read_all(&self) -> AdcPinArr<Result<u8, AdcReadError>> {
+    fn read_all(&self) -> AdcPinArr<Result<u16, AdcReadError>> {
         // TODO: Error conversion impl (see Gpio)
-        let mut readings = AdcPinArr([Ok(0u8); AdcPin::NUM_PINS]); // TODO: that we need a default value here is weird and bad...
+        let mut readings = AdcPinArr([Ok(0u16); AdcPin::NUM_PINS]); // TODO: that we need a default value here is weird and bad...
 
         ADC_PINS
             .iter()

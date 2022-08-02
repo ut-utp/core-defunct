@@ -94,11 +94,11 @@ pub trait Adc {
         states
     }
 
-    fn read(&self, pin: AdcPin) -> Result<u8, AdcReadError>;
+    fn read(&self, pin: AdcPin) -> Result<u16, AdcReadError>;
     #[inline]
-    fn read_all(&self) -> AdcPinArr<Result<u8, AdcReadError>> {
+    fn read_all(&self) -> AdcPinArr<Result<u16, AdcReadError>> {
         // TODO: Error conversion impl (see Gpio)
-        let mut readings = AdcPinArr([Ok(0u8); AdcPin::NUM_PINS]); // TODO: that we need a default value here is weird and bad...
+        let mut readings = AdcPinArr([Ok(0u16); AdcPin::NUM_PINS]); // TODO: that we need a default value here is weird and bad...
 
         ADC_PINS
             .iter()
@@ -123,10 +123,10 @@ impl Copy for AdcStateMismatches { }
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct AdcReadErrors(pub AdcStateMismatches);
 
-impl TryFrom<AdcPinArr<Result<u8, AdcReadError>>> for AdcReadErrors {
+impl TryFrom<AdcPinArr<Result<u16, AdcReadError>>> for AdcReadErrors {
     type Error = ();
 
-    fn try_from(read_errors: AdcPinArr<Result<u8, AdcReadError>>) -> Result<Self, Self::Error> {
+    fn try_from(read_errors: AdcPinArr<Result<u16, AdcReadError>>) -> Result<Self, Self::Error> {
         let mut errors: AdcStateMismatches = AdcPinArr([None; AdcPin::NUM_PINS]);
 
         read_errors
@@ -155,7 +155,7 @@ using_std! {
             RwLock::read(self).unwrap().get_state(pin)
         }
 
-        fn read(&self, pin: AdcPin) -> Result<u8, AdcReadError> {
+        fn read(&self, pin: AdcPin) -> Result<u16, AdcReadError> {
             RwLock::read(self).unwrap().read(pin)
         }
     }

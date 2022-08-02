@@ -617,7 +617,7 @@ where
         Adc::get_states(self.interp.get_peripherals())
     }
 
-    fn get_adc_readings(&self) -> AdcPinArr<Result<u8, AdcReadError>> {
+    fn get_adc_readings(&self) -> AdcPinArr<Result<u16, AdcReadError>> {
         Adc::read_all(self.interp.get_peripherals())
     }
 
