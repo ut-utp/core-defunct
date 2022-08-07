@@ -57,8 +57,8 @@ pub mod stubs;
 //
 // This implementation is more natural to write, has less overhead, and is easier to use (no lifetime parameter, it can implement Default, implements `Send` and `Sync`).
 //
-// Astute readers will notice that it is still _possible_ to use `LoopbackIo` with `PeripheralsSet` – just with a little extra runtime cost!
-// We can make use of the `Arc<RwLock<_>>` blanket impls for `Input` and `Output` to provide `PeripheralsSet` with `Input` and `Output` instances
+// Astute readers will notice that it is still _possible_ to use `LoopbackIo` with `PeripheralSet` – just with a little extra runtime cost!
+// We can make use of the `Arc<RwLock<_>>` blanket impls for `Input` and `Output` to provide `PeripheralSet` with `Input` and `Output` instances
 // that actually both point to the same underlying `LoopbackIo` instance.
 // ```
 //
@@ -113,23 +113,33 @@ pub trait Peripherals {
 
 pub trait PeripheralsExt: Peripherals {
     /// Gets you a wrapper type that impls all the traits.
-    fn get_peripherals_wrapper(&mut self) -> PeripheralsWrapper<'_, Self> { PeripheralsWrapper(self) }
+    fn get_peripherals_wrapper(&self) -> &PeripheralsWrapper<Self> {
+        // SAFETY: `PeripheralsWrapper` is `repr(transparent)` and we're
+        // constructing a shared reference out of a shared reference of the same
+        // lifetime.
+        unsafe { core::mem::transmute(self) }
+    }
+    fn get_peripherals_wrapper_mut(&mut self) -> &mut PeripheralsWrapper<Self> {
+        // SAFETY: `PeripheralsWrapper` is `repr(transparent)`, we're using a
+        // mutable reference to construct a mutable reference with the same
+        // lifetime.
+        unsafe { core::mem::transmute(self) }
+    }
 }
 
 impl<P: Peripherals> PeripheralsExt for P { }
 
-#[derive(Debug)]
+// TODO: docs explaining that the utility here is getting a type that
+// has delegated impls of all the peripheral traits + `Peripherals` implemented!
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Default, Hash, serde::Serialize, serde::Deserialize)]
+#[repr(transparent)]
 
-pub struct PeripheralsWrapper<'a, P: ?Sized + Peripherals + 'a>(&'a mut P);
+pub struct PeripheralsWrapper<P: ?Sized + Peripherals>(P);
 
-// #[ambassador::delegate_to_methods]
-// #[delegate(Peripherals, target_ref = "get", target_mut = "get_mut")]
-// impl<'a, P: ?Sized + Peripherals> PeripheralsWrapper<'a, P> {
-//     #[inline(always)]
-//     fn get_mut(&mut self) -> &mut P { &mut self.0 }
-//     #[inline(always)]
-//     fn get(&self) -> &P { &self.0 }
-// }
+impl<P: ?Sized + Peripherals> PeripheralsWrapper<P> {
+    pub fn get_inner_peripherals(&self) -> &P { &self.0 }
+    pub fn get_inner_peripherals_mut(&mut self) -> &mut P { &mut self.0 }
+}
 
 // TODO: fix in upstream
 use crate::*;
@@ -309,8 +319,6 @@ pub trait Bool: sealed::Sealed { // TODO: seal
 }
 pub struct True; impl Bool for True { const B: bool = true; }
 pub struct False; impl Bool for False { const B: bool = false; }
-type T = True;
-type F = False;
 
 mod sealed {
     pub trait Sealed { }

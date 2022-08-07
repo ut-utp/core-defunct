@@ -34,44 +34,42 @@ use core::cell::Cell;
 // See: https://stackoverflow.com/a/69386814
 // An example: https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=709222486f15d4f46290d387b9d92652
 
-pub trait DerefsIntoPeripherals: DerefMut + Deref<Target = Self::P> {
-    type P: Peripherals + Sized;
+//
+pub trait DerefsIntoPeripheralsWrapper: DerefMut + Deref<Target = PeripheralsWrapper<Self::P>> {
+    type P: Peripherals + ?Sized;
 }
 
-impl<P: Deref + DerefMut> DerefsIntoPeripherals for P
-where
-    <P as Deref>::Target: Peripherals + Sized,
-{
-    type P = <P as Deref>::Target;
+impl<P: Peripherals + ?Sized, W: Deref<Target = PeripheralsWrapper<P>> + DerefMut> DerefsIntoPeripheralsWrapper for W {
+    type P = P;
 }
 
 // TODO: name?
 pub trait InstructionInterpreterPeripheralAccess:
-    InstructionInterpreter + DerefsIntoPeripherals
+    InstructionInterpreter + DerefsIntoPeripheralsWrapper
     // TODO: revisit...
 where {
-    fn get_peripherals(&self) -> &<Self as Deref>::Target {
+    fn get_peripherals(&self) -> &PeripheralsWrapper<<Self as DerefsIntoPeripheralsWrapper>::P> {
         self.deref()
     }
 
-    fn get_peripherals_mut(&mut self) -> &mut <Self as Deref>::Target {
+    fn get_peripherals_mut(&mut self) -> &mut PeripheralsWrapper<<Self as DerefsIntoPeripheralsWrapper>::P> {
         self.deref_mut()
     }
 
-    // TODO: explain
-    //
-    // this gives you a type that, for convenience, has proxied impls of all the
-    // peripheral traits on it.
-    //
-    // requires `&mut` though which is why we don't use it in the interpreter's
-    // source code
-    fn peripherals_wrapper(&mut self) -> PeripheralsWrapper<'_, Self::Target> {
-        PeripheralsExt::get_peripherals_wrapper(self)
-    }
+    // // TODO: explain
+    // //
+    // // this gives you a type that, for convenience, has proxied impls of all the
+    // // peripheral traits on it.
+    // //
+    // // requires `&mut` though which is why we don't use it in the interpreter's
+    // // source code
+    // fn peripherals_wrapper(&mut self) -> PeripheralsWrapper<'_, Self::Target> {
+    //     PeripheralsExt::get_peripherals_wrapper(self)
+    // }
 
-    fn peri(&mut self) -> PeripheralsWrapper<'_, Self::Target> {
-        self.peripherals_wrapper()
-    }
+    // fn peri(&mut self) -> PeripheralsWrapper<'_, Self::Target> {
+    //     self.peripherals_wrapper()
+    // }
 
     fn get_device_reg<M: MemMapped>(&self) -> Result<M, Acv> {
         M::from(self)
@@ -589,16 +587,16 @@ impl<M: Memory, P: Peripherals> IndexMut<Reg> for Interpreter<M, P> {
 }
 
 impl<M: Memory, P: Peripherals> Deref for Interpreter<M, P> {
-    type Target = P;
+    type Target = PeripheralsWrapper<P>;
 
     fn deref(&self) -> &Self::Target {
-        &self.peripherals
+        &self.peripherals.get_peripherals_wrapper()
     }
 }
 
 impl<M: Memory, P: Peripherals> DerefMut for Interpreter<M, P> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.peripherals
+        self.peripherals.get_peripherals_wrapper_mut()
     }
 }
 

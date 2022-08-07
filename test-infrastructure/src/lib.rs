@@ -20,6 +20,7 @@ pub use {
         InstructionInterpreterPeripheralAccess,
         InstructionInterpreter
     },
+    lc3_traits::peripherals::PeripheralsWrapper,
     lc3_application_support::shim_support::new_shim_peripherals_set
 };
 

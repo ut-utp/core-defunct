@@ -3,7 +3,7 @@
 
 use lc3_isa::{Addr, Instruction, Word};
 use lc3_traits::memory::Memory;
-use lc3_traits::peripherals::Peripherals;
+use lc3_traits::peripherals::{Peripherals, PeripheralsWrapper};
 use lc3_baseline_sim::interp::{
     InstructionInterpreter, Interpreter, InterpreterBuilder, MachineState
 };
@@ -26,7 +26,7 @@ pub fn interp_test_runner<M: Memory + Default + Clone, P: Default + Peripherals,
     alt_peripherals: Option<P>,
 )
 where
-    for<'p> PF: FnOnce(&'p mut P),
+    for<'p> PF: FnOnce(&'p mut PeripheralsWrapper<P>),
     for<'i> TF: FnOnce(&'i mut Interpreter<M, P>), // Note: we could pass by value
                                                    // since this is the last thing
                                                    // we do.

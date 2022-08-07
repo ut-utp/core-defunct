@@ -474,7 +474,7 @@ mod write {
                 post: |i| {
                     for (pin, pin_val) in GPIO_PINS.iter().zip(gpio_bools.iter()) {
                         let exp_pin_val = pin_val != &0;
-                        let actual_pin_val = i.peri().read(*pin).unwrap();
+                        let actual_pin_val = i.read(*pin).unwrap();
                         eq!(
                             actual_pin_val, exp_pin_val,
                             "Gpio Pin {:?}\nExpected {exp_pin_val}, got {actual_pin_val}\nTest Case {gpio_vals:?}",

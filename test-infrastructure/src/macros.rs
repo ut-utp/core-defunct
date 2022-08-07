@@ -77,6 +77,7 @@ macro_rules! single_test_inner {
             Addr, Word, Reg, Instruction, insn, Reg::*,
             ShareablePeripheralsShim, MemoryShim, SourceShim, new_shim_peripherals_set,
             PeripheralInterruptFlags, Interpreter, InstructionInterpreterPeripheralAccess,
+            PeripheralsWrapper,
         };
 
         #[allow(unused_imports)]
@@ -134,7 +135,7 @@ macro_rules! single_test_inner {
         )?
 
         fn setup_func_cast<S>(func: S) -> S
-        where for<'p> S: FnOnce(&'p mut Per<'_>) {
+        where for<'p> S: FnOnce(&'p mut PeripheralsWrapper<Per<'_>>) {
             func
         }
 
@@ -144,8 +145,8 @@ macro_rules! single_test_inner {
         }
 
         #[allow(unused)]
-        let setup_func = setup_func_cast(|_p: &mut Per<'_>| { }); // no-op if not specified
-        $(let setup_func = setup_func_cast(|$peripherals_s: &mut Per<'_>| $setup);)?
+        let setup_func = setup_func_cast(|_p: &mut PeripheralsWrapper<Per<'_>>| { }); // no-op if not specified
+        $(let setup_func = setup_func_cast(|$peripherals_s: &mut PeripheralsWrapper<Per<'_>>| $setup);)?
 
         #[allow(unused)]
         let teardown_func = teardown_func_cast(|_p: &mut Interpreter<MemoryShim, Per<'_>>| { }); // no-op if not specified
