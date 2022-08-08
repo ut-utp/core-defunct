@@ -183,7 +183,7 @@ macro_rules! loadable {
     // Note: this permits dots before instructions and allows dots to be omitted before directives (i.e. both `.ADD` and `FILL` are allowed), but w/e
     (.ORIG #$orig:expr $(=> $($_oa:ident$($_ob:literal)?)*)?; $($(.)? $op:ident $($regs:ident),* $(,)? $(#$num:expr)? $(=> $($_a:ident$($_b:literal)?)*)?;)*) => {
         {
-            #[allow(mutable)]
+            #[allow(unused_mut)]
             let mut _addr: $crate::Addr = $orig;
 
             [$(
@@ -213,13 +213,13 @@ macro_rules! program {
             //   - vec::push is not yet a const function (vec::new is on 1.39+
             //     but, iiuc that's because it doesn't actually allocate heap
             //     space).
-            #[allow(mutable)]
+            #[allow(unused_mut)]
             let mut _addr: $crate::Addr;
 
-            #[allow(mutable)]
+            #[allow(unused_mut)]
             let mut _addr_label: $crate::Addr;
 
-            #[allow(mutable)]
+            #[allow(unused_mut)]
             let mut _mem: [($crate::Word, bool); $crate::ADDR_SPACE_SIZE_IN_WORDS] = [(0, false); $crate::ADDR_SPACE_SIZE_IN_WORDS];
 
             $crate::program!(%%label_def, _addr_label | .ORIG #$orig; $($rest)*);
