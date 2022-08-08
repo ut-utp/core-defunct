@@ -2,14 +2,14 @@ use super::*;
 
 use lc3_baseline_sim::interp::InstructionInterpreter;
 use lc3_baseline_sim::mem_mapped::{
-    G0CR_ADDR, G0DR_ADDR, /* G0_INT_VEC, */ // TODO!
-    G1CR_ADDR, G1DR_ADDR, /* G1_INT_VEC, */ // TODO!
-    G2CR_ADDR, G2DR_ADDR, /* G2_INT_VEC, */ // TODO!
-    G3CR_ADDR, G3DR_ADDR, /* G3_INT_VEC, */ // TODO!
-    G4CR_ADDR, G4DR_ADDR, /* G4_INT_VEC, */ // TODO!
-    G5CR_ADDR, G5DR_ADDR, /* G5_INT_VEC, */ // TODO!
-    G6CR_ADDR, G6DR_ADDR, /* G6_INT_VEC, */ // TODO!
-    G7CR_ADDR, G7DR_ADDR, /* G7_INT_VEC, */ // TODO!
+    GA0_CR_ADDR, GA0_DR_ADDR, /* G0_INT_VEC, */ // TODO!
+    GA1_CR_ADDR, GA1_DR_ADDR, /* G1_INT_VEC, */ // TODO!
+    GA2_CR_ADDR, GA2_DR_ADDR, /* G2_INT_VEC, */ // TODO!
+    GA3_CR_ADDR, GA3_DR_ADDR, /* G3_INT_VEC, */ // TODO!
+    GA4_CR_ADDR, GA4_DR_ADDR, /* G4_INT_VEC, */ // TODO!
+    GA5_CR_ADDR, GA5_DR_ADDR, /* G5_INT_VEC, */ // TODO!
+    GA6_CR_ADDR, GA6_DR_ADDR, /* G6_INT_VEC, */ // TODO!
+    GA7_CR_ADDR, GA7_DR_ADDR, /* G7_INT_VEC, */ // TODO!
     // GPIODR_ADDR, // TODO!
 };
 use lc3_traits::peripherals::gpio::{Gpio, GpioPin, GpioState, GPIO_PINS};
@@ -54,14 +54,14 @@ mod states {
             // Read test:
             single_test_inner! {
                 prefill: {
-                    0x3010: G0CR_ADDR,
-                    0x3011: G1CR_ADDR,
-                    0x3012: G2CR_ADDR,
-                    0x3013: G3CR_ADDR,
-                    0x3014: G4CR_ADDR,
-                    0x3015: G5CR_ADDR,
-                    0x3016: G6CR_ADDR,
-                    0x3017: G7CR_ADDR
+                    0x3010: GA0_CR_ADDR,
+                    0x3011: GA1_CR_ADDR,
+                    0x3012: GA2_CR_ADDR,
+                    0x3013: GA3_CR_ADDR,
+                    0x3014: GA4_CR_ADDR,
+                    0x3015: GA5_CR_ADDR,
+                    0x3016: GA6_CR_ADDR,
+                    0x3017: GA7_CR_ADDR
                 },
                 insns: [
                     { LDI R0, #0xF }, // G0
@@ -94,14 +94,14 @@ mod states {
             // Write test:
             single_test_inner! {
                 prefill_expr: {
-                    (0x3020 + (0 * 3) + 2) /*0x3022*/: G0CR_ADDR,
-                    (0x3020 + (1 * 3) + 2) /*0x3025*/: G1CR_ADDR,
-                    (0x3020 + (2 * 3) + 2) /*0x3028*/: G2CR_ADDR,
-                    (0x3020 + (3 * 3) + 2) /*0x302B*/: G3CR_ADDR,
-                    (0x3020 + (4 * 3) + 2) /*0x302E*/: G4CR_ADDR,
-                    (0x3020 + (5 * 3) + 2) /*0x3031*/: G5CR_ADDR,
-                    (0x3020 + (6 * 3) + 2) /*0x3034*/: G6CR_ADDR,
-                    (0x3020 + (7 * 3) + 2) /*0x3037*/: G7CR_ADDR,
+                    (0x3020 + (0 * 3) + 2) /*0x3022*/: GA0_CR_ADDR,
+                    (0x3020 + (1 * 3) + 2) /*0x3025*/: GA1_CR_ADDR,
+                    (0x3020 + (2 * 3) + 2) /*0x3028*/: GA2_CR_ADDR,
+                    (0x3020 + (3 * 3) + 2) /*0x302B*/: GA3_CR_ADDR,
+                    (0x3020 + (4 * 3) + 2) /*0x302E*/: GA4_CR_ADDR,
+                    (0x3020 + (5 * 3) + 2) /*0x3031*/: GA5_CR_ADDR,
+                    (0x3020 + (6 * 3) + 2) /*0x3034*/: GA6_CR_ADDR,
+                    (0x3020 + (7 * 3) + 2) /*0x3037*/: GA7_CR_ADDR,
                 },
                 insns: [
                     { AND R0, R0, #0 },
@@ -156,7 +156,7 @@ mod states {
     // pins, we do a couple of hardcoded tests:
     single_test! {
         gpio_cr_pin0_read_output,
-        prefill: { 0x3010: G0CR_ADDR },
+        prefill: { 0x3010: GA0_CR_ADDR },
         insns: [ { LDI R0, #0xF } ],
         steps: 1,
         regs: { R0: 0b01 },
@@ -165,7 +165,7 @@ mod states {
 
     single_test! {
         gpio_cr_pin0_set_output_valid,
-        prefill: { 0x3010: G0CR_ADDR },
+        prefill: { 0x3010: GA0_CR_ADDR },
         insns: [ { AND R0, R0, #0 }, { ADD R0, R0, #0b01 }, { STI R0, #0xD } ],
         steps: 3,
         regs: { R0: 0b01 },
@@ -176,7 +176,7 @@ mod states {
     // value we're given in the G*_CR registers.
     single_test! {
         gpio_cr_pin0_set_output_invalid,
-        prefill: { 0x3010: G0CR_ADDR },
+        prefill: { 0x3010: GA0_CR_ADDR },
         insns: [ { AND R0, R0, #0 }, { ADD R0, R0, #0b1101 }, { STI R0, #0xD } ],
         steps: 3,
         regs: { R0: 0b1101 },
@@ -220,14 +220,14 @@ mod read {
 
                 single_test_inner! {
                     prefill: {
-                        0x3010: G0DR_ADDR,
-                        0x3011: G1DR_ADDR,
-                        0x3012: G2DR_ADDR,
-                        0x3013: G3DR_ADDR,
-                        0x3014: G4DR_ADDR,
-                        0x3015: G5DR_ADDR,
-                        0x3016: G6DR_ADDR,
-                        0x3017: G7DR_ADDR,
+                        0x3010: GA0_DR_ADDR,
+                        0x3011: GA1_DR_ADDR,
+                        0x3012: GA2_DR_ADDR,
+                        0x3013: GA3_DR_ADDR,
+                        0x3014: GA4_DR_ADDR,
+                        0x3015: GA5_DR_ADDR,
+                        0x3016: GA6_DR_ADDR,
+                        0x3017: GA7_DR_ADDR,
                     },
                     insns: [
                         { LDI R0, #0xF }, // G0
@@ -315,14 +315,14 @@ mod read {
             for states in permutations {
                 single_test_inner! {
                     prefill: {
-                        0x3010: G0DR_ADDR,
-                        0x3011: G1DR_ADDR,
-                        0x3012: G2DR_ADDR,
-                        0x3013: G3DR_ADDR,
-                        0x3014: G4DR_ADDR,
-                        0x3015: G5DR_ADDR,
-                        0x3016: G6DR_ADDR,
-                        0x3017: G7DR_ADDR
+                        0x3010: GA0_DR_ADDR,
+                        0x3011: GA1_DR_ADDR,
+                        0x3012: GA2_DR_ADDR,
+                        0x3013: GA3_DR_ADDR,
+                        0x3014: GA4_DR_ADDR,
+                        0x3015: GA5_DR_ADDR,
+                        0x3016: GA6_DR_ADDR,
+                        0x3017: GA7_DR_ADDR
                     },
                     insns: [
                         { LDI R0, #0xF }, // G0
@@ -383,22 +383,22 @@ mod write {
             // Write test:
             single_test_inner! {
                 prefill_expr: {
-                    (0x3050 + (0 * 6) + 2) /*0x3052*/: G0DR_ADDR,
-                    (0x3050 + (0 * 6) + 3) /*0x3053*/: G0CR_ADDR,
-                    (0x3050 + (1 * 6) + 2) /*0x3055*/: G1DR_ADDR,
-                    (0x3050 + (1 * 6) + 3) /*0x3056*/: G1CR_ADDR,
-                    (0x3050 + (2 * 6) + 2) /*0x3058*/: G2DR_ADDR,
-                    (0x3050 + (2 * 6) + 3) /*0x3059*/: G2CR_ADDR,
-                    (0x3050 + (3 * 6) + 2) /*0x305B*/: G3DR_ADDR,
-                    (0x3050 + (3 * 6) + 3) /*0x305C*/: G3CR_ADDR,
-                    (0x3050 + (4 * 6) + 2) /*0x305E*/: G4DR_ADDR,
-                    (0x3050 + (4 * 6) + 3) /*0x305F*/: G4CR_ADDR,
-                    (0x3050 + (5 * 6) + 2) /*0x3051*/: G5DR_ADDR,
-                    (0x3050 + (5 * 6) + 3) /*0x3052*/: G5CR_ADDR,
-                    (0x3050 + (6 * 6) + 2) /*0x3054*/: G6DR_ADDR,
-                    (0x3050 + (6 * 6) + 3) /*0x3055*/: G6CR_ADDR,
-                    (0x3050 + (7 * 6) + 2) /*0x3057*/: G7DR_ADDR,
-                    (0x3050 + (7 * 6) + 3) /*0x3058*/: G7CR_ADDR,
+                    (0x3050 + (0 * 6) + 2) /*0x3052*/: GA0_DR_ADDR,
+                    (0x3050 + (0 * 6) + 3) /*0x3053*/: GA0_CR_ADDR,
+                    (0x3050 + (1 * 6) + 2) /*0x3055*/: GA1_DR_ADDR,
+                    (0x3050 + (1 * 6) + 3) /*0x3056*/: GA1_CR_ADDR,
+                    (0x3050 + (2 * 6) + 2) /*0x3058*/: GA2_DR_ADDR,
+                    (0x3050 + (2 * 6) + 3) /*0x3059*/: GA2_CR_ADDR,
+                    (0x3050 + (3 * 6) + 2) /*0x305B*/: GA3_DR_ADDR,
+                    (0x3050 + (3 * 6) + 3) /*0x305C*/: GA3_CR_ADDR,
+                    (0x3050 + (4 * 6) + 2) /*0x305E*/: GA4_DR_ADDR,
+                    (0x3050 + (4 * 6) + 3) /*0x305F*/: GA4_CR_ADDR,
+                    (0x3050 + (5 * 6) + 2) /*0x3051*/: GA5_DR_ADDR,
+                    (0x3050 + (5 * 6) + 3) /*0x3052*/: GA5_CR_ADDR,
+                    (0x3050 + (6 * 6) + 2) /*0x3054*/: GA6_DR_ADDR,
+                    (0x3050 + (6 * 6) + 3) /*0x3055*/: GA6_CR_ADDR,
+                    (0x3050 + (7 * 6) + 2) /*0x3057*/: GA7_DR_ADDR,
+                    (0x3050 + (7 * 6) + 3) /*0x3058*/: GA7_CR_ADDR,
                 },
                 insns: [
                     { AND R0, R0, #0 },
@@ -536,7 +536,7 @@ mod errors {
 
     single_test! {
         gpio_write_error_disabled,
-        prefill: { 0x3010: G0DR_ADDR },
+        prefill: { 0x3010: GA0_DR_ADDR },
         insns: [ { STI R0, #0xF } ],
         steps: 1,
         post: |i| { eq!(Error::from(GpioWriteError((G0, Disabled))), InstructionInterpreter::get_error(i).unwrap()); }
@@ -544,7 +544,7 @@ mod errors {
 
     single_test! {
         gpio_write_error_input,
-        prefill: { 0x3010: G0CR_ADDR, 0x3011: G0DR_ADDR },
+        prefill: { 0x3010: GA0_CR_ADDR, 0x3011: GA0_DR_ADDR },
         insns: [ { AND R0, R0, #0 }, { ADD R0, R0, #0b10 }, { STI R0, #0xD }, { STI R0, #0xD } ],
         steps: 4,
         regs: { R0: 0b10 },
@@ -553,7 +553,7 @@ mod errors {
 
     single_test! {
         gpio_read_error_disabled,
-        prefill: { 0x3010: G0DR_ADDR },
+        prefill: { 0x3010: GA0_DR_ADDR },
         insns: [ { LDI R0, #0xF } ],
         steps: 1,
         post: |i| { eq!(Error::from(GpioReadError((G0, Disabled))), InstructionInterpreter::get_error(i).unwrap()); }
@@ -561,7 +561,7 @@ mod errors {
 
     single_test! {
         gpio_read_error_output,
-        prefill: { 0x3010: G0CR_ADDR, 0x3011: G0DR_ADDR },
+        prefill: { 0x3010: GA0_CR_ADDR, 0x3011: GA0_DR_ADDR },
         insns: [ { AND R0, R0, #0 }, { ADD R0, R0, #0b01 }, { STI R0, #0xD }, { LDI R0, #0xD } ],
         steps: 4,
         regs: { R0: 0x8000 },

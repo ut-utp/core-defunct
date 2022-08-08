@@ -1,6 +1,7 @@
 //! TODO!
 
 use lc3_isa::{MEM_MAPPED_START_ADDR, INTERRUPT_SERVICE_ROUTINES_START_ADDR};
+use lc3_traits::peripherals::gpio::GpioBank as Gp;
 
 // TODO: split into modules/structs
 pub const KBSR_ADDR: Addr = 0xFE00;
@@ -15,46 +16,107 @@ pub const DDR_ADDR: Addr = 0xFE06;
 pub const DISPLAY_INT_VEC: u8 = 0x81; // TODO: What is this actually?
 pub const DISPLAY_INT_PRIORITY: u8 = 4;
 
-pub const GPIO_OFFSET: u8 = 0x30;
+pub const GPIO_OFFSET: u8 = 0x10;
 const GPIO_MEM_MAPPED_BASE: Addr = MEM_MAPPED_START_ADDR + (GPIO_OFFSET as Addr);
-const GPIO_PIN_ADDRS: Addr = 2;
+const GPIO_ADDRS_PER_PIN: Addr = 2;
 
-pub const G0CR_ADDR: Addr = gpio_cr_addr(0); // xFE30
-pub const G0DR_ADDR: Addr = gpio_dr_addr(0); // xFE31
-pub const G1CR_ADDR: Addr = gpio_cr_addr(1); // xFE32
-pub const G1DR_ADDR: Addr = gpio_dr_addr(1); // xFE33
-pub const G2CR_ADDR: Addr = gpio_cr_addr(2); // xFE34
-pub const G2DR_ADDR: Addr = gpio_dr_addr(2); // xFE35
-pub const G3CR_ADDR: Addr = gpio_cr_addr(3); // xFE36
-pub const G3DR_ADDR: Addr = gpio_dr_addr(3); // xFE37
-pub const G4CR_ADDR: Addr = gpio_cr_addr(4); // xFE38
-pub const G4DR_ADDR: Addr = gpio_dr_addr(4); // xFE39
-pub const G5CR_ADDR: Addr = gpio_cr_addr(5); // xFE3A
-pub const G5DR_ADDR: Addr = gpio_dr_addr(5); // xFE3B
-pub const G6CR_ADDR: Addr = gpio_cr_addr(6); // xFE3C
-pub const G6DR_ADDR: Addr = gpio_dr_addr(6); // xFE3D
-pub const G7CR_ADDR: Addr = gpio_cr_addr(7); // xFE3E
-pub const G7DR_ADDR: Addr = gpio_dr_addr(7); // xFE3F
+pub const GA0_CR_ADDR: Addr = gpio_cr_addr(Gp::A, 0); // xFE10
+pub const GA0_DR_ADDR: Addr = gpio_dr_addr(Gp::A, 0); // xFE11
+pub const GA1_CR_ADDR: Addr = gpio_cr_addr(Gp::A, 1); // xFE12
+pub const GA1_DR_ADDR: Addr = gpio_dr_addr(Gp::A, 1); // xFE13
+pub const GA2_CR_ADDR: Addr = gpio_cr_addr(Gp::A, 2); // xFE14
+pub const GA2_DR_ADDR: Addr = gpio_dr_addr(Gp::A, 2); // xFE15
+pub const GA3_CR_ADDR: Addr = gpio_cr_addr(Gp::A, 3); // xFE16
+pub const GA3_DR_ADDR: Addr = gpio_dr_addr(Gp::A, 3); // xFE17
+pub const GA4_CR_ADDR: Addr = gpio_cr_addr(Gp::A, 4); // xFE18
+pub const GA4_DR_ADDR: Addr = gpio_dr_addr(Gp::A, 4); // xFE19
+pub const GA5_CR_ADDR: Addr = gpio_cr_addr(Gp::A, 5); // xFE1A
+pub const GA5_DR_ADDR: Addr = gpio_dr_addr(Gp::A, 5); // xFE1B
+pub const GA6_CR_ADDR: Addr = gpio_cr_addr(Gp::A, 6); // xFE1C
+pub const GA6_DR_ADDR: Addr = gpio_dr_addr(Gp::A, 6); // xFE1D
+pub const GA7_CR_ADDR: Addr = gpio_cr_addr(Gp::A, 7); // xFE1E
+pub const GA7_DR_ADDR: Addr = gpio_dr_addr(Gp::A, 7); // xFE1F
 
-const fn gpio_cr_addr(i: u16) -> Addr {
-    GPIO_MEM_MAPPED_BASE + GPIO_PIN_ADDRS * i
+pub const GB0_CR_ADDR: Addr = gpio_cr_addr(Gp::B, 0); // xFE20
+pub const GB0_DR_ADDR: Addr = gpio_dr_addr(Gp::B, 0); // xFE21
+pub const GB1_CR_ADDR: Addr = gpio_cr_addr(Gp::B, 1); // xFE22
+pub const GB1_DR_ADDR: Addr = gpio_dr_addr(Gp::B, 1); // xFE23
+pub const GB2_CR_ADDR: Addr = gpio_cr_addr(Gp::B, 2); // xFE24
+pub const GB2_DR_ADDR: Addr = gpio_dr_addr(Gp::B, 2); // xFE25
+pub const GB3_CR_ADDR: Addr = gpio_cr_addr(Gp::B, 3); // xFE26
+pub const GB3_DR_ADDR: Addr = gpio_dr_addr(Gp::B, 3); // xFE27
+pub const GB4_CR_ADDR: Addr = gpio_cr_addr(Gp::B, 4); // xFE28
+pub const GB4_DR_ADDR: Addr = gpio_dr_addr(Gp::B, 4); // xFE29
+pub const GB5_CR_ADDR: Addr = gpio_cr_addr(Gp::B, 5); // xFE2A
+pub const GB5_DR_ADDR: Addr = gpio_dr_addr(Gp::B, 5); // xFE2B
+pub const GB6_CR_ADDR: Addr = gpio_cr_addr(Gp::B, 6); // xFE2C
+pub const GB6_DR_ADDR: Addr = gpio_dr_addr(Gp::B, 6); // xFE2D
+pub const GB7_CR_ADDR: Addr = gpio_cr_addr(Gp::B, 7); // xFE2E
+pub const GB7_DR_ADDR: Addr = gpio_dr_addr(Gp::B, 7); // xFE2F
+
+pub const GC0_CR_ADDR: Addr = gpio_cr_addr(Gp::C, 0); // xFE30
+pub const GC0_DR_ADDR: Addr = gpio_dr_addr(Gp::C, 0); // xFE31
+pub const GC1_CR_ADDR: Addr = gpio_cr_addr(Gp::C, 1); // xFE32
+pub const GC1_DR_ADDR: Addr = gpio_dr_addr(Gp::C, 1); // xFE33
+pub const GC2_CR_ADDR: Addr = gpio_cr_addr(Gp::C, 2); // xFE34
+pub const GC2_DR_ADDR: Addr = gpio_dr_addr(Gp::C, 2); // xFE35
+pub const GC3_CR_ADDR: Addr = gpio_cr_addr(Gp::C, 3); // xFE36
+pub const GC3_DR_ADDR: Addr = gpio_dr_addr(Gp::C, 3); // xFE37
+pub const GC4_CR_ADDR: Addr = gpio_cr_addr(Gp::C, 4); // xFE38
+pub const GC4_DR_ADDR: Addr = gpio_dr_addr(Gp::C, 4); // xFE39
+pub const GC5_CR_ADDR: Addr = gpio_cr_addr(Gp::C, 5); // xFE3A
+pub const GC5_DR_ADDR: Addr = gpio_dr_addr(Gp::C, 5); // xFE3B
+pub const GC6_CR_ADDR: Addr = gpio_cr_addr(Gp::C, 6); // xFE3C
+pub const GC6_DR_ADDR: Addr = gpio_dr_addr(Gp::C, 6); // xFE3D
+pub const GC7_CR_ADDR: Addr = gpio_cr_addr(Gp::C, 7); // xFE3E
+pub const GC7_DR_ADDR: Addr = gpio_dr_addr(Gp::C, 7); // xFE3F
+
+
+const fn gpio_cr_addr(bank: GpioBank, i: u16) -> Addr {
+    GPIO_MEM_MAPPED_BASE +
+        ((GpioPin::NUM_PINS as Word) * GPIO_ADDRS_PER_PIN * (bank as Word)) +
+        GPIO_ADDRS_PER_PIN * i
 }
-const fn gpio_dr_addr(i: u16) -> Addr {
-    gpio_cr_addr(i) + 1
+const fn gpio_dr_addr(bank: GpioBank, i: u16) -> Addr {
+    gpio_cr_addr(bank, i) + 1
 }
 
 // TODO: rename
-pub const GPIODR_ADDR: Addr = GPIO_MEM_MAPPED_BASE + GPIO_PIN_ADDRS * 8 + 0;
+pub const GPIO_A_CR_ADDR: Addr = 0xFE08;
+pub const GPIO_A_DR_ADDR: Addr = 0xFE09;
+pub const GPIO_B_CR_ADDR: Addr = 0xFE0A;
+pub const GPIO_B_DR_ADDR: Addr = 0xFE0B;
+pub const GPIO_C_CR_ADDR: Addr = 0xFE0C;
+pub const GPIO_C_DR_ADDR: Addr = 0xFE0D;
 
-pub const GPIO_BASE_INT_VEC: Addr = INTERRUPT_SERVICE_ROUTINES_START_ADDR + (GPIO_OFFSET as Addr); // x1B0
-pub const G0_INT_VEC: u8 = 128 + GPIO_OFFSET + 0; // xB0
-pub const G1_INT_VEC: u8 = 128 + GPIO_OFFSET + 1; // xB1
-pub const G2_INT_VEC: u8 = 128 + GPIO_OFFSET + 2; // xB2
-pub const G3_INT_VEC: u8 = 128 + GPIO_OFFSET + 3; // xB3
-pub const G4_INT_VEC: u8 = 128 + GPIO_OFFSET + 4; // xB4
-pub const G5_INT_VEC: u8 = 128 + GPIO_OFFSET + 5; // xB5
-pub const G6_INT_VEC: u8 = 128 + GPIO_OFFSET + 6; // xB6
-pub const G7_INT_VEC: u8 = 128 + GPIO_OFFSET + 7; // xB7
+pub const GPIO_BASE_INT_VEC: Addr = INTERRUPT_SERVICE_ROUTINES_START_ADDR + (GPIO_OFFSET as Addr); // x190
+pub const GA0_INT_VEC: u8 = 128 + GPIO_OFFSET + 8 * 0 + 0; // x90
+pub const GA1_INT_VEC: u8 = 128 + GPIO_OFFSET + 8 * 0 + 1; // x91
+pub const GA2_INT_VEC: u8 = 128 + GPIO_OFFSET + 8 * 0 + 2; // x92
+pub const GA3_INT_VEC: u8 = 128 + GPIO_OFFSET + 8 * 0 + 3; // x93
+pub const GA4_INT_VEC: u8 = 128 + GPIO_OFFSET + 8 * 0 + 4; // x94
+pub const GA5_INT_VEC: u8 = 128 + GPIO_OFFSET + 8 * 0 + 5; // x95
+pub const GA6_INT_VEC: u8 = 128 + GPIO_OFFSET + 8 * 0 + 6; // x96
+pub const GA7_INT_VEC: u8 = 128 + GPIO_OFFSET + 8 * 0 + 7; // x97
+
+pub const GB0_INT_VEC: u8 = 128 + GPIO_OFFSET + 8 * 1 + 0; // x98
+pub const GB1_INT_VEC: u8 = 128 + GPIO_OFFSET + 8 * 1 + 1; // x99
+pub const GB2_INT_VEC: u8 = 128 + GPIO_OFFSET + 8 * 1 + 2; // x9A
+pub const GB3_INT_VEC: u8 = 128 + GPIO_OFFSET + 8 * 1 + 3; // x9B
+pub const GB4_INT_VEC: u8 = 128 + GPIO_OFFSET + 8 * 1 + 4; // x9C
+pub const GB5_INT_VEC: u8 = 128 + GPIO_OFFSET + 8 * 1 + 5; // x9D
+pub const GB6_INT_VEC: u8 = 128 + GPIO_OFFSET + 8 * 1 + 6; // x9E
+pub const GB7_INT_VEC: u8 = 128 + GPIO_OFFSET + 8 * 1 + 7; // x9F
+
+pub const GC0_INT_VEC: u8 = 128 + GPIO_OFFSET + 8 * 2 + 0; // xA0
+pub const GC1_INT_VEC: u8 = 128 + GPIO_OFFSET + 8 * 2 + 1; // xA1
+pub const GC2_INT_VEC: u8 = 128 + GPIO_OFFSET + 8 * 2 + 2; // xA2
+pub const GC3_INT_VEC: u8 = 128 + GPIO_OFFSET + 8 * 2 + 3; // xA3
+pub const GC4_INT_VEC: u8 = 128 + GPIO_OFFSET + 8 * 2 + 4; // xA4
+pub const GC5_INT_VEC: u8 = 128 + GPIO_OFFSET + 8 * 2 + 5; // xA5
+pub const GC6_INT_VEC: u8 = 128 + GPIO_OFFSET + 8 * 2 + 6; // xA6
+pub const GC7_INT_VEC: u8 = 128 + GPIO_OFFSET + 8 * 2 + 7; // xA7
+
 pub const GPIO_INT_PRIORITY: u8 = 4;
 
 pub const ADC_OFFSET: u8 = 0x40;
@@ -103,9 +165,12 @@ const MISC_MEM_MAPPED_BASE: Addr = MEM_MAPPED_START_ADDR + (MISC_OFFSET as Addr)
 
 pub const CLKR_ADDR: Addr = MISC_MEM_MAPPED_BASE + 0; // xFE70
 
+pub const OPT_PERI_REG_ADDR: Addr = MISC_MEM_MAPPED_BASE + 1; // xFE71 // TODO! use `get_all_optional_peripherals_status`! 1 bit per optional peripheral!
+                                                                       // maybe also expose traps for each? or at least 1 trap for GET_SUPPORTED_PERIPHERALS
+
 pub const BSP_ADDR: Addr = 0xFFFA;
 
-use crate::interp::InstructionInterpreterPeripheralAccess;
+use crate::interp::{InstructionInterpreterPeripheralAccess, DerefsIntoPeripheralsWrapper};
 use crate::interp::InstructionInterpreterPeripheralAccess as Ipa;
 use core::ops::Deref;
 use lc3_isa::{Addr, Bits, SignedWord, Word, MCR as MCR_ADDR, PSR as PSR_ADDR, WORD_MAX_VAL};
@@ -459,8 +524,63 @@ impl MemMapped for DDR {
     }
 }
 
+trait GetGpioBank<I: Ipa> {
+    type Bank: Gpio + ?Sized;
+    const BANK: GpioBank;
+
+    fn get(interp: &I) -> Option<&Self::Bank>;
+    fn get_mut(interp: &mut I) -> Option<&mut Self::Bank>;
+}
+
+struct Banked<const BANK: char>;
+impl<I: Ipa> GetGpioBank<I> for Banked<'A'> {
+    type Bank = <<I as DerefsIntoPeripheralsWrapper>::P as Peripherals>::Gpio;
+    const BANK: GpioBank = Gp::A;
+
+    fn get(interp: &I) -> Option<&Self::Bank> { Some(interp.get_gpio()) }
+    fn get_mut(interp: &mut I) -> Option<&mut Self::Bank> { Some(interp.get_gpio_mut()) }
+}
+impl<I: Ipa> GetGpioBank<I> for Banked<'B'> {
+    type Bank = <<I as DerefsIntoPeripheralsWrapper>::P as Peripherals>::GpioB;
+    const BANK: GpioBank = Gp::B;
+
+    fn get(interp: &I) -> Option<&Self::Bank> { interp.get_gpio_bank_b() }
+    fn get_mut(interp: &mut I) -> Option<&mut Self::Bank> { interp.get_gpio_bank_b_mut() }
+}
+impl<I: Ipa> GetGpioBank<I> for Banked<'C'> {
+    type Bank = <<I as DerefsIntoPeripheralsWrapper>::P as Peripherals>::GpioC;
+    const BANK: GpioBank = Gp::C;
+
+    fn get(interp: &I) -> Option<&Self::Bank> { interp.get_gpio_bank_c() }
+    fn get_mut(interp: &mut I) -> Option<&mut Self::Bank> { interp.get_gpio_bank_c_mut() }
+}
+
+fn get_gpio<const B: char, const SET_ERR: bool/*  = false */, I: Ipa>(interp: &I) -> Option<&<Banked<B> as GetGpioBank<I>>::Bank>
+where
+    Banked<B>: GetGpioBank<I>,
+{
+    let res = Banked::<B>::get(interp);
+    if res.is_none() && SET_ERR {
+        interp.set_error(Error::OptionalPeripheralIsNotPresent(<Banked<B>>::BANK.try_into().unwrap()));
+    }
+
+    res
+}
+
+fn get_gpio_mut<const B: char, const SET_ERR: bool/*  = false */, I: Ipa>(interp: &mut I) -> Option<&mut <Banked<B> as GetGpioBank<I>>::Bank>
+where
+    Banked<B>: GetGpioBank<I>,
+{
+    if Banked::<B>::get_mut(interp).is_none() && SET_ERR {
+        interp.set_error(Error::OptionalPeripheralIsNotPresent(<Banked<B>>::BANK.try_into().unwrap()));
+    }
+
+    Banked::<B>::get_mut(interp)
+}
+
+
 macro_rules! gpio_mem_mapped {
-    ($pin:expr, $pin_name:literal, $cr:ident, $dr:ident, $cr_addr:expr, $dr_addr:expr, $int_vec:expr) => {
+    ($pin:expr, $bank:expr, $pin_name:literal, $cr:ident, $dr:ident, $cr_addr:expr, $dr_addr:expr, $int_vec:expr) => {
         #[doc=$pin_name]
         #[doc="GPIO Pin Control Register"] // TODO: format correctly
         #[derive(Copy, Clone, Debug, PartialEq)]
@@ -478,36 +598,45 @@ macro_rules! gpio_mem_mapped {
             fn with_value(value: Word) -> Self { Self(value) }
 
             fn from<I: Ipa> (interp: &I) -> Result<Self, Acv> {
-                let state = Gpio::get_state(interp.get_gpio(), $pin);
+                if let Some(gp) = get_gpio::<$bank, true, I>(interp) {
+                    let state = Gpio::get_state(gp, $pin);
 
-                use lc3_traits::peripherals::gpio::GpioState::*;
-                let word: Word = match state {
-                    Disabled => 0,
-                    Output => 1,
-                    Input => 2,
-                    Interrupt => 3,
-                };
+                    use lc3_traits::peripherals::gpio::GpioState::*;
+                    let word: Word = match state {
+                        Disabled => 0,
+                        Output => 1,
+                        Input => 2,
+                        Interrupt => 3,
+                    };
 
-                Ok(Self::with_value(word))
+                    Ok(Self::with_value(word))
+                } else {
+                    Ok(Self::with_value(0)) // TODO: ACV?
+                }
             }
 
             fn set<I: Ipa>(interp: &mut I, value: Word) -> WriteAttempt {
-                use lc3_traits::peripherals::gpio::GpioState::*;
-                let state = match value.bits(0..1) {
-                    0 => Disabled,
-                    1 => Output,
-                    2 => Input,
-                    3 => Interrupt,
-                    _ => unreachable!()
-                };
+                if let Some(gp) = get_gpio_mut::<$bank, true, I>(interp) {
+                    use lc3_traits::peripherals::gpio::GpioState::*;
+                    let state = match value.bits(0..1) {
+                        0 => Disabled,
+                        1 => Output,
+                        2 => Input,
+                        3 => Interrupt,
+                        _ => unreachable!()
+                    };
 
-                match Gpio::set_state(interp.get_gpio_mut(), $pin, state) {
-                    Ok(()) => Ok(()),
-                    Err(err) => {
-                        interp.set_error(Error::from(err));
-                        Ok(())
+                    match Gpio::set_state(gp, $pin, state) {
+                        Ok(()) => Ok(()),
+                        Err(err) => {
+                            interp.set_error(Error::from(err));
+                            Ok(())
+                        }
                     }
+                } else {
+                    Ok(()) // TODO: ACV?
                 }
+
             }
         }
 
@@ -516,16 +645,26 @@ macro_rules! gpio_mem_mapped {
             const PRIORITY: u8 = GPIO_INT_PRIORITY;
 
             fn interrupt_ready<I: Ipa>(interp: &I) -> bool {
-                Gpio::interrupt_occurred(interp.get_gpio(), $pin)
+                if let Some(gp) = get_gpio::<$bank, false, I>(interp) {
+                    Gpio::interrupt_occurred(gp, $pin)
+                } else {
+                    false
+                }
             }
 
             fn interrupt_enabled<I: Ipa>(interp: &I) -> bool {
-                Gpio::interrupts_enabled(interp.get_gpio(), $pin)
+                if let Some(gp) = get_gpio::<$bank, false, I>(interp) {
+                    Gpio::interrupts_enabled(gp, $pin)
+                } else {
+                    false
+                }
             }
 
             fn reset_interrupt_flag<I: Ipa>(interp: &mut I) {
-                if Gpio::interrupts_enabled(interp.get_gpio(), $pin) {
-                    Gpio::reset_interrupt_flag(interp.get_gpio_mut(), $pin);
+                if let Some(gp) = get_gpio_mut::<$bank, false, I>(interp) {
+                    if Gpio::interrupts_enabled(gp, $pin) {
+                        Gpio::reset_interrupt_flag(gp, $pin);
+                    }
                 }
             }
 
@@ -549,52 +688,80 @@ macro_rules! gpio_mem_mapped {
 
             // TODO: change all these to some other kind of error since we already check for ACVs in read_word, etc.
             fn from<I: Ipa>(interp: &I) -> Result<Self, Acv> {
-                let word = match Gpio::read(interp.get_gpio(), $pin) {
-                    Ok(val) => val as Word,
-                    Err(err) => {
-                        interp.set_error(Error::from(err));
-                        0x8000
-                    }
-                };
+                if let Some(gp) = get_gpio::<$bank, true, I>(interp) {
+                    let word = match Gpio::read(gp, $pin) {
+                        Ok(val) => val as Word,
+                        Err(err) => {
+                            interp.set_error(Error::from(err));
+                            0x8000
+                        }
+                    };
 
-                Ok(Self::with_value(word))
+                    Ok(Self::with_value(word))
+                } else {
+                    Ok(Self::with_value(0x8000)) // TODO: ACV?
+                }
             }
 
             fn set<I: Ipa>(interp: &mut I, value: Word) -> WriteAttempt {
-                let bit: bool = value.bit(0);
-                match Gpio::write(interp.get_gpio_mut(), $pin, bit) {
-                    Ok(()) => Ok(()),
-                    Err(err) => {
-                        interp.set_error(Error::from(err));
-                        Ok(())
+                if let Some(gp) = get_gpio_mut::<$bank, true, I>(interp) {
+                    let bit: bool = value.bit(0);
+                    match Gpio::write(gp, $pin, bit) {
+                        Ok(()) => Ok(()),
+                        Err(err) => {
+                            interp.set_error(Error::from(err));
+                            Ok(())
+                        }
                     }
+                } else {
+                    Ok(()) // TODO: ACV?
                 }
             }
         }
     };
 }
 
-use lc3_traits::peripherals::gpio::{Gpio, GpioPin::*, GpioPinArr, GpioPin, GPIO_PINS};
+use lc3_traits::peripherals::gpio::{Gpio, GpioPin::*, GpioPin, GpioBank};
 
-gpio_mem_mapped!(G0, "G0", G0CR, G0DR, G0CR_ADDR, G0DR_ADDR, G0_INT_VEC);
-gpio_mem_mapped!(G1, "G1", G1CR, G1DR, G1CR_ADDR, G1DR_ADDR, G1_INT_VEC);
-gpio_mem_mapped!(G2, "G2", G2CR, G2DR, G2CR_ADDR, G2DR_ADDR, G2_INT_VEC);
-gpio_mem_mapped!(G3, "G3", G3CR, G3DR, G3CR_ADDR, G3DR_ADDR, G3_INT_VEC);
-gpio_mem_mapped!(G4, "G4", G4CR, G4DR, G4CR_ADDR, G4DR_ADDR, G4_INT_VEC);
-gpio_mem_mapped!(G5, "G5", G5CR, G5DR, G5CR_ADDR, G5DR_ADDR, G5_INT_VEC);
-gpio_mem_mapped!(G6, "G6", G6CR, G6DR, G6CR_ADDR, G6DR_ADDR, G6_INT_VEC);
-gpio_mem_mapped!(G7, "G7", G7CR, G7DR, G7CR_ADDR, G7DR_ADDR, G7_INT_VEC);
+gpio_mem_mapped!(G0, 'A', "G0", GA0CR, GA0DR, GA0_CR_ADDR, GA0_DR_ADDR, GA0_INT_VEC);
+gpio_mem_mapped!(G1, 'A', "G1", GA1CR, GA1DR, GA1_CR_ADDR, GA1_DR_ADDR, GA1_INT_VEC);
+gpio_mem_mapped!(G2, 'A', "G2", GA2CR, GA2DR, GA2_CR_ADDR, GA2_DR_ADDR, GA2_INT_VEC);
+gpio_mem_mapped!(G3, 'A', "G3", GA3CR, GA3DR, GA3_CR_ADDR, GA3_DR_ADDR, GA3_INT_VEC);
+gpio_mem_mapped!(G4, 'A', "G4", GA4CR, GA4DR, GA4_CR_ADDR, GA4_DR_ADDR, GA4_INT_VEC);
+gpio_mem_mapped!(G5, 'A', "G5", GA5CR, GA5DR, GA5_CR_ADDR, GA5_DR_ADDR, GA5_INT_VEC);
+gpio_mem_mapped!(G6, 'A', "G6", GA6CR, GA6DR, GA6_CR_ADDR, GA6_DR_ADDR, GA6_INT_VEC);
+gpio_mem_mapped!(G7, 'A', "G7", GA7CR, GA7DR, GA7_CR_ADDR, GA7_DR_ADDR, GA7_INT_VEC);
 
-pub struct GPIODR(Word);
-impl Deref for GPIODR {
+gpio_mem_mapped!(G0, 'B', "G0", GB0CR, GB0DR, GB0_CR_ADDR, GB0_DR_ADDR, GB0_INT_VEC);
+gpio_mem_mapped!(G1, 'B', "G1", GB1CR, GB1DR, GB1_CR_ADDR, GB1_DR_ADDR, GB1_INT_VEC);
+gpio_mem_mapped!(G2, 'B', "G2", GB2CR, GB2DR, GB2_CR_ADDR, GB2_DR_ADDR, GB2_INT_VEC);
+gpio_mem_mapped!(G3, 'B', "G3", GB3CR, GB3DR, GB3_CR_ADDR, GB3_DR_ADDR, GB3_INT_VEC);
+gpio_mem_mapped!(G4, 'B', "G4", GB4CR, GB4DR, GB4_CR_ADDR, GB4_DR_ADDR, GB4_INT_VEC);
+gpio_mem_mapped!(G5, 'B', "G5", GB5CR, GB5DR, GB5_CR_ADDR, GB5_DR_ADDR, GB5_INT_VEC);
+gpio_mem_mapped!(G6, 'B', "G6", GB6CR, GB6DR, GB6_CR_ADDR, GB6_DR_ADDR, GB6_INT_VEC);
+gpio_mem_mapped!(G7, 'B', "G7", GB7CR, GB7DR, GB7_CR_ADDR, GB7_DR_ADDR, GB7_INT_VEC);
+
+gpio_mem_mapped!(G0, 'C', "G0", GC0CR, GC0DR, GC0_CR_ADDR, GC0_DR_ADDR, GC0_INT_VEC);
+gpio_mem_mapped!(G1, 'C', "G1", GC1CR, GC1DR, GC1_CR_ADDR, GC1_DR_ADDR, GC1_INT_VEC);
+gpio_mem_mapped!(G2, 'C', "G2", GC2CR, GC2DR, GC2_CR_ADDR, GC2_DR_ADDR, GC2_INT_VEC);
+gpio_mem_mapped!(G3, 'C', "G3", GC3CR, GC3DR, GC3_CR_ADDR, GC3_DR_ADDR, GC3_INT_VEC);
+gpio_mem_mapped!(G4, 'C', "G4", GC4CR, GC4DR, GC4_CR_ADDR, GC4_DR_ADDR, GC4_INT_VEC);
+gpio_mem_mapped!(G5, 'C', "G5", GC5CR, GC5DR, GC5_CR_ADDR, GC5_DR_ADDR, GC5_INT_VEC);
+gpio_mem_mapped!(G6, 'C', "G6", GC6CR, GC6DR, GC6_CR_ADDR, GC6_DR_ADDR, GC6_INT_VEC);
+gpio_mem_mapped!(G7, 'C', "G7", GC7CR, GC7DR, GC7_CR_ADDR, GC7_DR_ADDR, GC7_INT_VEC);
+
+
+// TODO!
+/* pub struct GPIOA_DR(Word);
+impl Deref for GPIOA_DR {
 
     type Target = Word;
 
     fn deref(&self) -> &Self::Target { &self.0 }
 }
 
-impl MemMapped for GPIODR {
-    const ADDR: Addr = GPIODR_ADDR;
+impl MemMapped for GPIOA_DR {
+    const ADDR: Addr = GPIOA_DR_ADDR;
 
     fn with_value(value: Word) -> Self { Self(value) }
 
@@ -628,7 +795,7 @@ impl MemMapped for GPIODR {
 
         Ok(())
     }
-}
+} */
 
 // Idk how to coerce the state of all pins into a word
 //#[doc="GPIO Control Register, all pins"]

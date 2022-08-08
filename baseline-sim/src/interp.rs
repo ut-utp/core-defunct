@@ -38,7 +38,6 @@ use core::cell::Cell;
 pub trait DerefsIntoPeripheralsWrapper: DerefMut + Deref<Target = PeripheralsWrapper<Self::P>> {
     type P: Peripherals + ?Sized;
 }
-
 impl<P: Peripherals + ?Sized, W: Deref<Target = PeripheralsWrapper<P>> + DerefMut> DerefsIntoPeripheralsWrapper for W {
     type P = P;
 }
@@ -46,30 +45,13 @@ impl<P: Peripherals + ?Sized, W: Deref<Target = PeripheralsWrapper<P>> + DerefMu
 // TODO: name?
 pub trait InstructionInterpreterPeripheralAccess:
     InstructionInterpreter + DerefsIntoPeripheralsWrapper
-    // TODO: revisit...
 where {
     fn get_peripherals(&self) -> &PeripheralsWrapper<<Self as DerefsIntoPeripheralsWrapper>::P> {
         self.deref()
     }
-
     fn get_peripherals_mut(&mut self) -> &mut PeripheralsWrapper<<Self as DerefsIntoPeripheralsWrapper>::P> {
         self.deref_mut()
     }
-
-    // // TODO: explain
-    // //
-    // // this gives you a type that, for convenience, has proxied impls of all the
-    // // peripheral traits on it.
-    // //
-    // // requires `&mut` though which is why we don't use it in the interpreter's
-    // // source code
-    // fn peripherals_wrapper(&mut self) -> PeripheralsWrapper<'_, Self::Target> {
-    //     PeripheralsExt::get_peripherals_wrapper(self)
-    // }
-
-    // fn peri(&mut self) -> PeripheralsWrapper<'_, Self::Target> {
-    //     self.peripherals_wrapper()
-    // }
 
     fn get_device_reg<M: MemMapped>(&self) -> Result<M, Acv> {
         M::from(self)
@@ -208,10 +190,9 @@ impl Default for MachineState {
 #[derive(Debug)]
 pub struct PeripheralInterruptFlags {
     pub gpio: GpioPinArr<AtomicBool>, // No payload; just tell us if a rising edge has happened
-    // adc: AdcPinArr<bool>, // We're not going to have Adc Interrupts
-    // pwm: PwmPinArr<bool>, // No Pwm Interrupts
+    pub gpio_bank_b: GpioPinArr<AtomicBool>,
+    pub gpio_bank_c: GpioPinArr<AtomicBool>,
     pub timers: TimerArr<AtomicBool>, // No payload; timers don't actually expose counts anyways
-    // clock: bool, // No Clock Interrupt
     pub input: AtomicBool, // No payload; check KBDR for the current character
     pub output: AtomicBool, // Technically this has an interrupt, but I have no idea why; UPDATE: it interrupts when it's ready to accept more data
                         // display: bool, // Unless we're exposing vsync/hsync or something, this doesn't need an interrupt
@@ -230,6 +211,8 @@ impl PeripheralInterruptFlags {
         // TODO: make this less gross..
         Self {
             gpio: GpioPinArr([b!(), b!(), b!(), b!(), b!(), b!(), b!(), b!()]),
+            gpio_bank_b: GpioPinArr([b!(), b!(), b!(), b!(), b!(), b!(), b!(), b!()]),
+            gpio_bank_c: GpioPinArr([b!(), b!(), b!(), b!(), b!(), b!(), b!(), b!()]),
             timers: TimerArr([b!(), b!()]),
             input: AtomicBool::new(false),
             output: AtomicBool::new(false),
@@ -774,7 +757,12 @@ impl<M: Memory, P: Peripherals> Interpreter<M, P> {
         }
 
         int_devices!(
-            KBSR, DSR, G0CR, G1CR, G2CR, G3CR, G4CR, G5CR, G6CR, G7CR, T0CR, T1CR
+            KBSR,
+            DSR,
+            GA0CR, GA1CR, GA2CR, GA3CR, GA4CR, GA5CR, GA6CR, GA7CR,
+            GB0CR, GB1CR, GB2CR, GB3CR, GB4CR, GB5CR, GB6CR, GB7CR,
+            GC0CR, GC1CR, GC2CR, GC3CR, GC4CR, GC5CR, GC6CR, GC7CR,
+            T0CR, T1CR
         );
         false
     }
@@ -972,7 +960,9 @@ use super::mem_mapped::{
     KBSR, KBDR,
     DSR, DDR,
     BSP, PSR,
-    G0CR, G0DR, G1CR, G1DR, G2CR, G2DR, G3CR, G3DR, G4CR, G4DR, G5CR, G5DR, G6CR, G6DR, G7CR, G7DR,
+    GA0CR, GA0DR, GA1CR, GA1DR, GA2CR, GA2DR, GA3CR, GA3DR, GA4CR, GA4DR, GA5CR, GA5DR, GA6CR, GA6DR, GA7CR, GA7DR,
+    GB0CR, GB0DR, GB1CR, GB1DR, GB2CR, GB2DR, GB3CR, GB3DR, GB4CR, GB4DR, GB5CR, GB5DR, GB6CR, GB6DR, GB7CR, GB7DR,
+    GC0CR, GC0DR, GC1CR, GC1DR, GC2CR, GC2DR, GC3CR, GC3DR, GC4CR, GC4DR, GC5CR, GC5DR, GC6CR, GC6DR, GC7CR, GC7DR,
     A0CR, A0DR, A1CR, A1DR, A2CR, A2DR, A3CR, A3DR, A4CR, A4DR, A5CR, A5DR,
     P0CR, P0DR, P1CR, P1DR,
     CLKR,
@@ -1055,7 +1045,9 @@ impl<M: Memory, P: Peripherals> InstructionInterpreter for Interpreter<M, P> {
                 KBSR, KBDR,
                 DSR, DDR,
                 BSP, PSR, MCR,
-                G0CR, G0DR, G1CR, G1DR, G2CR, G2DR, G3CR, G3DR, G4CR, G4DR, G5CR, G5DR, G6CR, G6DR, G7CR, G7DR,
+                GA0CR, GA0DR, GA1CR, GA1DR, GA2CR, GA2DR, GA3CR, GA3DR, GA4CR, GA4DR, GA5CR, GA5DR, GA6CR, GA6DR, GA7CR, GA7DR,
+                GB0CR, GB0DR, GB1CR, GB1DR, GB2CR, GB2DR, GB3CR, GB3DR, GB4CR, GB4DR, GB5CR, GB5DR, GB6CR, GB6DR, GB7CR, GB7DR,
+                GC0CR, GC0DR, GC1CR, GC1DR, GC2CR, GC2DR, GC3CR, GC3DR, GC4CR, GC4DR, GC5CR, GC5DR, GC6CR, GC6DR, GC7CR, GC7DR,
                 A0CR, A0DR, A1CR, A1DR, A2CR, A2DR, A3CR, A3DR, A4CR, A4DR, A5CR, A5DR,
                 P0CR, P0DR, P1CR, P1DR,
                 CLKR,
@@ -1084,7 +1076,9 @@ impl<M: Memory, P: Peripherals> InstructionInterpreter for Interpreter<M, P> {
                 KBSR, KBDR,
                 DSR, DDR,
                 BSP, PSR, MCR,
-                G0CR, G0DR, G1CR, G1DR, G2CR, G2DR, G3CR, G3DR, G4CR, G4DR, G5CR, G5DR, G6CR, G6DR, G7CR, G7DR,
+                GA0CR, GA0DR, GA1CR, GA1DR, GA2CR, GA2DR, GA3CR, GA3DR, GA4CR, GA4DR, GA5CR, GA5DR, GA6CR, GA6DR, GA7CR, GA7DR, // GPIOA_DR, /* GPIOA_CR */
+                GB0CR, GB0DR, GB1CR, GB1DR, GB2CR, GB2DR, GB3CR, GB3DR, GB4CR, GB4DR, GB5CR, GB5DR, GB6CR, GB6DR, GB7CR, GB7DR, // GPIOB_DR, /* GPIOB_CR */
+                GC0CR, GC0DR, GC1CR, GC1DR, GC2CR, GC2DR, GC3CR, GC3DR, GC4CR, GC4DR, GC5CR, GC5DR, GC6CR, GC6DR, GC7CR, GC7DR, // GPIOC_DR, /* GPIOC_CR */
                 A0CR, A0DR, A1CR, A1DR, A2CR, A2DR, A3CR, A3DR, A4CR, A4DR, A5CR, A5DR,
                 P0CR, P0DR, P1CR, P1DR,
                 CLKR,
