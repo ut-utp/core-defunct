@@ -189,7 +189,7 @@ macro_rules! define {
 
 /// Trap vectors for the [`Gpio`](lc3_traits::peripherals::Gpio) peripheral.
 pub mod gpio {
-  define!([super::mm::GPIO_OFFSET] <- {
+  define!([super::mm::GPIO_OFFSET + 0x20] <- {
       /// Puts a [GPIO] [Pin] in [Input] mode.
       ///
       /// ## Inputs

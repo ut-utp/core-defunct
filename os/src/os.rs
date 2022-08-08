@@ -6,9 +6,10 @@ use super::{OS_DEFAULT_STARTING_SP, OS_STARTING_SP_ADDR};
 use lc3_isa::util::{AssembledProgram, MemoryDump};
 use lc3_isa::{Word, OS_START_ADDR};
 use lc3_baseline_sim::{KBSR_ADDR, KBDR_ADDR, DSR_ADDR, DDR_ADDR};
-use lc3_baseline_sim::{G0CR_ADDR, A0CR_ADDR, P0CR_ADDR, T0CR_ADDR, CLKR_ADDR};
+use lc3_baseline_sim::{GA0_CR_ADDR, A0CR_ADDR, P0CR_ADDR, T0CR_ADDR, CLKR_ADDR};
 use lc3_baseline_sim::{GPIO_OFFSET, ADC_OFFSET, PWM_OFFSET, TIMER_OFFSET, MISC_OFFSET};
 use lc3_baseline_sim::{GPIO_BASE_INT_VEC, TIMER_BASE_INT_VEC};
+use lc3_traits::peripherals::{adc, gpio, pwm, timers};
 
 use lazy_static::lazy_static;
 
@@ -1067,8 +1068,7 @@ const fn os() -> AssembledProgram {
             STR R4, R6, #1;
             STR R7, R6, #0;
 
-            AND R4, R4, #0;                 // Set R4 to # of GPIO pins
-            ADD R4, R4, #lc3_traits::peripherals::gpio::GpioPin::NUM_PINS as i16;
+            LD  R4, @OS_GPIO_NUM_PINS;      // Set R4 to # of GPIO pins
             JSR @CHECK_OUT_OF_BOUNDS;
             BRn @SKIP_SET_GPIO_MODE;
 
@@ -1121,8 +1121,7 @@ const fn os() -> AssembledProgram {
             STR R4, R6, #1;
             STR R7, R6, #0;
 
-            AND R4, R4, #0;                 // Set R4 to # of GPIO pins
-            ADD R4, R4, #lc3_traits::peripherals::gpio::GpioPin::NUM_PINS as i16;
+            LD  R4, @OS_GPIO_NUM_PINS;      // Set R4 to # of GPIO pins
             JSR @CHECK_OUT_OF_BOUNDS;
             BRn @SKIP_SET_GPIO_INTERRUPT;
 
@@ -1165,8 +1164,7 @@ const fn os() -> AssembledProgram {
             STR R4, R6, #1;
             STR R7, R6, #0;
 
-            AND R4, R4, #0;                 // Set R4 to # of GPIO pins
-            ADD R4, R4, #lc3_traits::peripherals::gpio::GpioPin::NUM_PINS as i16;
+            LD  R4, @OS_GPIO_NUM_PINS;      // Set R4 to # of GPIO pins
             JSR @CHECK_OUT_OF_BOUNDS;
             BRn @SKIP_READ_GPIO_MODE;
 
@@ -1188,8 +1186,7 @@ const fn os() -> AssembledProgram {
             STR R4, R6, #1;
             STR R7, R6, #0;
 
-            AND R4, R4, #0;                 // Set R4 to # of GPIO pins
-            ADD R4, R4, #lc3_traits::peripherals::gpio::GpioPin::NUM_PINS as i16;
+            LD  R4, @OS_GPIO_NUM_PINS;      // Set R4 to # of GPIO pins
             JSR @CHECK_OUT_OF_BOUNDS;
             BRn @SKIP_WRITE_GPIO_DATA;
 
@@ -1212,8 +1209,7 @@ const fn os() -> AssembledProgram {
             STR R4, R6, #1;
             STR R7, R6, #0;
 
-            AND R4, R4, #0;                 // Set R4 to # of GPIO pins
-            ADD R4, R4, #lc3_traits::peripherals::gpio::GpioPin::NUM_PINS as i16;
+            LD  R4, @OS_GPIO_NUM_PINS;      // Set R4 to # of GPIO pins
             JSR @CHECK_OUT_OF_BOUNDS;
             BRn @SKIP_READ_GPIO_DATA;
 
@@ -1237,8 +1233,7 @@ const fn os() -> AssembledProgram {
             STR R4, R6, #1;
             STR R7, R6, #0;
 
-            AND R4, R4, #0;                 // Set R4 to # of ADC pins
-            ADD R4, R4, #lc3_traits::peripherals::adc::AdcPin::NUM_PINS as i16;
+            LD  R4, @OS_GPIO_NUM_PINS;      // Set R4 to # of GPIO pins
             JSR @CHECK_OUT_OF_BOUNDS;
             BRn @SKIP_SET_ADC_MODE;
 
@@ -1291,7 +1286,7 @@ const fn os() -> AssembledProgram {
             STR R7, R6, #0;
 
             AND R4, R4, #0;                 // Set R4 to # of ADC pins
-            ADD R4, R4, #lc3_traits::peripherals::adc::AdcPin::NUM_PINS as i16;
+            ADD R4, R4, #adc::AdcPin::NUM_PINS as i16;
             JSR @CHECK_OUT_OF_BOUNDS;
             BRn @SKIP_READ_ADC_MODE;
 
@@ -1314,7 +1309,7 @@ const fn os() -> AssembledProgram {
             STR R7, R6, #0;
 
             AND R4, R4, #0;                 // Set R4 to # of ADC pins
-            ADD R4, R4, #lc3_traits::peripherals::adc::AdcPin::NUM_PINS as i16;
+            ADD R4, R4, #adc::AdcPin::NUM_PINS as i16;
             JSR @CHECK_OUT_OF_BOUNDS;
             BRn @SKIP_READ_ADC_DATA;
 
@@ -1330,7 +1325,10 @@ const fn os() -> AssembledProgram {
             RTI;
 
         // More constants
-        @OS_GPIO_BASE_ADDR .FILL #G0CR_ADDR;
+        @OS_GPIO_NUM_PINS .FILL #(gpio::GpioPin::NUM_PINS * gpio::GpioBank::NUM_BANKS) as i16;
+            // TODO: have the GPIO traps check for the presence of the extra gpio banks!! (iff pin num > 8)
+
+        @OS_GPIO_BASE_ADDR .FILL #GA0_CR_ADDR;
         @OS_ADC_BASE_ADDR .FILL #A0CR_ADDR;
         @OS_CLOCK_BASE_ADDR .FILL #CLKR_ADDR;
         @OS_TIMER_BASE_ADDR .FILL #T0CR_ADDR;
@@ -1349,7 +1347,7 @@ const fn os() -> AssembledProgram {
             STR R7, R6, #0;
 
             AND R4, R4, #0;                 // Set R4 to # of PWM pins
-            ADD R4, R4, #lc3_traits::peripherals::pwm::PwmPin::NUM_PINS as i16;
+            ADD R4, R4, #pwm::PwmPin::NUM_PINS as i16;
             JSR @CHECK_OUT_OF_BOUNDS;
             BRn @SKIP_SET_PWM;
 
@@ -1373,7 +1371,7 @@ const fn os() -> AssembledProgram {
             STR R7, R6, #0;
 
             AND R4, R4, #0;                 // Set R4 to # of PWM pins
-            ADD R4, R4, #lc3_traits::peripherals::pwm::PwmPin::NUM_PINS as i16;
+            ADD R4, R4, #pwm::PwmPin::NUM_PINS as i16;
             JSR @CHECK_OUT_OF_BOUNDS;
             BRn @SKIP_DISABLE_PWM;
 
@@ -1397,7 +1395,7 @@ const fn os() -> AssembledProgram {
             STR R7, R6, #0;
 
             AND R4, R4, #0;                 // Set R4 to # of PWM pins
-            ADD R4, R4, #lc3_traits::peripherals::pwm::PwmPin::NUM_PINS as i16;
+            ADD R4, R4, #pwm::PwmPin::NUM_PINS as i16;
             JSR @CHECK_OUT_OF_BOUNDS;
             BRn @SKIP_READ_PWM_PERIOD;
 
@@ -1425,7 +1423,7 @@ const fn os() -> AssembledProgram {
             STR R7, R6, #0;
 
             AND R4, R4, #0;                 // Set R4 to # of PWM pins
-            ADD R4, R4, #lc3_traits::peripherals::pwm::PwmPin::NUM_PINS as i16;
+            ADD R4, R4, #pwm::PwmPin::NUM_PINS as i16;
             JSR @CHECK_OUT_OF_BOUNDS;
             BRn @SKIP_READ_PWM_DUTY_CYCLE;
 
@@ -1449,7 +1447,7 @@ const fn os() -> AssembledProgram {
             STR R7, R6, #0;
 
             AND R4, R4, #0;                 // Set R4 to # of timers
-            ADD R4, R4, #lc3_traits::peripherals::timers::TimerId::NUM_TIMERS as i16;
+            ADD R4, R4, #timers::TimerId::NUM_TIMERS as i16;
             JSR @CHECK_OUT_OF_BOUNDS;
             BRn @SKIP_SET_TIMER_MODE;
 
@@ -1472,7 +1470,7 @@ const fn os() -> AssembledProgram {
             STR R7, R6, #0;
 
             AND R4, R4, #0;                 // Set R4 to # of timers
-            ADD R4, R4, #lc3_traits::peripherals::timers::TimerId::NUM_TIMERS as i16;
+            ADD R4, R4, #timers::TimerId::NUM_TIMERS as i16;
             JSR @CHECK_OUT_OF_BOUNDS;
             BRn @SKIP_WRITE_TIMER_PERIOD;
 
@@ -1559,7 +1557,7 @@ const fn os() -> AssembledProgram {
             STR R7, R6, #0;
 
             AND R4, R4, #0;                 // Set R4 to # of timers
-            ADD R4, R4, #lc3_traits::peripherals::timers::TimerId::NUM_TIMERS as i16;
+            ADD R4, R4, #timers::TimerId::NUM_TIMERS as i16;
             JSR @CHECK_OUT_OF_BOUNDS;
             BRn @SKIP_READ_TIMER_MODE;
 
@@ -1582,7 +1580,7 @@ const fn os() -> AssembledProgram {
             STR R7, R6, #0;
 
             AND R4, R4, #0;                 // Set R4 to # of timers
-            ADD R4, R4, #lc3_traits::peripherals::timers::TimerId::NUM_TIMERS as i16;
+            ADD R4, R4, #timers::TimerId::NUM_TIMERS as i16;
             JSR @CHECK_OUT_OF_BOUNDS;
             BRn @SKIP_READ_TIMER_PERIOD;
 
