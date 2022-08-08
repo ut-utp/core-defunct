@@ -879,7 +879,7 @@ macro_rules! adc_mem_mapped {
             fn from<I: Ipa> (interp: &I) -> Result<Self, Acv> {
 
                 let word = match Adc::read(interp.get_adc(), $pin) {
-                    Ok(val) => val as Word,
+                    Ok(val) => val.val(),
                     Err(err) => {
                         interp.set_error(Error::from(err));
                         0x8000

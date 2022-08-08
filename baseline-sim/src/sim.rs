@@ -16,7 +16,7 @@ use lc3_traits::control::rpc::{
     EventFutureSharedStatePorcelain, SimpleEventFutureSharedState, EventFuture
 };
 use lc3_traits::error::Error;
-use lc3_traits::peripherals::adc::{Adc, AdcPinArr, AdcReadError, AdcState};
+use lc3_traits::peripherals::adc::{Adc, AdcPinArr, AdcReadError, AdcState, AdcReading};
 use lc3_traits::peripherals::clock::Clock;
 use lc3_traits::peripherals::gpio::{Gpio, GpioPinArr, GpioReadError, GpioState, GpioBank};
 use lc3_traits::peripherals::pwm::{Pwm, PwmPinArr, PwmState};
@@ -618,7 +618,7 @@ impl<'s, I: InstructionInterpreterPeripheralAccess, S: EventFutureSharedStatePor
         Adc::get_states(self.interp.get_adc())
     }
 
-    fn get_adc_readings(&self) -> AdcPinArr<Result<u8, AdcReadError>> {
+    fn get_adc_readings(&self) -> AdcPinArr<Result<AdcReading, AdcReadError>> {
         Adc::read_all(self.interp.get_adc())
     }
 

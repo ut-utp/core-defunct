@@ -378,6 +378,8 @@ mod read {
 //}
 
 mod write {
+    use lc3_traits::peripherals::adc::AdcReading;
+
     use super::*;
 
 
@@ -446,10 +448,11 @@ mod write {
 
                     match got {
                         Enabled => {
-                            eq!(read_adc, Ok(0),
+                            let exp = AdcReading::new_raw(0);
+                            eq!(read_adc, Ok(exp),
                             "Adc Pin {}: expected val `{:?}`, got `{:?}`.\
                             \n\n[Test Case: {:?}]",
-                            pin, 0, read_adc, states
+                            pin, exp, read_adc, states
                             );
                         },
                         Disabled => {

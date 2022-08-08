@@ -8,7 +8,7 @@
 //! TODO!
 
 use crate::error::Error;
-use crate::peripherals::adc::{AdcPinArr, AdcReadError, AdcState};
+use crate::peripherals::adc::{AdcPinArr, AdcReadError, AdcState, AdcReading};
 use crate::peripherals::gpio::{GpioPinArr, GpioReadError, GpioState, GpioBank};
 use crate::peripherals::pwm::{PwmPinArr, PwmState};
 use crate::peripherals::timers::{TimerArr, TimerState, TimerMode};
@@ -277,7 +277,7 @@ pub trait Control {
     fn get_gpio_readings(&self, bank: GpioBank) -> Option<GpioPinArr<Result<bool, GpioReadError>>>;
 
     fn get_adc_states(&self) -> AdcPinArr<AdcState>;
-    fn get_adc_readings(&self) -> AdcPinArr<Result<u8, AdcReadError>>;
+    fn get_adc_readings(&self) -> AdcPinArr<Result<AdcReading, AdcReadError>>;
     fn get_timer_modes(&self) -> TimerArr<TimerMode>;
     fn get_timer_states(&self) -> TimerArr<TimerState>;
     fn get_pwm_states(&self) -> PwmPinArr<PwmState>;

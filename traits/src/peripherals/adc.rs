@@ -1,5 +1,6 @@
 //! [`Adc` trait](Adc) and associated types.
 
+use lc3_isa::{Word, Bits};
 use lc3_macros::DisplayUsingDebug;
 
 use core::convert::TryFrom;
@@ -76,6 +77,42 @@ impl<T> IndexMut<AdcPin> for AdcPinArr<T> {
 }
 
 
+// represents a 12-bit reading, currently
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(DisplayUsingDebug)]
+pub struct AdcReading(Word);
+
+impl From<AdcReading> for Word {
+    fn from(r: AdcReading) -> Self {
+        r.0
+    }
+}
+
+impl AdcReading {
+    pub const WIDTH: u8 = 12;
+
+    pub const fn new_raw(reading: Word) -> Self {
+        let val = reading & 0x0FFFF;
+        Self(val)
+    }
+
+    #[inline(always)]
+    pub fn new<const WIDTH: u8, R: Into<u64>>(reading: R) -> Self {
+        let val = reading.into();
+        let val = if WIDTH >= Self::WIDTH {
+            val >> (WIDTH - Self::WIDTH)
+        } else {
+            val << (Self::WIDTH - WIDTH)
+        };
+
+        let val = val.u16(0..((Self::WIDTH - 1) as u32));
+
+        Self(val)
+    }
+
+    pub fn val(self) -> Word { self.0 }
+}
+
 /// Adc access for the interpreter.
 #[ambassador::delegatable_trait]
 pub trait Adc {
@@ -92,11 +129,12 @@ pub trait Adc {
         states
     }
 
-    fn read(&self, pin: AdcPin) -> Result<u8, AdcReadError>;
+    // TODO: remove the pin from these error types, like with GPIO!
+    fn read(&self, pin: AdcPin) -> Result<AdcReading, AdcReadError>;
     #[inline]
-    fn read_all(&self) -> AdcPinArr<Result<u8, AdcReadError>> {
+    fn read_all(&self) -> AdcPinArr<Result<AdcReading, AdcReadError>> {
         // TODO: Error conversion impl (see Gpio)
-        let mut readings = AdcPinArr([Ok(0u8); AdcPin::NUM_PINS]); // TODO: that we need a default value here is weird and bad...
+        let mut readings = AdcPinArr([Err(AdcReadError((AdcPin::A0, AdcState::Disabled))); AdcPin::NUM_PINS]); // TODO: that we need a default value here is weird and bad...
 
         ADC_PINS
             .iter()

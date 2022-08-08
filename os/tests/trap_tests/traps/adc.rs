@@ -1,6 +1,6 @@
 use super::*;
 
-use lc3_traits::peripherals::{Peripherals, adc::{Adc, AdcPin, AdcState}};
+use lc3_traits::peripherals::{Peripherals, adc::{Adc, AdcPin, AdcReading, AdcState}};
 use lc3_shims::peripherals::AdcShim;
 
 use AdcState::*;
@@ -75,7 +75,7 @@ single_test! {
     ],
     pre: |p| {
         Adc::set_state(p, A0, Enabled).unwrap();
-        AdcShim::set_value(&mut *p.get_adc().write().unwrap(), A0, 10).unwrap();
+        AdcShim::set_value(&mut *p.get_adc().write().unwrap(), A0, AdcReading::new_raw(10)).unwrap();
     },
     post: |i| { eq!(i.get_word_unchecked(0x3004), 10); },
     with default os,

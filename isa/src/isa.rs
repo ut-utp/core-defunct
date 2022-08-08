@@ -706,6 +706,17 @@ bits_impl!{
     u8, i8, u16, i16, u32, i32, i64, u64, isize, usize,
 }
 
+#[cfg(test)]
+mod test_bits {
+    use super::*;
+
+    #[test]
+    fn bits() {
+        assert_eq!(0xFFFF, u32::MAX.u16(0..15));
+        assert_eq!(0x0FFF, u32::MAX.u16(0..11));
+    }
+}
+
 impl TryFrom<Word> for Instruction {
     type Error = Word;
 

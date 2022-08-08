@@ -10,6 +10,7 @@ use crate::control::load::{
 };
 use crate::control::{ProgramMetadata, DeviceInfo, UnifiedRange, ProcessorMode, Idx};
 use crate::error::Error as Lc3Error;
+use crate::peripherals::adc::AdcReading;
 use crate::peripherals::{
     adc::{AdcPinArr, AdcState, AdcReadError},
     gpio::{GpioPinArr, GpioState, GpioReadError, GpioBank},
@@ -173,7 +174,7 @@ pub enum ResponseMessage { // messages for everything but tick()
     GetGpioStates(Option<GpioPinArr<GpioState>>),
     GetGpioReadings(Option<GpioPinArr<Result<bool, GpioReadError>>>),
     GetAdcStates(AdcPinArr<AdcState>),
-    GetAdcReadings(AdcPinArr<Result<u8, AdcReadError>>),
+    GetAdcReadings(AdcPinArr<Result<AdcReading, AdcReadError>>),
     GetTimerModes(TimerArr<TimerMode>),
     GetTimerStates(TimerArr<TimerState>),
     GetPwmStates(PwmPinArr<PwmState>),

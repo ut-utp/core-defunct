@@ -33,12 +33,12 @@ impl Gpio for GpioStub {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct AdcStub;
 
-use super::adc::{AdcPin, AdcState, AdcReadError, AdcMiscError};
+use super::adc::{AdcPin, AdcState, AdcReadError, AdcMiscError, AdcReading};
 impl Adc for AdcStub {
     fn set_state(&mut self, _pin: AdcPin, _: AdcState) -> Result<(), AdcMiscError> { Err(AdcMiscError) }
     fn get_state(&self, _pin: AdcPin) -> AdcState { AdcState::Disabled }
 
-    fn read(&self, pin: AdcPin) -> Result<u8, AdcReadError> { Err(AdcReadError((pin, AdcState::Disabled)))}
+    fn read(&self, pin: AdcPin) -> Result<AdcReading, AdcReadError> { Err(AdcReadError((pin, AdcState::Disabled)))}
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]

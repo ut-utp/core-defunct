@@ -1,6 +1,6 @@
 use lc3_traits::peripherals::adc::{
     Adc, AdcMiscError, AdcPin as Pin, AdcPinArr as PinArr, AdcReadError as ReadError, AdcState,
-    AdcStateMismatch as StateMismatch,
+    AdcStateMismatch as StateMismatch, AdcReading,
 };
 
 #[derive(Debug, Clone)]
@@ -10,7 +10,7 @@ pub struct AdcShim {
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum State {
-    Enabled(u8),
+    Enabled(AdcReading),
     Disabled,
 }
 
@@ -24,7 +24,7 @@ impl From<State> for AdcState {
     }
 }
 
-const INIT_VALUE: u8 = 0;
+const INIT_VALUE: AdcReading = AdcReading::new_raw(0);
 
 impl Default for AdcShim {
     fn default() -> Self {
@@ -42,7 +42,7 @@ impl AdcShim {
         Self::default()
     }
 
-    pub fn set_value(&mut self, pin: Pin, value: u8) -> Result<(), SetError> {
+    pub fn set_value(&mut self, pin: Pin, value: AdcReading) -> Result<(), SetError> {
         use State::*;
         self.states[pin] = match self.states[pin] {
             Enabled(_) => Enabled(value),
@@ -66,7 +66,7 @@ impl Adc for AdcShim {
         self.states[pin].into()
     }
 
-    fn read(&self, pin: Pin) -> Result<u8, ReadError> {
+    fn read(&self, pin: Pin) -> Result<AdcReading, ReadError> {
         use State::*;
         match self.states[pin] {
             Enabled(value) => Ok(value),
@@ -99,7 +99,7 @@ mod tests {
 
     #[test]
     fn set_value() {
-        let new_val: u8 = 1;
+        let new_val = AdcReading::new::<12, _>(1024u32);
         assert_ne!(
             INIT_VALUE, new_val,
             "TEST FAULTY: new_val must not equal INIT_VALUE"
