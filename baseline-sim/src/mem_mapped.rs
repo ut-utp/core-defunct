@@ -694,7 +694,7 @@ macro_rules! gpio_mem_mapped {
                     let word = match Gpio::read(gp, $pin) {
                         Ok(val) => val as Word,
                         Err(err) => {
-                            interp.set_error(Error::from(err));
+                            interp.set_error(Error::from((err, <Banked::<$bank> as GetGpioBank<I>>::BANK, $pin)));
                             0x8000
                         }
                     };
@@ -711,7 +711,7 @@ macro_rules! gpio_mem_mapped {
                     match Gpio::write(gp, $pin, bit) {
                         Ok(()) => Ok(()),
                         Err(err) => {
-                            interp.set_error(Error::from(err));
+                            interp.set_error(Error::from((err, <Banked::<$bank> as GetGpioBank<I>>::BANK, $pin)));
                             Ok(())
                         }
                     }

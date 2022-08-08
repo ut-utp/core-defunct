@@ -3,6 +3,7 @@
 use lc3_macros::DisplayUsingDebug;
 
 use core::convert::TryFrom;
+use core::fmt::Display;
 use core::ops::{Deref, Index, IndexMut};
 
 use serde::{Deserialize, Serialize};
@@ -13,6 +14,24 @@ use super::OptionalPeripherals;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[derive(DisplayUsingDebug)]
 pub enum GpioBank { A = 0, B = 1, C = 2 }
+
+impl GpioBank {
+    pub fn display_with_pin(&self, pin: GpioPin) -> impl Display {
+        struct BankAndPin { bank: GpioBank, pin: GpioPin }
+        impl Display for BankAndPin {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                let pin_num: usize = self.pin.into();
+                if f.alternate() {
+                    write!(f, "Gpio Bank {} Pin {}", self.bank, pin_num)
+                } else {
+                    write!(f, "G{}P{}", self.bank, pin_num)
+                }
+            }
+        }
+
+        BankAndPin { bank: *self, pin }
+    }
+}
 
 impl TryFrom<GpioBank> for super::OptionalPeripherals {
     type Error = ();

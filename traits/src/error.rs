@@ -1,4 +1,5 @@
 use crate::peripherals::OptionalPeripherals;
+use crate::peripherals::gpio::{GpioBank, GpioPin};
 
 use super::peripherals::gpio::{
     GpioMiscError, /* GpioInterruptRegisterError */
@@ -25,10 +26,10 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Error {
-    InvalidGpioWrite(GpioWriteError),
-    InvalidGpioWrites(GpioWriteErrors),
-    InvalidGpioRead(GpioReadError),
-    InvalidGpioReads(GpioReadErrors),
+    InvalidGpioWrite((GpioWriteError, GpioBank, GpioPin)),
+    InvalidGpioRead((GpioReadError, GpioBank, GpioPin)),
+    InvalidGpioWrites((GpioWriteErrors, GpioBank)),
+    InvalidGpioReads((GpioReadErrors, GpioBank)),
     GpioMiscError(GpioMiscError), // Unclear if we want to expose these kind of errors in the Control interface or just make the interpreter deal with them (probably expose...) (TODO)
                                   // InvalidGpioInterruptRegistration(GpioInterruptRegisterError),
     InvalidAdcRead(AdcReadError),
@@ -49,12 +50,14 @@ impl Display for Error {
         use Error::*;
 
         match self {
-            InvalidGpioWrite(err) =>
-                write!(f, "Attempted to write to {} when in {} mode", (err.0).0, (err.0).1),
-            InvalidGpioWrites(_) => todo!(),
-            InvalidGpioRead(err) =>
-                write!(f, "Attempted to read from {} when in {} mode", (err.0).0, (err.0).1),
-            InvalidGpioReads(_) => todo!(),
+            InvalidGpioWrite((err, bank, pin)) =>
+                write!(f, "Error writing to {}: {err:?}", bank.display_with_pin(*pin)),
+            InvalidGpioRead((err, bank, pin)) =>
+                write!(f, "Error reading from {}: {err:?}", bank.display_with_pin(*pin)),
+            InvalidGpioWrites((err, bank)) =>
+                write!(f, "Error(s) writing to GPIO Bank {bank}: {err:?}"), // TODO!
+                InvalidGpioReads((err, bank)) =>
+                write!(f, "Error(s) reading from GPIO Bank {bank}: {err:?}"), // TODO!
             GpioMiscError(_) => todo!(),
             InvalidAdcRead(err) =>
                 write!(f, "Attempted to read from {} when in {} mode", (err.0).0, (err.0).1),
@@ -93,10 +96,10 @@ macro_rules! err {
     };
 }
 
-err!(GpioWriteError, Error::InvalidGpioWrite);
-err!(GpioWriteErrors, Error::InvalidGpioWrites);
-err!(GpioReadError, Error::InvalidGpioRead);
-err!(GpioReadErrors, Error::InvalidGpioReads);
+err!((GpioWriteError, GpioBank, GpioPin), Error::InvalidGpioWrite);
+err!((GpioReadError, GpioBank, GpioPin), Error::InvalidGpioRead);
+err!((GpioWriteErrors, GpioBank), Error::InvalidGpioWrites);
+err!((GpioReadErrors, GpioBank), Error::InvalidGpioReads);
 err!(GpioMiscError, Error::GpioMiscError);
 err!(AdcReadError, Error::InvalidAdcRead);
 err!(AdcReadErrors, Error::InvalidAdcReads);
