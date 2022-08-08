@@ -66,50 +66,579 @@ pub mod stubs;
 //
 // The downside, of course, is runtime cost.
 //
-// This nicely demonstrates the initial claim we made: for all but the _most extreme_ use cases, you're likely best served by `PeripheralsSet`.
+// This nicely demonstrates the initial claim we made: for all but the _most extreme_ use cases, you're likely best served by `PeripheralSet`.
 // In the rare case you want to share state between peripherals **and** cannot accept extra runtime cost (i.e. because you're on embedded or because you
 // don't have an allocator) or worse ergonomics, the `Peripherals` trait is the escape hatch you're looking for.
-#[ambassador::delegatable_trait]
-pub trait Peripherals {
-    type Gpio: Gpio;
-    type Adc: Adc;
-    type Pwm: Pwm;
-    type Timers: Timers;
-    type Clock: Clock;
-    type Input: Input;
-    type Output: Output;
+// #[ambassador::delegatable_trait]
+// pub trait Peripherals {
+//     type Gpio: ?Sized + Gpio;
+//     type Adc: ?Sized + Adc;
+//     type Pwm: ?Sized + Pwm;
+//     type Timers: ?Sized + Timers;
+//     type Clock: ?Sized + Clock;
+//     type Input: ?Sized + Input;
+//     type Output: ?Sized + Output;
 
-    type GpioB: Gpio/*  = gpio::MissingGpio */;
-    type GpioC: Gpio/*  = gpio::MissingGpio */;
+//     type GpioB: ?Sized + Gpio/*  = gpio::MissingGpio */;
+//     type GpioC: ?Sized + Gpio/*  = gpio::MissingGpio */;
 
-    fn get_gpio(&self) -> &Self::Gpio;
-    fn get_gpio_mut(&mut self) -> &mut Self::Gpio;
+//     fn get_gpio(&self) -> &Self::Gpio;
+//     fn get_gpio_mut(&mut self) -> &mut Self::Gpio;
 
-    fn get_adc(&self) -> &Self::Adc;
-    fn get_adc_mut(&mut self) -> &mut Self::Adc;
+//     fn get_adc(&self) -> &Self::Adc;
+//     fn get_adc_mut(&mut self) -> &mut Self::Adc;
 
-    fn get_pwm(&self) -> &Self::Pwm;
-    fn get_pwm_mut(&mut self) -> &mut Self::Pwm;
+//     fn get_pwm(&self) -> &Self::Pwm;
+//     fn get_pwm_mut(&mut self) -> &mut Self::Pwm;
 
-    fn get_timers(&self) -> &Self::Timers;
-    fn get_timers_mut(&mut self) -> &mut Self::Timers;
+//     fn get_timers(&self) -> &Self::Timers;
+//     fn get_timers_mut(&mut self) -> &mut Self::Timers;
 
-    fn get_clock(&self) -> &Self::Clock;
-    fn get_clock_mut(&mut self) -> &mut Self::Clock;
+//     fn get_clock(&self) -> &Self::Clock;
+//     fn get_clock_mut(&mut self) -> &mut Self::Clock;
 
-    fn get_input(&self) -> &Self::Input;
-    fn get_input_mut(&mut self) -> &mut Self::Input;
+//     fn get_input(&self) -> &Self::Input;
+//     fn get_input_mut(&mut self) -> &mut Self::Input;
 
-    fn get_output(&self) -> &Self::Output;
-    fn get_output_mut(&mut self) -> &mut Self::Output;
+//     fn get_output(&self) -> &Self::Output;
+//     fn get_output_mut(&mut self) -> &mut Self::Output;
 
-    // optional peripherals:
-    fn get_gpio_bank_b(&self) -> Option<&Self::GpioB> { None }
-    fn get_gpio_bank_b_mut(&mut self) -> Option<&mut Self::GpioB> { None }
+//     // optional peripherals:
+//     fn get_gpio_bank_b(&self) -> Option<&Self::GpioB> { None }
+//     fn get_gpio_bank_b_mut(&mut self) -> Option<&mut Self::GpioB> { None }
 
-    fn get_gpio_bank_c(&self) -> Option<&Self::GpioC> { None }
-    fn get_gpio_bank_c_mut(&mut self) -> Option<&mut Self::GpioC> { None }
+//     fn get_gpio_bank_c(&self) -> Option<&Self::GpioC> { None }
+//     fn get_gpio_bank_c_mut(&mut self) -> Option<&mut Self::GpioC> { None }
+// }
+
+// a macro to keep the peripheral impls in sync between the `Peripherals` trait and the `PeripheralSet`/`PeripheralsWrapper` types
+// (and to handle the convention around optional peripherals)
+//
+// TODO: document the convention around optional peripherals here
+// also: we assume all traits have `ambassador::delegatable_trait` on them, etc.
+macro_rules! peripherals {
+    (
+        $(#[$attrs:meta])*
+        pub trait $nom:ident = {
+            required: {
+                $(
+                    $(#[$req_peri_attr:meta])*
+                    $req_peri_name:ident : $req_peri_trait:ident ($req_ty_short:ident)
+                ),* $(,)?
+            },
+
+            optional: {
+                $(
+                    $(#[$opt_peri_attr:meta])*
+                    $opt_peri_name:ident : $opt_peri_trait:ident ($opt_ty_short:ident) as $opt_peri_ty_param_name:ident
+                        (with
+                            $(using(
+                                ($opt_peri_stub:ty) in $opt_peri_placeholder:ident wrapped as $opt_peri_alias:ident
+                            ):)?
+                            default($opt_peri_def:ty)
+                        )
+                ),* $(,)?
+            }$(,)?
+        } with {
+            $(#[$set_attrs:meta])*
+            set = struct $set_ty:ident<...>;
+
+            $(#[$wrapper_attrs:meta])*
+            wrapper = struct $wrapper_ty:ident<_>;
+        }
+    ) => {
+        /* Define the peripheral trait */
+
+        $(#[$attrs])*
+        pub trait $nom {
+            // Required peripheral types:
+            $(
+                $(#[$req_peri_attr])*
+                type $req_peri_trait: ?Sized + $req_peri_trait;
+            )*
+
+            // Optional peripheral types:
+            $(
+                $(#[$opt_peri_attr])*
+                #[doc = "\n\n"]
+                #[doc = "Use [`"]
+                #[doc = core::stringify!($opt_peri_def)]
+                #[doc = "`] if you don't want to provide an actual [`"]
+                #[doc = core::stringify!($opt_peri_trait)]
+                #[doc = "`] implementation!\n"]
+                type $opt_peri_ty_param_name: ?Sized + $opt_peri_trait /* = $opt_peri_def */;
+            )*
+
+            // Required peripheral getters:
+            $(
+                peripherals!(@getter_pair_def: ($req_peri_name) {
+                    #[doc = "for the [`"]
+                    #[doc = core::stringify!($req_peri_trait)]
+                    #[doc = "`] peripheral."]
+                } -> &Self::$req_peri_trait, &mut Self::$req_peri_trait = with self rest(;));
+                // paste::paste! {
+                //     #[doc = "Getter for the [`"]
+                //     #[doc = core::stringify!($req_peri_trait)]
+                //     #[doc = "`] peripheral."]
+                //     fn [< get_ $req_peri_name >](&self) -> &Self::$req_peri_trait;
+
+                //     #[doc = "_Mutable_ getter for the [`"]
+                //     #[doc = core::stringify!($req_peri_trait)]
+                //     #[doc = "`] peripheral."]
+                //     fn [< get_ $req_peri_name _mut >](&mut self) -> &mut Self::$req_peri_trait;
+                // }
+            )*
+
+            // Optional peripheral getters:
+            $(
+                peripherals!(@getter_pair_def: ($opt_peri_name) {
+                    #[doc = " for [`"]
+                        #[doc = core::stringify!($nom)]
+                        #[doc = "::"]
+                        #[doc = core::stringify!($opt_peri_ty_param_name)]
+                    #[doc = "`] (the **optional** [`"]
+                    #[doc = core::stringify!($opt_peri_trait)]
+                    #[doc = "`] peripheral)."]
+                    #[doc = "\n\n"]
+                    #[doc = "Defaults to returning [`None`], remember to implement this if you \n"]
+                    #[doc = "**don't** set [`"]
+                        #[doc = core::stringify!($nom)]
+                        #[doc = "::"]
+                        #[doc = core::stringify!($opt_peri_ty_param_name)]
+                    #[doc = "`] to [`"]
+                    #[doc = core::stringify!($opt_peri_def)]
+                    #[doc = "`]."]
+                } -> Option<&Self::$opt_peri_ty_param_name>, Option<&mut Self::$opt_peri_ty_param_name> =
+                    with self rest({ None })
+                );
+
+                // paste::paste! {
+                //     // #[doc = "Getter
+                //     #[doc = " for [`"]
+                //         #[doc = core::stringify!($nom)]
+                //         #[doc = "::"]
+                //         #[doc = core::stringify!($opt_peri_ty_param_name)]
+                //     #[doc = "`] (the **optional** [`"]
+                //     #[doc = core::stringify!($opt_peri_trait)]
+                //     #[doc = "`] peripheral)."]
+                //     #[doc = "\n\n"]
+                //     #[doc = "Defaults to returning [`None`], remember to implement this if you \n"]
+                //     #[doc = "**don't** set [`"]
+                //         #[doc = core::stringify!($nom)]
+                //         #[doc = "::"]
+                //         #[doc = core::stringify!($opt_peri_ty_param_name)]
+                //     #[doc = "`] to [`"]
+                //     #[doc = core::stringify!($opt_peri_def)]
+                //     #[doc = "`]."]
+                //     fn [< get_ $opt_peri_name >](&self) -> Option<&Self::$req_peri_trait> { None }
+
+                //     #[doc = "_Mutable_ getter for the [`"]
+                //         #[doc = core::stringify!($nom)]
+                //         #[doc = "::"]
+                //         #[doc = core::stringify!($opt_peri_ty_param_name)]
+                //     #[doc = "`] peripheral."]
+                //     fn [< get_ $opt_peri_name _mut >](&mut self) -> &mut Self::$req_peri_trait;
+                // }
+            )*
+        }
+
+        /* Define the optional peripheral placeholders + aliases: */
+        $($(
+            optional_peripheral_placeholder_from_stub!(
+                trait: $opt_peri_trait,
+                stub: $opt_peri_stub,
+                placeholder: $opt_peri_placeholder,
+                alias: $opt_peri_alias,
+            );
+        )?)*
+
+        // set, defaults for optional ty_params
+        // impl Peripherals for Set
+        // delegate all traits to Set
+        // impl builder for each optional ty param
+        // assoc const for each optional ty
+        // impl Snapshot
+
+        /* Define the Peripheral Set: */
+        peripherals!(@add_attrs:
+            (
+                // #[derive(ambassador::Delegate)]
+                // $(
+                //     #[delegate($req_peri_trait, target = core::stringify!($req_peri_name))]
+                // )*
+            ) to
+            $(#[$set_attrs])*
+            pub struct $set_ty<
+                $($req_ty_short,)*
+                $($opt_ty_short = $opt_peri_def,)*
+            >
+            where
+                // Required peripheral bounds:
+                $($req_ty_short: $req_peri_trait,)*
+
+                // Optional peripheral bounds:
+                $(
+                    $opt_ty_short: OptionalPeripheral,
+                    OptTy<$opt_ty_short>: $opt_peri_trait,
+                )*
+            {
+                $(
+                    #[doc = "An instance of a(n) [`"]
+                    #[doc = core::stringify!($req_peri_trait)]
+                    #[doc = "`] implementation (required)."]
+                    #[doc = "\n\n"]
+                    #[doc = "Corresponds to [`"]
+                    #[doc = core::stringify!($nom)]
+                    #[doc = "::"]
+                    #[doc = core::stringify!($req_peri_trait)]
+                    #[doc = "`]."]
+                    $req_peri_name: $req_ty_short,
+                )*
+
+                $(
+                    #[doc = "An instance of a(n) [`"]
+                    #[doc = core::stringify!($opt_peri_trait)]
+                    #[doc = "`] implementation (optional)."]
+                    #[doc = "\n\n"]
+                    #[doc = "Defaults to [`"]
+                    #[doc = core::stringify!($opt_peri_def)]
+                    #[doc = "`]."]
+                    #[doc = "\n\n"]
+                    #[doc = "Corresponds to [`"]
+                    #[doc = core::stringify!($nom)]
+                    #[doc = "::"]
+                    #[doc = core::stringify!($opt_peri_ty_param_name)]
+                    #[doc = "`]."]
+                    $opt_peri_name: $opt_ty_short,
+                )*
+            }
+        );
+
+        /* Implement the Peripherals trait for the Peripherals Set: */
+        impl<
+            $($req_ty_short,)*
+            $($opt_ty_short,)*
+        > $nom for $set_ty<
+            $($req_ty_short,)*
+            $($opt_ty_short,)*
+        >
+        where
+            $($req_ty_short: $req_peri_trait,)*
+            $(
+                $opt_ty_short: OptionalPeripheral,
+                OptTy<$opt_ty_short>: $opt_peri_trait,
+            )*
+        {
+            // Associated types:
+            $( type $req_peri_trait = $req_ty_short; )*
+            $( type $opt_peri_ty_param_name = OptTy<$opt_ty_short>; )*
+
+            // Getters:
+            $(
+                peripherals!(@getter_pair_def: ($req_peri_name) {
+                        #[inline(always)]
+                    } -> &Self::$req_peri_trait, &mut Self::$req_peri_trait =
+                    with self
+                    cond[
+                        self: (&self.$req_peri_name)
+                        mut self: (&mut self.$req_peri_name)
+                    ]
+                );
+            )*
+            $(
+                peripherals!(@getter_pair_def: ($opt_peri_name) {
+                        #[inline(always)]
+                    } -> Option<&Self::$opt_peri_ty_param_name>, Option<&mut Self::$opt_peri_ty_param_name> =
+                    with self
+                    cond[
+                        // To _enforce_ that it's fixed and not variable at runtime:
+                        self: (
+                            <OptPresent<$opt_ty_short> as Bool>::B.then(|| self.$opt_peri_name.get().unwrap())
+                        )
+                        mut self: (
+                            <OptPresent<$opt_ty_short> as Bool>::B.then(|| self.$opt_peri_name.get_mut().unwrap())
+                        )
+                    ]
+                );
+            )*
+        }
+
+        /* Builders for the Peripherals Set: */
+        impl<$($req_ty_short,)*> $set_ty<$($req_ty_short,)*>
+        where
+            $( $req_ty_short: $req_peri_trait, )*
+        {
+            // TODO: docs
+            pub fn new(
+                $($req_peri_name: $req_ty_short,)*
+            ) -> Self {
+                Self {
+                    $($req_peri_name,)*
+                    $($opt_peri_name: Default::default(),)*
+                }
+            }
+        }
+
+        impl<
+            $($req_ty_short,)*
+            $($opt_ty_short,)*
+        > $set_ty<
+            $($req_ty_short,)*
+            $($opt_ty_short,)*
+        >
+        where
+            $($req_ty_short: $req_peri_trait,)*
+            $(
+                $opt_ty_short: OptionalPeripheral,
+                OptTy<$opt_ty_short>: $opt_peri_trait,
+            )*
+        {
+            // Associated consts for optional peripherals:
+            $(
+                // todo: the only reason this is not an associated const instead of
+                // an associated const fn is because of the case (snake case instead of
+                // screaming snake case)
+                paste::paste! {
+                    #[doc = "Whether or not this [`"]
+                    #[doc = core::stringify!($set_ty)]
+                    #[doc = "`] type has an implementation for [`"]
+                        #[doc = core::stringify!($nom)]
+                        #[doc = "::"]
+                        #[doc = core::stringify!($opt_peri_ty_param_name)]
+                    #[doc = "`]."]
+                    pub const fn [< has_ $opt_peri_name >]() -> bool {
+                        <$opt_ty_short as OptionalPeripheral>::Present::B
+                    }
+                }
+            )*
+
+            peripherals!{@builder_method_for_each_optional_peripheral
+                peri_trait: $nom
+                on: $set_ty
+                required: ($(
+                    ( $req_peri_name: $req_peri_trait ($req_ty_short) )
+                )*)
+                optional_finished: (
+
+                )
+                optional_pending: ($(
+                    ( $opt_peri_name: $opt_peri_trait ($opt_ty_short) as $opt_peri_ty_param_name )
+                )*)
+            }
+        }
+
+
+        $(#[$wrapper_attrs])*
+        #[repr(transparent)]
+        // TODO: docs
+        pub struct $wrapper_ty<P: ?Sized + $nom>(P);
+
+        impl<P: ?Sized + $nom> $wrapper_ty<P> {
+            // TODO: docs
+            pub fn get_inner_peripherals(&self) -> &P { &self.0 }
+            // TODO: docs
+            pub fn get_inner_peripherals_mut(&mut self) -> &mut P { &mut self.0 }
+        }
+
+        impl<P: ?Sized + $nom> $wrapper_ty<P> {
+
+        }
+
+        // impl Peripherals for Wrapper
+        // delegate all traits to Wrapper
+
+        // impl traits on snapshotusingclone
+        // impl traits on the `GetRwLock`/`GetMutex` things
+        //
+        // automatically do this for the required peripheral traits; add a
+        // static assertion checking that this has been done for the optional
+        // peripheral traits!
+    };
+
+    (@getter_pair_def: ($name:ident) {
+        $(#[$attrs:meta])*
+    } -> $ret_ty:ty, $ret_ty_mut:ty =
+        with $self:ident
+        $(cond[self : ($($s:tt)*) mut self: ($($ms:tt)*)])?
+        $(rest($($rest:tt)*))?
+    ) => {
+        paste::paste! {
+            #[doc = "Getter "]
+            $(#[$attrs])*
+            fn [< get_ $name >](&$self) -> $ret_ty $({ $($s)* })? $($($rest)*)?
+
+            #[doc = "_Mutable_ getter "]
+            $(#[$attrs])*
+            fn [< get_ $name _mut >](&mut $self) -> $ret_ty_mut $({ $($ms)* })? $($($rest)*)?
+        }
+    };
+
+    // Our silly way of "forcing" macro_rules expansion before proc macro
+    // expansion.
+    (@add_attrs: ($(#[$attr:meta])*) to $($tt:tt)*) => {
+        $(#[$attr])*
+        $($tt)*
+    };
+
+    /*  */
+    (@builder_method_for_each_optional_peripheral
+        peri_trait: $nom:ident
+        on: $set_ty:ident
+        required: ($(
+            ( $req_peri_name:ident : $_req_peri_trait:ident ($req_ty_short:ident) )
+        )*)
+        optional_finished: ($(
+            ( $opt_peri_name_f:ident : $opt_peri_trait_f:ident ($opt_ty_short_f:ident) as $opt_peri_ty_param_name_f:ident )
+        )*)
+        optional_pending: (
+            ( $opt_peri_name_first:ident : $opt_peri_trait_first:ident ($opt_ty_short_first:ident) as $opt_peri_ty_param_name_first:ident )
+            $(
+                ( $opt_peri_name_rest:ident : $opt_peri_trait_rest:ident ($opt_ty_short_rest:ident) as $opt_peri_ty_param_name_rest:ident )
+            )*
+        )
+    ) => {
+        paste::paste! {
+            #[doc = "Sets [`"]
+            #[doc = core::stringify!($set_ty)]
+            #[doc = "`]'s instance for the optional peripheral [`"]
+                #[doc = core::stringify!($nom)]
+                #[doc = "::"]
+                #[doc = core::stringify!($opt_peri_ty_param_name_first)]
+            #[doc = "`] to an instance of an actual implementation."]
+            pub fn [< with_ $opt_peri_name_first >]<
+                $opt_peri_ty_param_name_first: $opt_peri_trait_first
+            >(self, $opt_peri_name_first: $opt_peri_ty_param_name_first) -> $set_ty<
+                $($req_ty_short,)*
+                $($opt_ty_short_f,)*
+                Present<$opt_peri_ty_param_name_first>,
+                $($opt_ty_short_rest,)*
+            > {
+                let Self {
+                    $($req_peri_name,)*
+                    $($opt_peri_name_f,)*
+
+                    $($opt_peri_name_rest,)*
+
+                    ..
+                } = self;
+
+                $set_ty {
+                    $($req_peri_name,)*
+                    $($opt_peri_name_f,)*
+                    $opt_peri_name_first: Present($opt_peri_name_first),
+                    $($opt_peri_name_rest,)*
+                }
+            }
+        }
+
+        peripherals!{ @builder_method_for_each_optional_peripheral
+            peri_trait: $nom
+            on: $set_ty
+            required: ($(
+                ( $req_peri_name : $_req_peri_trait ($req_ty_short) )
+            )*)
+            optional_finished: (
+                $(
+                    ( $opt_peri_name_f : $opt_peri_trait_f ($opt_ty_short_f) as $opt_peri_ty_param_name_f )
+                )*
+                ( $opt_peri_name_first : $opt_peri_trait_first ($opt_ty_short_first) as $opt_peri_ty_param_name_first )
+            )
+            optional_pending: ( $(
+                ( $opt_peri_name_rest : $opt_peri_trait_rest ($opt_ty_short_rest) as $opt_peri_ty_param_name_rest )
+            )* )
+        }
+    };
+
+    (@builder_method_for_each_optional_peripheral
+        peri_trait: $nom:ident
+        on: $set_ty:ident
+        required: ($(
+            ( $req_peri_name:ident : $req_peri_trait:ident ($req_ty_short:ident) )
+        )*)
+        optional_finished: ($(
+            ( $a:ident : $b:ident ($c:ident) as $d:ident )
+        )*)
+        optional_pending: ( )
+    ) => {
+        /* fin */
+    };
 }
+
+// A consequence of our optional peripheral convention is that even when an
+// optional peripheral is _not_ present, we still need to provide a type that
+// implements that peripheral's trait.
+//
+// This macro defines such peripheral trait implementations concisely.
+//
+// Altogether this macro:
+//   - defines a _hidden_ implementation of the given peripheral trait by
+//     pretending to shell out to the peripheral trait's stub
+//   - creates a type alias of the implementation with `NotPresent`
+//   - implements `Snapshot` for the placeholder
+macro_rules! optional_peripheral_placeholder_from_stub {
+    (
+        trait: $t:ident,
+        stub: $s:ty,
+        placeholder: $p:ident,
+        alias: $a:ident $(,)?
+    ) => {
+        #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        #[derive(serde::Serialize, serde::Deserialize)]
+        #[doc(hidden)]
+        pub enum $p { /* unconstructible by design */}
+
+        #[ambassador::delegate_to_methods]
+        #[delegate($t, target_ref = "get", target_mut = "get_mut")]
+        impl $p {
+            fn get(&self) -> &$s { unreachable!() }
+            fn get_mut(&mut self) -> &mut $s { unreachable!() }
+        }
+
+        #[doc = ""] // TODO!
+        pub type $a = NotPresent<$p>;
+
+        impl Snapshot for $p {
+            type Snap = ();
+            type Err = Infallible;
+            fn record(&self) -> Result<Self::Snap, Self::Err> { Ok(()) }
+            fn restore(&mut self, _snap: Self::Snap) -> Result<(), Self::Err> {
+                Ok(())
+            }
+        }
+    };
+}
+
+peripherals! {
+/// TODO!
+pub trait Peripherals = {
+    required: {
+        gpio:   Gpio   (G),
+        adc:    Adc    (A),
+        pwm:    Pwm    (P),
+        timers: Timers (T),
+        clock:  Clock  (C),
+        input:  Input  (I),
+        output: Output (O),
+    },
+
+    optional: {
+        gpio_bank_b: Gpio (GB) as GpioB
+            (with using((stubs::GpioStub) in MissingGpio wrapped as NoGpio): default(NoGpio)),
+        gpio_bank_c: Gpio (GC) as GpioC
+            (with default(NoGpio)),
+    },
+} with {
+    /// TODO!
+    #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    set = struct PeripheralSet<...>;
+
+    /// TODO!
+    #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    wrapper = struct PeripheralsWrapper<_>;
+}}
+
 
 pub trait PeripheralsExt: Peripherals {
     /// Gets you a wrapper type that impls all the traits.
@@ -131,15 +660,15 @@ impl<P: Peripherals> PeripheralsExt for P { }
 
 // TODO: docs explaining that the utility here is getting a type that
 // has delegated impls of all the peripheral traits + `Peripherals` implemented!
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Default, Hash, serde::Serialize, serde::Deserialize)]
-#[repr(transparent)]
+// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Default, Hash, serde::Serialize, serde::Deserialize)]
+// #[repr(transparent)]
 
-pub struct PeripheralsWrapper<P: ?Sized + Peripherals>(P);
+// pub struct PeripheralsWrapper<P: ?Sized + Peripherals>(P);
 
-impl<P: ?Sized + Peripherals> PeripheralsWrapper<P> {
-    pub fn get_inner_peripherals(&self) -> &P { &self.0 }
-    pub fn get_inner_peripherals_mut(&mut self) -> &mut P { &mut self.0 }
-}
+// impl<P: ?Sized + Peripherals> PeripheralsWrapper<P> {
+//     pub fn get_inner_peripherals(&self) -> &P { &self.0 }
+//     pub fn get_inner_peripherals_mut(&mut self) -> &mut P { &mut self.0 }
+// }
 
 // TODO: fix in upstream
 use crate::*;
@@ -155,7 +684,18 @@ use lc3_isa::Word;
 #[delegate(Clock, target_ref = "get_clock", target_mut = "get_clock_mut")]
 #[delegate(Input, target_ref = "get_input", target_mut = "get_input_mut")]
 #[delegate(Output, target_ref = "get_output", target_mut = "get_output_mut")]
-impl<P: Peripherals> PeripheralsWrapper<'_, P> {
+impl<P: ?Sized + Peripherals> Peripherals for PeripheralsWrapper<P> {
+    type Gpio = P::Gpio;
+    type Adc = P::Adc;
+    type Pwm = P::Pwm;
+    type Timers = P::Timers;
+    type Clock = P::Clock;
+    type Input = P::Input;
+    type Output = P::Output;
+
+    type GpioB = P::GpioB;
+    type GpioC = P::GpioC;
+
     fn get_gpio(&self) -> &P::Gpio { self.0.get_gpio() }
     fn get_gpio_mut(&mut self) -> &mut P::Gpio { self.0.get_gpio_mut() }
     fn get_adc(&self) -> &P::Adc { self.0.get_adc() }
@@ -170,6 +710,8 @@ impl<P: Peripherals> PeripheralsWrapper<'_, P> {
     fn get_input_mut(&mut self) -> &mut P::Input { self.0.get_input_mut() }
     fn get_output(&self) -> &P::Output { self.0.get_output() }
     fn get_output_mut(&mut self) -> &mut P::Output { self.0.get_output_mut() }
+
+    /* todo: optional! */
 }
 
 /* struct LoopbackInput<'a> {
@@ -280,41 +822,43 @@ where
 */
 
 // TODO: doc spotlight the peripheral traits
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, ambassador::Delegate)]
-#[delegate(Gpio, target = "gpio")]
-#[delegate(Adc, target = "adc")]
-#[delegate(Pwm, target = "pwm")]
-#[delegate(Timers, target = "timers")]
-#[delegate(Clock, target = "clock")]
-#[delegate(Input, target = "input")]
-#[delegate(Output, target = "output")]
-pub struct PeripheralSet<G, A, P, T, C, I, O, GB = NoGpio, GC = NoGpio>
-where
-    G: Gpio,
-    A: Adc,
-    P: Pwm,
-    T: Timers,
-    C: Clock,
-    I: Input,
-    O: Output,
-    // Optional peripherals:
-    GB: OptionalPeripheral,
-    OptTy<GB>: Gpio,
-    GC: OptionalPeripheral,
-    OptTy<GC>: Gpio,
-{
-    gpio: G,
-    adc: A,
-    pwm: P,
-    timers: T,
-    clock: C,
-    input: I,
-    output: O,
-    gpio_bank_b: GB,
-    gpio_bank_c: GC,
-}
 
-pub trait Bool: sealed::Sealed { // TODO: seal
+// #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, ambassador::Delegate)]
+// #[derive(Default)]
+// #[delegate(Gpio, target = "gpio")]
+// #[delegate(Adc, target = "adc")]
+// #[delegate(Pwm, target = "pwm")]
+// #[delegate(Timers, target = "timers")]
+// #[delegate(Clock, target = "clock")]
+// #[delegate(Input, target = "input")]
+// #[delegate(Output, target = "output")]
+// pub struct PeripheralSet<G, A, P, T, C, I, O, GB = NoGpio, GC = NoGpio>
+// where
+//     G: Gpio,
+//     A: Adc,
+//     P: Pwm,
+//     T: Timers,
+//     C: Clock,
+//     I: Input,
+//     O: Output,
+//     // Optional peripherals:
+//     GB: OptionalPeripheral,
+//     OptTy<GB>: Gpio,
+//     GC: OptionalPeripheral,
+//     OptTy<GC>: Gpio,
+// {
+//     gpio: G,
+//     adc: A,
+//     pwm: P,
+//     timers: T,
+//     clock: C,
+//     input: I,
+//     output: O,
+//     gpio_bank_b: GB,
+//     gpio_bank_c: GC,
+// }
+
+pub trait Bool: sealed::Sealed {
     const B: bool;
 }
 pub struct True; impl Bool for True { const B: bool = true; }
@@ -356,6 +900,7 @@ type OptPresent<P: OptionalPeripheral> = <P as OptionalPeripheral>::Present;
 // ```
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct NotPresent<T: ?Sized>(PhantomData<T>);
 impl<T: ?Sized> Default for NotPresent<T> {
     fn default() -> Self {
@@ -374,71 +919,44 @@ impl<T: ?Sized> Snapshot for NotPresent<T> {
     fn restore(&mut self, _snap: Self::Snap) -> Result<(), Self::Err> { Ok(()) }
 }
 
-type NoGpio = NotPresent<gpio::MissingGpio>;
+// type NoGpio = NotPresent<gpio::MissingGpio>;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, ambassador::Delegate)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(ambassador::Delegate)]
 #[delegate(Snapshot)]
 pub struct Present<T>(pub T);
 impl<T> OptionalPeripheral for Present<T> {
     type Inner = T;
     type Present = True;
-    fn get(&self) -> Option<&T> { self.0 }
-    fn get_mut(&mut self) -> Option<&mut T> { self.0 }
+    fn get(&self) -> Option<&T> { Some(&self.0) }
+    fn get_mut(&mut self) -> Option<&mut T> { Some(&mut self.0) }
 }
 
-impl<G, A, P, T, C, I, O, GB, GC> Default for PeripheralSet<G, A, P, T, C, I, O, GB, GC>
-where
-    G: Default + Gpio,
-    A: Default + Adc,
-    P: Default + Pwm,
-    T: Default + Timers,
-    C: Default + Clock,
-    I: Default + Input,
-    O: Default + Output,
-    GB: Default + OptionalPeripheral,
-    OptTy<GB>: Gpio,
-    GC: Default + OptionalPeripheral,
-    OptTy<GC>: Gpio,
-{
-    fn default() -> Self {
-        Self {
-            gpio: G::default(),
-            adc: A::default(),
-            pwm: P::default(),
-            timers: T::default(),
-            clock: C::default(),
-            input: I::default(),
-            output: O::default(),
-            gpio_bank_b: GB::default(),
-            gpio_bank_c: GC::default(),
-        }
-    }
-}
-
-impl<G, A, P, T, C, I, O> PeripheralSet<G, A, P, T, C, I, O>
-where
-    G: Gpio,
-    A: Adc,
-    P: Pwm,
-    T: Timers,
-    C: Clock,
-    I: Input,
-    O: Output,
-{
-    pub fn new(gpio: G, adc: A, pwm: P, timers: T, clock: C, input: I, output: O) -> Self {
-        Self {
-            gpio,
-            adc,
-            pwm,
-            timers,
-            clock,
-            input,
-            output,
-            gpio_bank_b: Default::default(),
-            gpio_bank_c: Default::default(),
-        }
-    }
-}
+// impl<G, A, P, T, C, I, O> PeripheralSet<G, A, P, T, C, I, O>
+// where
+//     G: Gpio,
+//     A: Adc,
+//     P: Pwm,
+//     T: Timers,
+//     C: Clock,
+//     I: Input,
+//     O: Output,
+// {
+//     pub fn new(gpio: G, adc: A, pwm: P, timers: T, clock: C, input: I, output: O) -> Self {
+//         Self {
+//             gpio,
+//             adc,
+//             pwm,
+//             timers,
+//             clock,
+//             input,
+//             output,
+//             gpio_bank_b: Default::default(),
+//             gpio_bank_c: Default::default(),
+//         }
+//     }
+// }
 
 impl<G, A, P, T, C, I, O, GB, GC> PeripheralSet<G, A, P, T, C, I, O, GB, GC>
 where
@@ -498,65 +1016,65 @@ where
     }
 }
 
-impl<G, A, P, T, C, I, O, GB, GC> Peripherals for PeripheralSet<G, A, P, T, C, I, O, GB, GC>
-where
-    G: Gpio,
-    A: Adc,
-    P: Pwm,
-    T: Timers,
-    C: Clock,
-    I: Input,
-    O: Output,
+// impl<G, A, P, T, C, I, O, GB, GC> Peripherals for PeripheralSet<G, A, P, T, C, I, O, GB, GC>
+// where
+//     G: Gpio,
+//     A: Adc,
+//     P: Pwm,
+//     T: Timers,
+//     C: Clock,
+//     I: Input,
+//     O: Output,
 
-    GB: OptionalPeripheral,
-    OptTy<GB>: Gpio,
-    GC: OptionalPeripheral,
-    OptTy<GC>: Gpio,
-{
-    type Gpio = G;
-    type Adc = A;
-    type Pwm = P;
-    type Timers = T;
-    type Clock = C;
-    type Input = I;
-    type Output = O;
+//     GB: OptionalPeripheral,
+//     OptTy<GB>: Gpio,
+//     GC: OptionalPeripheral,
+//     OptTy<GC>: Gpio,
+// {
+//     type Gpio = G;
+//     type Adc = A;
+//     type Pwm = P;
+//     type Timers = T;
+//     type Clock = C;
+//     type Input = I;
+//     type Output = O;
 
-    type GpioB = OptTy<GB>;
-    type GpioC = OptTy<GC>;
+//     type GpioB = OptTy<GB>;
+//     type GpioC = OptTy<GC>;
 
-    fn get_gpio(&self) -> &G { &self.gpio }
-    fn get_adc(&self) -> &A { &self.adc }
-    fn get_pwm(&self) -> &P { &self.pwm }
-    fn get_timers(&self) -> &T { &self.timers }
-    fn get_clock(&self) -> &C { &self.clock }
-    fn get_input(&self) -> &I { &self.input }
-    fn get_output(&self) -> &O { &self.output }
+//     fn get_gpio(&self) -> &G { &self.gpio }
+//     fn get_adc(&self) -> &A { &self.adc }
+//     fn get_pwm(&self) -> &P { &self.pwm }
+//     fn get_timers(&self) -> &T { &self.timers }
+//     fn get_clock(&self) -> &C { &self.clock }
+//     fn get_input(&self) -> &I { &self.input }
+//     fn get_output(&self) -> &O { &self.output }
 
-    fn get_gpio_mut(&mut self) -> &mut Self::Gpio { &mut self.gpio }
-    fn get_adc_mut(&mut self) -> &mut Self::Adc { &mut self.adc }
-    fn get_pwm_mut(&mut self) -> &mut Self::Pwm { &mut self.pwm }
-    fn get_timers_mut(&mut self) -> &mut Self::Timers { &mut self.timers }
-    fn get_clock_mut(&mut self) -> &mut Self::Clock { &mut self.clock }
-    fn get_input_mut(&mut self) -> &mut Self::Input { &mut self.input }
-    fn get_output_mut(&mut self) -> &mut Self::Output { &mut self.output }
+//     fn get_gpio_mut(&mut self) -> &mut Self::Gpio { &mut self.gpio }
+//     fn get_adc_mut(&mut self) -> &mut Self::Adc { &mut self.adc }
+//     fn get_pwm_mut(&mut self) -> &mut Self::Pwm { &mut self.pwm }
+//     fn get_timers_mut(&mut self) -> &mut Self::Timers { &mut self.timers }
+//     fn get_clock_mut(&mut self) -> &mut Self::Clock { &mut self.clock }
+//     fn get_input_mut(&mut self) -> &mut Self::Input { &mut self.input }
+//     fn get_output_mut(&mut self) -> &mut Self::Output { &mut self.output }
 
-    fn get_gpio_bank_b(&self) -> Option<&Self::GpioB> {
-        // To _enforce_ that it's fixed and not variable at runtime.
-        <OptPresent<GB> as Bool>::B.then(|| self.gpio_bank_b.get().unwrap())
-    }
+//     fn get_gpio_bank_b(&self) -> Option<&Self::GpioB> {
+//         // To _enforce_ that it's fixed and not variable at runtime.
+//         <OptPresent<GB> as Bool>::B.then(|| self.gpio_bank_b.get().unwrap())
+//     }
 
-    fn get_gpio_bank_b_mut(&mut self) -> Option<&mut Self::GpioB> {
-        <OptPresent<GB> as Bool>::B.then(|| self.gpio_bank_b.get_mut().unwrap())
-    }
+//     fn get_gpio_bank_b_mut(&mut self) -> Option<&mut Self::GpioB> {
+//         <OptPresent<GB> as Bool>::B.then(|| self.gpio_bank_b.get_mut().unwrap())
+//     }
 
-    fn get_gpio_bank_c(&self) -> Option<&Self::GpioC> {
-        <OptPresent<GC> as Bool>::B.then(|| self.gpio_bank_c.get().unwrap())
-    }
+//     fn get_gpio_bank_c(&self) -> Option<&Self::GpioC> {
+//         <OptPresent<GC> as Bool>::B.then(|| self.gpio_bank_c.get().unwrap())
+//     }
 
-    fn get_gpio_bank_c_mut(&mut self) -> Option<&mut Self::GpioC> {
-        <OptPresent<GC> as Bool>::B.then(|| self.gpio_bank_c.get_mut().unwrap())
-    }
-}
+//     fn get_gpio_bank_c_mut(&mut self) -> Option<&mut Self::GpioC> {
+//         <OptPresent<GC> as Bool>::B.then(|| self.gpio_bank_c.get_mut().unwrap())
+//     }
+// }
 
 use crate::control::{Snapshot, SnapshotError};
 

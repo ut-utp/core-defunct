@@ -129,9 +129,9 @@ where {
             timers.reset_interrupt_flag(*id);
         }
 
-        Clock::set_milliseconds(p.get_clock_mut(), 0);
-        Input::reset_interrupt_flag(p.get_input_mut());
-        Output::reset_interrupt_flag(p.get_output_mut());
+        Clock::set_milliseconds(p, 0);
+        Input::reset_interrupt_flag(p);
+        Output::reset_interrupt_flag(p);
     }
 }
 
