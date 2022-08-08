@@ -37,11 +37,13 @@ docs = [
     "-Z", "unstable-options",
     "-Z", "rustdoc-scrape-examples=examples",
     '--config=build.rustdocflags=["--cfg", "docs", "-Zunstable-options", "--show-type-layout", "--cap-lints=allow"]', # `--scrape-examples`, '--check-cfg', '--generate-link-to-definition'
-    "doc", "--workspace", "--document-private-items", "--all-features", # "--bins", "--examples",
+    "doc", "--workspace", "--all-features", # "--bins", "--examples",
+    # "--document-private-items",
 ]
 # Stable equivalent of the above.
 docs-stable = [
-    "doc", "--workspace", "--document-private-items", "--all-features", # "--bins", "--examples"
+    "doc", "--workspace", "--all-features", # "--bins", "--examples"
+    "--document-private-items",
 ]
 
 build-all = ["build", "--workspace", "--all-features", "--all-targets"]
