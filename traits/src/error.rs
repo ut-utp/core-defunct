@@ -1,3 +1,5 @@
+use crate::peripherals::OptionalPeripherals;
+
 use super::peripherals::gpio::{
     GpioMiscError, /* GpioInterruptRegisterError */
     GpioReadError, GpioReadErrors, GpioWriteError, GpioWriteErrors,
@@ -36,6 +38,8 @@ pub enum Error {
     InputError(InputError),
     OutputError(OutputError),
 
+    OptionalPeripheralIsNotPresent(OptionalPeripherals),
+
     SystemStackOverflow,
     ///// TODO: finish
 }
@@ -56,8 +60,10 @@ impl Display for Error {
                 write!(f, "Attempted to read from {} when in {} mode", (err.0).0, (err.0).1),
             InvalidAdcReads(_) => todo!(),
             AdcMiscError(_) => todo!(),
-            OutputError(e) => write!(f, "{}", e),
             InputError(e) => write!(f, "{}", e),
+            OutputError(e) => write!(f, "{}", e),
+            OptionalPeripheralIsNotPresent(opt) =>
+                write!(f, "Attempted to use optional peripheral `{opt}` which is not present"),
             SystemStackOverflow => write!(f, "Overflowed system stack"),
         }
     }
@@ -106,7 +112,7 @@ err!(OutputError, Error::OutputError);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ErrorHandlingStrategy {
     DefaultValue(Word),
-    Silent,
+    Warn,
     FireException {
         interrupt_vector_table_number: u8,
         payload: Option<Word>,
@@ -119,22 +125,23 @@ impl From<Error> for ErrorHandlingStrategy {
         use ErrorHandlingStrategy::*;
 
         match err {
-            InvalidGpioWrite(_) => Silent,
+            InvalidGpioWrite(_) => Warn,
             InvalidGpioRead(_) => DefaultValue(0u16),
-            InvalidGpioWrites(_) => Silent,
+            InvalidGpioWrites(_) => Warn,
             InvalidGpioReads(_err) => {
                 unimplemented!()
                 // TODO: set all the mismatched bits to 0, etc.
             }
-            GpioMiscError(_) => Silent,
+            GpioMiscError(_) => Warn,
             InvalidAdcRead(_) => DefaultValue(0u16),
             InvalidAdcReads(_) => {
                 unimplemented!()
             }
-            AdcMiscError(_) => Silent,
-            InputError(_) => Silent,        // TODO: what to actually do here?
-            OutputError(_) => Silent,       // TODO: and here?
-            SystemStackOverflow => Silent,
+            AdcMiscError(_) => Warn,
+            InputError(_) => Warn,        // TODO: what to actually do here?
+            OutputError(_) => Warn,       // TODO: and here?
+            OptionalPeripheralIsNotPresent(_) => Warn,
+            SystemStackOverflow => Warn,
         }
     }
 }

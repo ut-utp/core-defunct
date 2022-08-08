@@ -7,10 +7,30 @@ use core::ops::{Deref, Index, IndexMut};
 
 use serde::{Deserialize, Serialize};
 
+use super::OptionalPeripherals;
+
 #[rustfmt::skip]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[derive(DisplayUsingDebug)]
-pub enum GpioBank { A, B, C }
+pub enum GpioBank { A = 0, B = 1, C = 2 }
+
+impl TryFrom<GpioBank> for super::OptionalPeripherals {
+    type Error = ();
+
+    fn try_from(value: GpioBank) -> Result<Self, Self::Error> {
+        match value {
+            GpioBank::A => Err(()),
+            GpioBank::B => Ok(OptionalPeripherals::GpioBankB),
+            GpioBank::C => Ok(OptionalPeripherals::GpioBankC),
+        }
+    }
+}
+
+impl GpioBank {
+    pub const NUM_BANKS: usize = 3; // TODO: derive macro
+}
+// sa::const_assert_eq!(core::mem::variant_count::<GpioBank>(), GpioPin::NUM_BANKS);
+
 
 // Switched to using enums to identify peripheral pin numbers; this way
 // referring to invalid/non-existent pin numbers isn't an error that peripheral

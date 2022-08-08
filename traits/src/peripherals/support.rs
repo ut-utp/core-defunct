@@ -350,6 +350,65 @@ macro_rules! peripherals {
                 );
             )? // we can only do this when we've been told the stub type
         )*
+
+        /* OptionalPeripheral, the enum */
+        paste::paste! {
+            /// An enum representing the optional peripherals.
+            #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+            #[derive(serde::Serialize, serde::Deserialize)]
+            #[derive(lc3_macros::DisplayUsingDebug)]
+            pub enum OptionalPeripherals {
+                $(
+                    #[doc = "[`" $nom "::" $opt_peri_ty_param_name "`]"]
+                    [< $opt_peri_name:camel >],
+                )*
+            }
+
+            impl OptionalPeripherals {
+                /// The number of optional peripherals.
+                pub const NUM: usize = {
+                    let _a = [
+                        $(
+                            OptionalPeripherals::[< $opt_peri_name:camel >],
+                        )*
+                    ];
+
+                    _a.len()
+                };
+
+                /// A list of the optional peripherals.
+                pub const ALL: [Self; Self::NUM] = [
+                    $(
+                        OptionalPeripherals::[< $opt_peri_name:camel >],
+                    )*
+                ];
+
+                #[allow(unused_assignments)]
+                pub fn get_all_optional_peripherals_status<P: ?Sized + $nom>(
+                    peripherals: &P
+                ) -> [
+                    (Self, bool); Self::ALL.len()
+                ] {
+                    let mut out = [
+                        $((
+                            OptionalPeripherals::[< $opt_peri_name:camel >],
+                            false
+                        ),)*
+                    ];
+
+                    let mut idx = 0;
+
+                    $(
+                        if let Some(_) = peripherals.[< get_ $opt_peri_name >]() {
+                            out[idx].1 = true;
+                        }
+                        idx += 1;
+                    )*
+
+                    out
+                }
+            }
+        }
     };
 
     // Note: `ambassador` doesn't support #cfg attrs so we use `using_std_eager`
