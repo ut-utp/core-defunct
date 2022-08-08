@@ -140,21 +140,3 @@ impl TryFrom<AdcPinArr<Result<u8, AdcReadError>>> for AdcReadErrors {
         Ok(AdcReadErrors(errors))
     }
 }
-
-// TODO: roll this into the macro
-using_std! {
-    use std::sync::{Arc, RwLock};
-    impl<A: Adc> Adc for Arc<RwLock<A>> {
-        fn set_state(&mut self, pin: AdcPin, state: AdcState) -> Result<(), AdcMiscError> {
-            RwLock::write(self).unwrap().set_state(pin, state)
-        }
-
-        fn get_state(&self, pin: AdcPin) -> AdcState {
-            RwLock::read(self).unwrap().get_state(pin)
-        }
-
-        fn read(&self, pin: AdcPin) -> Result<u8, AdcReadError> {
-            RwLock::read(self).unwrap().read(pin)
-        }
-    }
-}

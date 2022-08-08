@@ -72,17 +72,3 @@ pub trait Clock {
 
     fn set_milliseconds(&mut self, ms: Word);
 }
-
-// TODO: roll this into the macro
-using_std! {
-    use std::sync::{Arc, RwLock};
-    impl<C: Clock> Clock for Arc<RwLock<C>> {
-        fn get_milliseconds(&self) -> Word {
-            RwLock::read(self).unwrap().get_milliseconds()
-        }
-
-        fn set_milliseconds(&mut self, ms: Word) {
-            RwLock::write(self).unwrap().set_milliseconds(ms)
-        }
-    }
-}

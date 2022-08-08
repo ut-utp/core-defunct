@@ -9,7 +9,7 @@ pub mod timers;
 pub mod input;
 pub mod output;
 
-use core::{marker::PhantomData, convert::Infallible};
+use core::{marker::PhantomData, convert::Infallible, ops::{Deref, DerefMut}};
 
 pub use gpio::Gpio;
 pub use adc::Adc;
@@ -20,6 +20,8 @@ pub use input::Input;
 pub use output::Output;
 
 pub mod stubs;
+
+use super::control::snapshot::SnapshotUsingClone;
 
 // the reason this trait exists is to accommodate implementations that wish to
 // share state between peripherals
@@ -163,13 +165,11 @@ macro_rules! peripherals {
 
         /* Define the Peripheral Set: */
         paste::paste! {
-        peripherals!(@add_attrs:
-            (
-                #[derive(ambassador::Delegate)]
-                $(
-                    #[delegate($req_peri_trait, target = "" $req_peri_name)] // Leaning on `paste` to eagerly stringify here.
-                )*
-            ) to
+            #[derive(ambassador::Delegate)]
+            $(
+                // Leaning on `paste` to eagerly stringify here (i.e. the `""` below).
+                #[delegate($req_peri_trait, target = "" $req_peri_name)]
+            )*
             $(#[$set_attrs])*
             pub struct $set_ty<
                 $($req_ty_short,)*
@@ -201,7 +201,7 @@ macro_rules! peripherals {
                     pub $opt_peri_name: $opt_ty_short,
                 )*
             }
-        );}
+        }
 
         /* Implement the Peripherals trait for the Peripherals Set: */
         impl<
@@ -362,19 +362,99 @@ macro_rules! peripherals {
             pub fn get_inner_peripherals_mut(&mut self) -> &mut P { &mut self.0 }
         }
 
-        impl<P: ?Sized + $nom> $wrapper_ty<P> {
+        /* impl Peripherals and delegate the traits to the wrapper: */
+        paste::paste! {
+            #[ambassador::delegate_to_methods]
+            $(
+                // Once again: leaning on `paste` to eagerly stringify here.
+                #[delegate(
+                    $req_peri_trait,
+                    target_ref = "" [< get_ $req_peri_name >],
+                    target_mut = "" [< get_ $req_peri_name _mut >],
+                )]
+            )*
+            impl<P: ?Sized + $nom> $nom for $wrapper_ty<P> {
+                $(type $req_peri_trait = P::$req_peri_trait;)*
+                $(type $opt_peri_ty_param_name = P::$opt_peri_ty_param_name;)*
 
+                $(
+                    #[inline(always)] fn [< get_ $req_peri_name >](&self) -> &P::$req_peri_trait
+                        { self.0.[< get_ $req_peri_name >]() }
+                    #[inline(always)] fn [< get_ $req_peri_name _mut >](&mut self) -> &mut P::$req_peri_trait
+                        { self.0.[< get_ $req_peri_name _mut >]() }
+                )*
+
+                $(
+                    #[inline(always)] fn [< get_ $opt_peri_name >](&self) -> Option<&P::$opt_peri_ty_param_name>
+                        { self.0.[< get_ $opt_peri_name >]() }
+                    #[inline(always)] fn [< get_ $opt_peri_name _mut >](&mut self) -> Option<&mut P::$opt_peri_ty_param_name>
+                        { self.0.[< get_ $opt_peri_name _mut >]() }
+                )*
+            }
         }
 
-        // impl Peripherals for Wrapper
-        // delegate all traits to Wrapper
+        /* impl traits on SnapshotUsingClone */
+        #[ambassador::delegate_remote]
+        $( #[delegate($req_peri_trait)] )*
+        pub struct SnapshotUsingClone<T: Clone>(T);
 
-        // impl traits on snapshotusingclone
-        // impl traits on the `GetRwLock`/`GetMutex` things
-        //
-        // automatically do this for the required peripheral traits; add a
-        // static assertion checking that this has been done for the optional
-        // peripheral traits!
+        /* impl traits on the `GetRwLock`/`GetMutex` things */
+        $(
+            peripherals!(make_locked_delegated_impls: $req_peri_name $req_peri_trait ($req_ty_short));
+        )*
+
+        // we can automatically do this for the required peripheral traits but
+        // not for the optional ones (since they may be duplicates). so: we add
+        // static assertions that try to ensure that this has been done for the
+        // optional peripheral traits!
+        $(
+            $(
+                sa::assert_impl_all!(
+                    core::cell::RefCell<$opt_peri_stub>: $opt_peri_trait
+                );
+            )? // we can only do this when we've been told the stub type
+        )*
+    };
+
+    // Note: `ambassador` doesn't support #cfg attrs so we use `using_std_eager` here
+    // in conjunction with an _outer_ `using_std` to get us back the `doc_cfg`s
+    (make_locked_delegated_impls: $name:ident $trait_name:ident ($s:ident)) => {
+        paste::paste! {
+            using_std! { mod [< $name _delegated_impls >] {
+                use super::*;
+
+                using_std_eager! {
+                    use std::{
+                        boxed::Box,
+                        rc::Rc,
+                        sync::{Arc, Mutex, RwLock},
+                    };
+                    use super::{GetRwLock, GetMutex};
+
+                    peripherals!(@make_locked_delegated_impls
+                        ty_param = $s
+                        trait = $trait_name
+                        list = (
+                            RwLock<$s>, Arc<RwLock<$s>>,  Rc<RwLock<$s>>,
+                            Mutex<$s>,  Arc<Mutex<$s>>,   Rc<Mutex<$s>>,
+                                        Arc<RefCell<$s>>, Rc<RefCell<$s>>,
+                            Box<$s>,
+                        )
+                        funcs = _get, _get_mut
+                    );
+                }
+            }}
+
+            peripherals!(@make_locked_delegated_impls
+                ty_param = $s trait = $trait_name
+                list = (RefCell<$s>) funcs = _get, _get_mut
+            );
+
+            peripherals!(@make_locked_delegated_impls
+                ty_param = $s trait = $trait_name
+                list = (&mut $s) funcs = _get_from_ref, _get_mut_from_ref
+            );
+        }
     };
 
     (@getter_pair_def: ($name:ident) {
@@ -393,14 +473,6 @@ macro_rules! peripherals {
             $(#[$attrs])*
             fn [< get_ $name _mut >](&mut $self) -> $ret_ty_mut $({ $($ms)* })? $($($rest)*)?
         }
-    };
-
-    // Our silly way of "forcing" macro_rules expansion before proc macro attr
-    // expansion.
-    (@add_attrs: ($(#[$attr:meta])*) to $($tt:tt)*) => {
-        $(#[$attr])*
-        $($tt)*
-
     };
 
     /*  */
@@ -481,6 +553,22 @@ macro_rules! peripherals {
     ) => {
         /* fin */
     };
+
+    (@make_locked_delegated_impls
+        ty_param = $ty_param:ident
+        trait = $trait:ident
+        list = ($($ty:ty),* $(,)?)
+        funcs = $shared:ident, $uniq:ident
+    ) => {
+        $(paste::paste! {
+            #[ambassador::delegate_to_remote_methods]
+            #[delegate($trait, target_ref = "" $shared, target_mut = "" $uniq)]
+            impl<$ty_param> $ty {
+                fn $shared(&self) -> &$ty_param;
+                fn $uniq(&mut self) -> &mut $ty_param;
+            }
+        })*
+    }
 }
 
 // A consequence of our optional peripheral convention is that even when an
@@ -583,45 +671,6 @@ impl<P: Peripherals> PeripheralsExt for P { }
 use crate::*;
 use self::{gpio::*, adc::*, pwm::*, timers::*, input::*, output::*};
 use lc3_isa::Word;
-
-// TODO: doc spotlight the peripheral traits
-#[ambassador::delegate_to_methods]
-#[delegate(Gpio, target_ref = "get_gpio", target_mut = "get_gpio_mut")]
-#[delegate(Adc, target_ref = "get_adc", target_mut = "get_adc_mut")]
-#[delegate(Pwm, target_ref = "get_pwm", target_mut = "get_pwm_mut")]
-#[delegate(Timers, target_ref = "get_timers", target_mut = "get_timers_mut")]
-#[delegate(Clock, target_ref = "get_clock", target_mut = "get_clock_mut")]
-#[delegate(Input, target_ref = "get_input", target_mut = "get_input_mut")]
-#[delegate(Output, target_ref = "get_output", target_mut = "get_output_mut")]
-impl<P: ?Sized + Peripherals> Peripherals for PeripheralsWrapper<P> {
-    type Gpio = P::Gpio;
-    type Adc = P::Adc;
-    type Pwm = P::Pwm;
-    type Timers = P::Timers;
-    type Clock = P::Clock;
-    type Input = P::Input;
-    type Output = P::Output;
-
-    type GpioB = P::GpioB;
-    type GpioC = P::GpioC;
-
-    fn get_gpio(&self) -> &P::Gpio { self.0.get_gpio() }
-    fn get_gpio_mut(&mut self) -> &mut P::Gpio { self.0.get_gpio_mut() }
-    fn get_adc(&self) -> &P::Adc { self.0.get_adc() }
-    fn get_adc_mut(&mut self) -> &mut P::Adc { self.0.get_adc_mut() }
-    fn get_pwm(&self) -> &P::Pwm { self.0.get_pwm() }
-    fn get_pwm_mut(&mut self) -> &mut P::Pwm { self.0.get_pwm_mut() }
-    fn get_timers(&self) -> &P::Timers { self.0.get_timers() }
-    fn get_timers_mut(&mut self) -> &mut P::Timers { self.0.get_timers_mut() }
-    fn get_clock(&self) -> &P::Clock { self.0.get_clock() }
-    fn get_clock_mut(&mut self) -> &mut P::Clock { self.0.get_clock_mut() }
-    fn get_input(&self) -> &P::Input { self.0.get_input() }
-    fn get_input_mut(&mut self) -> &mut P::Input { self.0.get_input_mut() }
-    fn get_output(&self) -> &P::Output { self.0.get_output() }
-    fn get_output_mut(&mut self) -> &mut P::Output { self.0.get_output_mut() }
-
-    /* todo: optional! */
-}
 
 /* struct LoopbackInput<'a> {
     char: &'a Cell<Option<u8>>,
@@ -739,3 +788,136 @@ impl<T> OptionalPeripheral for Present<T> {
 }
 
 use crate::control::{Snapshot, SnapshotError};
+
+
+use core::cell::{RefCell, Ref, RefMut};
+trait GetRefCell<I> {
+    fn _get(&self) -> Ref<'_, I>;
+    fn _get_mut(&self) -> RefMut<'_, I>;
+}
+
+impl<I> GetRefCell<I> for RefCell<I> {
+    #[inline(always)]
+    fn _get(&self) -> Ref<'_, I> { self.borrow() }
+    #[inline(always)]
+    fn _get_mut(&self) -> RefMut<'_, I> { self.borrow_mut() }
+}
+
+// Needs a different trait to avoid name collisions
+trait GetFromMutRef<I> {
+    fn _get_from_ref(&self) -> &I;
+    fn _get_mut_from_ref(&mut self) -> &mut I;
+}
+
+impl<I> GetFromMutRef<I> for &mut I {
+    #[inline(always)]
+    fn _get_from_ref(&self) -> &I { self }
+    #[inline(always)]
+    fn _get_mut_from_ref(&mut self) -> &mut I { self }
+}
+
+using_std! {
+    use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard, Mutex, MutexGuard};
+    use std::rc::Rc;
+
+    // Need Arc/Rc impls because Arc/Rc normally don't let us provide these impls;
+    // only when it wraps a type that has interior mutability we can.
+
+    // we can't abstract over these types because we don't have GATs (yet)
+
+    // we tell `ambassador::delegate` two lies here:
+    //  1) &mut self instead of &self (we have interior mutability)
+    //  2) the return type (we actually deref)
+    //     - by lying about the return type we don't even need to use `automatic_where_clause`
+
+    trait GetRwLock<I> {
+        fn _get(&self) -> RwLockReadGuard<'_, I>;
+        fn _get_mut(&self) -> RwLockWriteGuard<'_, I>;
+    }
+
+    impl<I> GetRwLock<I> for RwLock<I> {
+        #[inline(always)]
+        fn _get(&self) -> RwLockReadGuard<'_, I> { RwLock::read(self).unwrap() }
+        #[inline(always)]
+        fn _get_mut(&self) -> RwLockWriteGuard<'_, I> { RwLock::write(self).unwrap() }
+    }
+
+    impl<I, I2: GetRwLock<I>> GetRwLock<I> for Arc<I2> {
+        #[inline(always)]
+        fn _get(&self) -> RwLockReadGuard<'_, I> { <I2 as GetRwLock<I>>::_get(self) }
+        #[inline(always)]
+        fn _get_mut(&self) -> RwLockWriteGuard<'_, I> { <I2 as GetRwLock<I>>::_get_mut(self) }
+    }
+
+    impl<I, I2: GetRwLock<I>> GetRwLock<I> for Rc<I2> {
+        #[inline(always)]
+        fn _get(&self) -> RwLockReadGuard<'_, I> { <I2 as GetRwLock<I>>::_get(self) }
+        #[inline(always)]
+        fn _get_mut(&self) -> RwLockWriteGuard<'_, I> { <I2 as GetRwLock<I>>::_get_mut(self) }
+    }
+
+    // impl<I, I2: GetRwLock<I>> GetRwLock<I> for Box<I2> {
+    //     fn get(&self) -> RwLockReadGuard<'_, I> { <I2 as GetRwLock<I>>::get(self) }
+    //     fn get_mut(&mut self) -> RwLockWriteGuard<'_, I> { <I2 as GetRwLock<I>>::get_mut(self) }
+    // }
+
+    trait GetMutex<I> {
+        fn _get(&self) -> MutexGuard<'_, I>;
+        fn _get_mut(&self) -> MutexGuard<'_, I>;
+    }
+
+    impl<I> GetMutex<I> for Mutex<I> {
+        #[inline(always)]
+        fn _get(&self) -> MutexGuard<'_, I> { Mutex::lock(self).unwrap() }
+        #[inline(always)]
+        fn _get_mut(&self) -> MutexGuard<'_, I> { Mutex::lock(self).unwrap() }
+    }
+
+    impl<I, I2: GetMutex<I>> GetMutex<I> for Arc<I2> {
+        #[inline(always)]
+        fn _get(&self) -> MutexGuard<'_, I> { <I2 as GetMutex<I>>::_get(self) }
+        #[inline(always)]
+        fn _get_mut(&self) -> MutexGuard<'_, I> { <I2 as GetMutex<I>>::_get_mut(self) }
+    }
+
+    impl<I, I2: GetMutex<I>> GetMutex<I> for Rc<I2> {
+        #[inline(always)]
+        fn _get(&self) -> MutexGuard<'_, I> { <I2 as GetMutex<I>>::_get(self) }
+        #[inline(always)]
+        fn _get_mut(&self) -> MutexGuard<'_, I> { <I2 as GetMutex<I>>::_get_mut(self) }
+    }
+
+    // impl<I, I2: GetMutex<I>> GetMutex<I> for Box<I2> {
+    //     fn get(&self) -> MutexGuard<'_, I> { <I2 as GetMutex<I>>::get(self) }
+    //     fn get_mut(&mut self) -> MutexGuard<'_, I> { <I2 as GetMutex<I>>::get_mut(self) }
+    // }
+
+    impl<I, I2: GetRefCell<I>> GetRefCell<I> for Arc<I2> {
+        #[inline(always)]
+        fn _get(&self) -> Ref<'_, I> { <I2 as GetRefCell<I>>::_get(self) }
+        #[inline(always)]
+        fn _get_mut(&self) -> RefMut<'_, I> { <I2 as GetRefCell<I>>::_get_mut(self) }
+    }
+
+    impl<I, I2: GetRefCell<I>> GetRefCell<I> for Rc<I2> {
+        #[inline(always)]
+        fn _get(&self) -> Ref<'_, I> { <I2 as GetRefCell<I>>::_get(self) }
+        #[inline(always)]
+        fn _get_mut(&self) -> RefMut<'_, I> { <I2 as GetRefCell<I>>::_get_mut(self) }
+    }
+
+
+    // For Symmetry (makes life easier for the peripherals macro):
+    trait GetInner<I> {
+        fn _get(&self) -> &I;
+        fn _get_mut(&mut self) -> &mut I;
+    }
+
+    impl<I> GetInner<I> for Box<I> {
+        #[inline(always)]
+        fn _get(&self) -> &I { self.deref() }
+
+        #[inline(always)]
+        fn _get_mut(&mut self) -> &mut I { self.deref_mut() }
+    }
+}

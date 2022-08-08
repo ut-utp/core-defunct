@@ -46,7 +46,15 @@ pub trait Snapshot {
     fn restore(&mut self, snap: Self::Snap) -> Result<(), Self::Err>;
 }
 
-impl<T: Clone> Snapshot for T {
+// We'd like to offer this but this blanket impl makes things annoying for
+// wrapper types that would like to conditionally implement `Clone` (but not
+// *require* that their contents implement `Snapshot` by way of implementing
+// `Clone`).
+//
+// I'm also not sure that it's always correct/desirable to use `Clone` as your
+// `Snapshot` impl; we don't want to have users need to "choose" between
+// implementing `Snapshot` and `Clone.
+/* impl<T: Clone> Snapshot for T {
     type Snap = Self;
     type Err = Infallible;
 
@@ -60,3 +68,31 @@ impl<T: Clone> Snapshot for T {
         Ok(())
     }
 }
+*/
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize)]
+pub struct SnapshotUsingClone<T: Clone>(pub T);
+impl<T: Clone> Snapshot for SnapshotUsingClone<T> {
+    type Snap = T;
+    type Err = Infallible;
+
+    fn record(&self) -> Result<Self::Snap, Self::Err>  {
+        Ok(self.0.clone())
+    }
+
+    fn restore(&mut self,snap:Self::Snap) -> Result<(), Self::Err>  {
+        self.0 = snap;
+
+        Ok(())
+    }
+}
+
+trait SnapshotExt {
+    fn snapshot_using_clone(self) -> SnapshotUsingClone<Self> where Self: Clone {
+        SnapshotUsingClone(self)
+    }
+}
+
+impl<T> SnapshotExt for T { }
+
+// todo: delegate all traits to `SnapshotUsingClone`! (Memory included)

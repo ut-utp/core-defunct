@@ -17,6 +17,16 @@ macro_rules! using_std { ($($i:item)*) => ($(
     $i
 )*) }
 
+#[cfg(feature = "std")]
+macro_rules! using_std_eager {
+    ($($i:item)*) => {
+        // note: delegate doesn't let us put the cfg feature attr here!
+        $($i)*
+    };
+}
+#[cfg(not(feature = "std"))]
+macro_rules! using_std_eager { ($($t:tt)*) => { }; }
+
 macro_rules! not_wasm { ($($i:item)*) => ($(#[cfg(not(target_arch = "wasm32"))]$i)*) }
 #[allow(unused_macros)]
 macro_rules! wasm { ($($i:item)*) => ($(#[cfg(target_arch = "wasm32")]$i)*) }
