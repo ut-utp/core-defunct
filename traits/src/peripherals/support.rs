@@ -1,10 +1,9 @@
-
-
-// a macro to keep the peripheral impls in sync between the `Peripherals` trait and the `PeripheralSet`/`PeripheralsWrapper` types
-// (and to handle the convention around optional peripherals)
+// a macro to keep the peripheral impls in sync between the `Peripherals` trait
+// and the `PeripheralSet`/`PeripheralsWrapper` types (and to handle the
+// convention around optional peripherals)
 //
-// TODO: document the convention around optional peripherals here
-// also: we assume all traits have `ambassador::delegatable_trait` on them, etc.
+// TODO: document the convention around optional peripherals here also: we
+// assume all traits have `ambassador::delegatable_trait` on them, etc.
 macro_rules! peripherals {
     (
         $(#[$attrs:meta])*
@@ -72,7 +71,8 @@ macro_rules! peripherals {
                     #[doc = "Defaults to returning [`None`]; remember to implement this if you \n"]
                     #[doc = "**don't** set [`" $nom "::" $opt_peri_ty_param_name "`] to"]
                     #[doc = "[`" $opt_peri_def "`]."]
-                } -> Option<&Self::$opt_peri_ty_param_name>, Option<&mut Self::$opt_peri_ty_param_name> =
+                } -> Option<&Self::$opt_peri_ty_param_name>,
+                     Option<&mut Self::$opt_peri_ty_param_name> =
                     with self rest({ None })
                 );
             })*
@@ -111,15 +111,15 @@ macro_rules! peripherals {
                 )*
             {
                 $(
-                    #[doc = "An instance of a(n) [`" $req_peri_trait "`] implementation (**required**)."]
-                    #[doc = "\n\n"]
+                    #[doc = "An instance of a(n) [`" $req_peri_trait "`] implementation"]
+                    #[doc = " (**required**).\n\n"]
                     #[doc = "Corresponds to [`" $nom "::" $req_peri_trait "`]."]
                     pub $req_peri_name: $req_ty_short,
                 )*
 
                 $(
-                    #[doc = "An instance of a(n) [`" $opt_peri_trait "`] implementation (**optional**)."]
-                    #[doc = "\n\n"]
+                    #[doc = "An instance of a(n) [`" $opt_peri_trait "`] implementation"]
+                    #[doc = " (**optional**).\n\n"]
                     #[doc = "Defaults to [`" $opt_peri_def "`]."]
                     #[doc = "\n\n"]
                     #[doc = "Corresponds to [`" $nom "::" $opt_peri_ty_param_name "`]."]
@@ -162,15 +162,21 @@ macro_rules! peripherals {
             $(
                 peripherals!(@getter_pair_def: ($opt_peri_name) {
                         #[inline(always)]
-                    } -> Option<&Self::$opt_peri_ty_param_name>, Option<&mut Self::$opt_peri_ty_param_name> =
+                    } -> Option<&Self::$opt_peri_ty_param_name>,
+                         Option<&mut Self::$opt_peri_ty_param_name> =
                     with self
                     cond[
-                        // To _enforce_ that it's fixed and not variable at runtime:
+                        // To _enforce_ that it's fixed and not variably
+                        // present/not present at runtime:
                         self: (
-                            <OptPresent<$opt_ty_short> as Bool>::B.then(|| self.$opt_peri_name.get().unwrap())
+                            <OptPresent<$opt_ty_short> as Bool>::B.then(||
+                                self.$opt_peri_name.get().unwrap()
+                            )
                         )
                         mut self: (
-                            <OptPresent<$opt_ty_short> as Bool>::B.then(|| self.$opt_peri_name.get_mut().unwrap())
+                            <OptPresent<$opt_ty_short> as Bool>::B.then(||
+                                self.$opt_peri_name.get_mut().unwrap()
+                            )
                         )
                     ]
                 );
@@ -304,16 +310,19 @@ macro_rules! peripherals {
 
                 $(
                     #[inline(always)] fn [< get_ $req_peri_name >](&self) -> &P::$req_peri_trait
-                        { self.0.[< get_ $req_peri_name >]() }
-                    #[inline(always)] fn [< get_ $req_peri_name _mut >](&mut self) -> &mut P::$req_peri_trait
-                        { self.0.[< get_ $req_peri_name _mut >]() }
+                    { self.0.[< get_ $req_peri_name >]() }
+                    #[inline(always)] fn [< get_ $req_peri_name _mut >](&mut self)
+                        -> &mut P::$req_peri_trait
+                    { self.0.[< get_ $req_peri_name _mut >]() }
                 )*
 
                 $(
-                    #[inline(always)] fn [< get_ $opt_peri_name >](&self) -> Option<&P::$opt_peri_ty_param_name>
-                        { self.0.[< get_ $opt_peri_name >]() }
-                    #[inline(always)] fn [< get_ $opt_peri_name _mut >](&mut self) -> Option<&mut P::$opt_peri_ty_param_name>
-                        { self.0.[< get_ $opt_peri_name _mut >]() }
+                    #[inline(always)] fn [< get_ $opt_peri_name >](&self)
+                        -> Option<&P::$opt_peri_ty_param_name>
+                    { self.0.[< get_ $opt_peri_name >]() }
+                    #[inline(always)] fn [< get_ $opt_peri_name _mut >](&mut self)
+                        -> Option<&mut P::$opt_peri_ty_param_name>
+                    { self.0.[< get_ $opt_peri_name _mut >]() }
                 )*
             }
         }
@@ -325,7 +334,9 @@ macro_rules! peripherals {
 
         /* impl traits on the `GetRwLock`/`GetMutex` things */
         $(
-            peripherals!(make_locked_delegated_impls: $req_peri_name $req_peri_trait ($req_ty_short));
+            peripherals!(make_locked_delegated_impls:
+                $req_peri_name $req_peri_trait ($req_ty_short)
+            );
         )*
 
         // we can automatically do this for the required peripheral traits but
@@ -341,8 +352,9 @@ macro_rules! peripherals {
         )*
     };
 
-    // Note: `ambassador` doesn't support #cfg attrs so we use `using_std_eager` here
-    // in conjunction with an _outer_ `using_std` to get us back the `doc_cfg`s
+    // Note: `ambassador` doesn't support #cfg attrs so we use `using_std_eager`
+    // here in conjunction with an _outer_ `using_std` to get us back the
+    // `doc_cfg`s
     (make_locked_delegated_impls: $name:ident $trait_name:ident ($s:ident)) => {
         paste::paste! {
             using_std! { mod [< $name _delegated_impls >] {
@@ -398,7 +410,8 @@ macro_rules! peripherals {
 
             #[doc = "_Mutable_ getter "]
             $(#[$attrs])*
-            fn [< get_ $name _mut >](&mut $self) -> $ret_ty_mut $({ $($ms)* })? $($($rest)*)?
+            fn [< get_ $name _mut >](&mut $self) -> $ret_ty_mut
+            $({ $($ms)* })? $($($rest)*)?
         }
     };
 
@@ -406,44 +419,47 @@ macro_rules! peripherals {
         peri_trait: $nom:ident
         on: $set_ty:ident
         required: ($(
-            ( $req_peri_name:ident : $_req_peri_trait:ident ($req_ty_short:ident) )
+            ( $r_name:ident : $_r_trait:ident ($r_short:ident) )
         )*)
         optional_finished: ($(
-            ( $opt_peri_name_f:ident : $opt_peri_trait_f:ident ($opt_ty_short_f:ident) as $opt_peri_ty_param_name_f:ident )
+            ( $o_name_fin:ident : $o_trait_fin:ident ($o_short_fin:ident) as $o_ty_name_fin:ident )
         )*)
         optional_pending: (
-            ( $opt_peri_name_first:ident : $opt_peri_trait_first:ident ($opt_ty_short_first:ident) as $opt_peri_ty_param_name_first:ident )
+            ( $o_name_fst:ident : $o_trait_fst:ident ($o_short_fst:ident) as $o_ty_name_fst:ident )
             $(
-                ( $opt_peri_name_rest:ident : $opt_peri_trait_rest:ident ($opt_ty_short_rest:ident) as $opt_peri_ty_param_name_rest:ident )
+                (
+                    $o_name_rest:ident : $o_trait_rest:ident ($o_short_rest:ident)
+                    as $o_ty_name_rest:ident
+                )
             )*
         )
     ) => {
         paste::paste! {
             #[doc = "Sets [`" $set_ty "`]'s instance for the optional peripheral"]
-            #[doc = " [`" $nom "::" $opt_peri_ty_param_name_first "`] to an instance"]
+            #[doc = " [`" $nom "::" $o_ty_name_fst "`] to an instance"]
             #[doc = " of an actual implementation."]
-            pub fn [< with_ $opt_peri_name_first >]<
-                $opt_peri_ty_param_name_first: $opt_peri_trait_first
-            >(self, $opt_peri_name_first: $opt_peri_ty_param_name_first) -> $set_ty<
-                $($req_ty_short,)*
-                $($opt_ty_short_f,)*
-                Present<$opt_peri_ty_param_name_first>,
-                $($opt_ty_short_rest,)*
+            pub fn [< with_ $o_name_fst >]<
+                $o_ty_name_fst: $o_trait_fst
+            >(self, $o_name_fst: $o_ty_name_fst) -> $set_ty<
+                $($r_short,)*
+                $($o_short_fin,)*
+                Present<$o_ty_name_fst>,
+                $($o_short_rest,)*
             > {
                 let Self {
-                    $($req_peri_name,)*
-                    $($opt_peri_name_f,)*
+                    $($r_name,)*
+                    $($o_name_fin,)*
 
-                    $($opt_peri_name_rest,)*
+                    $($o_name_rest,)*
 
                     ..
                 } = self;
 
                 $set_ty {
-                    $($req_peri_name,)*
-                    $($opt_peri_name_f,)*
-                    $opt_peri_name_first: Present($opt_peri_name_first),
-                    $($opt_peri_name_rest,)*
+                    $($r_name,)*
+                    $($o_name_fin,)*
+                    $o_name_fst: Present($o_name_fst),
+                    $($o_name_rest,)*
                 }
             }
         }
@@ -452,16 +468,16 @@ macro_rules! peripherals {
             peri_trait: $nom
             on: $set_ty
             required: ($(
-                ( $req_peri_name : $_req_peri_trait ($req_ty_short) )
+                ( $r_name : $_r_trait ($r_short) )
             )*)
             optional_finished: (
                 $(
-                    ( $opt_peri_name_f : $opt_peri_trait_f ($opt_ty_short_f) as $opt_peri_ty_param_name_f )
+                    ( $o_name_fin : $o_trait_fin ($o_short_fin) as $o_ty_name_fin )
                 )*
-                ( $opt_peri_name_first : $opt_peri_trait_first ($opt_ty_short_first) as $opt_peri_ty_param_name_first )
+                ( $o_name_fst : $o_trait_fst ($o_short_fst) as $o_ty_name_fst )
             )
             optional_pending: ( $(
-                ( $opt_peri_name_rest : $opt_peri_trait_rest ($opt_ty_short_rest) as $opt_peri_ty_param_name_rest )
+                ( $o_name_rest : $o_trait_rest ($o_short_rest) as $o_ty_name_rest )
             )* )
         }
     };
@@ -515,16 +531,30 @@ macro_rules! optional_peripheral_placeholder_from_stub {
         placeholder: $p:ident,
         alias: $a:ident $(,)?
     ) => {
-        #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-        #[derive(serde::Serialize, serde::Deserialize)]
+        #[derive(
+            Debug,
+            Copy,
+            Clone,
+            PartialEq,
+            Eq,
+            PartialOrd,
+            Ord,
+            Hash,
+            serde::Serialize,
+            serde::Deserialize,
+        )]
         #[doc(hidden)]
-        pub enum $p { /* unconstructible by design */}
+        pub enum $p {/* unconstructible by design */}
 
         #[ambassador::delegate_to_methods]
         #[delegate($t, target_ref = "get", target_mut = "get_mut")]
         impl $p {
-            fn get(&self) -> &$s { unreachable!() }
-            fn get_mut(&mut self) -> &mut $s { unreachable!() }
+            fn get(&self) -> &$s {
+                unreachable!()
+            }
+            fn get_mut(&mut self) -> &mut $s {
+                unreachable!()
+            }
         }
 
         #[doc = ""] // TODO!
@@ -533,7 +563,9 @@ macro_rules! optional_peripheral_placeholder_from_stub {
         impl Snapshot for $p {
             type Snap = ();
             type Err = Infallible;
-            fn record(&self) -> Result<Self::Snap, Self::Err> { Ok(()) }
+            fn record(&self) -> Result<Self::Snap, Self::Err> {
+                Ok(())
+            }
             fn restore(&mut self, _snap: Self::Snap) -> Result<(), Self::Err> {
                 Ok(())
             }
@@ -542,7 +574,7 @@ macro_rules! optional_peripheral_placeholder_from_stub {
 }
 
 pub(super) mod delegated_peripheral_impl_support {
-    use core::cell::{RefCell, Ref, RefMut};
+    use core::cell::{Ref, RefCell, RefMut};
 
     pub(in crate::peripherals) trait GetRefCell<I> {
         fn _get(&self) -> Ref<'_, I>;
@@ -551,9 +583,13 @@ pub(super) mod delegated_peripheral_impl_support {
 
     impl<I> GetRefCell<I> for RefCell<I> {
         #[inline(always)]
-        fn _get(&self) -> Ref<'_, I> { self.borrow() }
+        fn _get(&self) -> Ref<'_, I> {
+            self.borrow()
+        }
         #[inline(always)]
-        fn _get_mut(&self) -> RefMut<'_, I> { self.borrow_mut() }
+        fn _get_mut(&self) -> RefMut<'_, I> {
+            self.borrow_mut()
+        }
     }
 
     // Needs a different trait to avoid name collisions
@@ -564,9 +600,13 @@ pub(super) mod delegated_peripheral_impl_support {
 
     impl<I> GetFromMutRef<I> for &mut I {
         #[inline(always)]
-        fn _get_from_ref(&self) -> &I { self }
+        fn _get_from_ref(&self) -> &I {
+            self
+        }
         #[inline(always)]
-        fn _get_mut_from_ref(&mut self) -> &mut I { self }
+        fn _get_mut_from_ref(&mut self) -> &mut I {
+            self
+        }
     }
 
     using_std! {
@@ -574,7 +614,10 @@ pub(super) mod delegated_peripheral_impl_support {
 
         use std::{
             rc::Rc,
-            sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard, Mutex, MutexGuard},
+            sync::{
+                Arc, RwLock, RwLockReadGuard, RwLockWriteGuard, Mutex,
+                MutexGuard
+            },
         };
 
         // Need Arc/Rc impls because Arc/Rc normally don't let us provide these impls;
@@ -669,21 +712,24 @@ pub(super) mod delegated_peripheral_impl_support {
     }
 }
 
-pub(in super) mod optional_peripheral_support {
-    use core::{
-        convert::Infallible,
-        marker::PhantomData,
-    };
+pub(super) mod optional_peripheral_support {
+    use core::{convert::Infallible, marker::PhantomData};
 
-    use crate::*;
     use crate::peripherals::Snapshot;
+    use crate::*;
 
     /* Type level Booleans */
     pub trait Bool: sealed::Sealed {
         const B: bool;
     }
-    pub struct True; impl Bool for True { const B: bool = true; }
-    pub struct False; impl Bool for False { const B: bool = false; }
+    pub struct True;
+    impl Bool for True {
+        const B: bool = true;
+    }
+    pub struct False;
+    impl Bool for False {
+        const B: bool = false;
+    }
 
     /* Optional Peripheral, the trait */
     pub trait OptionalPeripheral: sealed::Sealed {
@@ -692,13 +738,19 @@ pub(in super) mod optional_peripheral_support {
         // Requires that this be _statically_ known (PeripheralSet, that is).
         type Present: Bool;
 
-        fn get(&self) -> Option<&Self::Inner> { None }
-        fn get_mut(&mut self) -> Option<&mut Self::Inner> { None }
+        fn get(&self) -> Option<&Self::Inner> {
+            None
+        }
+        fn get_mut(&mut self) -> Option<&mut Self::Inner> {
+            None
+        }
     }
     #[allow(type_alias_bounds)]
-    pub (in crate::peripherals) type OptTy<P: OptionalPeripheral> = <P as OptionalPeripheral>::Inner;
+    pub(in crate::peripherals) type OptTy<P: OptionalPeripheral> =
+        <P as OptionalPeripheral>::Inner;
     #[allow(type_alias_bounds)]
-    pub (in crate::peripherals) type OptPresent<P: OptionalPeripheral> = <P as OptionalPeripheral>::Present;
+    pub(in crate::peripherals) type OptPresent<P: OptionalPeripheral> =
+        <P as OptionalPeripheral>::Present;
 
     // We don't offer `OptionalPeripheral for G: Gpio`, etc. here because
     // coherence keeps us from offering it for all of the peripheral traits
@@ -712,8 +764,18 @@ pub(in super) mod optional_peripheral_support {
     // ```
 
     /* Optional Peripheral wrappers: `NotPresent` and `Present` */
-    #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(
+        Debug,
+        Copy,
+        Clone,
+        PartialEq,
+        Eq,
+        PartialOrd,
+        Ord,
+        Hash,
+        serde::Serialize,
+        serde::Deserialize,
+    )]
     pub struct NotPresent<T: ?Sized>(PhantomData<T>);
     impl<T: ?Sized> Default for NotPresent<T> {
         fn default() -> Self {
@@ -728,32 +790,50 @@ pub(in super) mod optional_peripheral_support {
     impl<T: ?Sized> Snapshot for NotPresent<T> {
         type Snap = ();
         type Err = Infallible;
-        fn record(&self) -> Result<Self::Snap, Self::Err> { Ok(()) }
-        fn restore(&mut self, _snap: Self::Snap) -> Result<(), Self::Err> { Ok(()) }
+        fn record(&self) -> Result<Self::Snap, Self::Err> {
+            Ok(())
+        }
+        fn restore(&mut self, _snap: Self::Snap) -> Result<(), Self::Err> {
+            Ok(())
+        }
     }
 
-    #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
-    #[derive(serde::Serialize, serde::Deserialize)]
-    #[derive(ambassador::Delegate)]
+    #[derive(
+        Debug,
+        Copy,
+        Clone,
+        PartialEq,
+        Eq,
+        PartialOrd,
+        Ord,
+        Hash,
+        Default,
+        serde::Serialize,
+        serde::Deserialize,
+        ambassador::Delegate,
+    )]
     #[delegate(Snapshot)]
     pub struct Present<T>(pub T);
     impl<T> OptionalPeripheral for Present<T> {
         type Inner = T;
         type Present = True;
-        fn get(&self) -> Option<&T> { Some(&self.0) }
-        fn get_mut(&mut self) -> Option<&mut T> { Some(&mut self.0) }
+        fn get(&self) -> Option<&T> {
+            Some(&self.0)
+        }
+        fn get_mut(&mut self) -> Option<&mut T> {
+            Some(&mut self.0)
+        }
     }
 
     /* Misc */
     #[doc(hidden)]
     mod sealed {
-        pub trait Sealed { }
+        pub trait Sealed {}
 
-        impl Sealed for super::True { }
-        impl Sealed for super::False { }
+        impl Sealed for super::True {}
+        impl Sealed for super::False {}
 
         impl<T> Sealed for super::Present<T> {}
         impl<T: ?Sized> Sealed for super::NotPresent<T> {}
     }
-
 }

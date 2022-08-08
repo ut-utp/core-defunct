@@ -4,39 +4,38 @@
 pub mod adc;
 pub mod clock;
 pub mod gpio;
-pub mod pwm;
-pub mod timers;
 pub mod input;
 pub mod output;
+pub mod pwm;
+pub mod timers;
 
-pub use gpio::Gpio;
 pub use adc::Adc;
-pub use pwm::Pwm;
-pub use timers::Timers;
 pub use clock::Clock;
+pub use gpio::Gpio;
 pub use input::Input;
 pub use output::Output;
+pub use pwm::Pwm;
+pub use timers::Timers;
 
 pub mod stubs;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#[macro_use] mod support;
+#[macro_use]
+mod support;
 
-use core::{
-    cell::RefCell,
-    convert::Infallible,
-};
+use core::{cell::RefCell, convert::Infallible};
 
-use super::control::snapshot::{SnapshotUsingClone, Snapshot, SnapshotError};
+use self::{adc::*, gpio::*, input::*, output::*, pwm::*, timers::*};
+use super::control::snapshot::{Snapshot, SnapshotError, SnapshotUsingClone};
 use crate::*;
-use self::{gpio::*, adc::*, pwm::*, timers::*, input::*, output::*};
 use lc3_isa::Word;
 use support::{
     delegated_peripheral_impl_support::{self, *},
-    optional_peripheral_support::{Bool, OptTy, OptPresent, OptionalPeripheral, Present, NotPresent},
+    optional_peripheral_support::{
+        Bool, NotPresent, OptPresent, OptTy, OptionalPeripheral, Present,
+    },
 };
-
 
 // the reason this trait exists is to accommodate implementations that wish to
 // share state between peripherals
@@ -135,7 +134,7 @@ pub trait PeripheralsExt: Peripherals {
     }
 }
 
-impl<P: Peripherals> PeripheralsExt for P { }
+impl<P: Peripherals> PeripheralsExt for P {}
 
 // TODO: hide the ambassador items in the docs!
 
