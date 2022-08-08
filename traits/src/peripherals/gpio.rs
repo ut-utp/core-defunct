@@ -2,12 +2,11 @@
 
 use lc3_macros::DisplayUsingDebug;
 
-use core::convert::{TryFrom, Infallible};
+use core::convert::TryFrom;
 use core::ops::{Deref, Index, IndexMut};
 
 use serde::{Deserialize, Serialize};
 
-use crate::control::Snapshot;
 
 // Switched to using enums to identify peripheral pin numbers; this way
 // referring to invalid/non-existent pin numbers isn't an error that peripheral
@@ -269,26 +268,6 @@ pub trait Gpio {
     #[inline]
     fn interrupts_enabled(&self, pin: GpioPin) -> bool {
         matches!(self.get_state(pin), GpioState::Interrupt)
-    }
-}
-
-// unconstructible by design
-pub enum MissingGpio { }
-
-// quick way to get a `Gpio` impl (this will never be used though)
-#[ambassador::delegate_to_methods]
-#[delegate(Gpio, target_ref = "get", target_mut = "get_mut")]
-impl MissingGpio {
-    fn get(&self) -> &super::stubs::GpioStub { unreachable!() }
-    fn get_mut(&mut self) -> &mut super::stubs::GpioStub { unreachable!() }
-}
-
-impl Snapshot for MissingGpio {
-    type Snap = ();
-    type Err = Infallible;
-    fn record(&self) -> Result<Self::Snap, Self::Err> { Ok(()) }
-    fn restore(&mut self, _snap: Self::Snap) -> Result<(), Self::Err> {
-        Ok(())
     }
 }
 
