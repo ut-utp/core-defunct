@@ -12,7 +12,6 @@ use lc3_isa::{
 use lc3_traits::{control::metadata::{Identifier, ProgramMetadata, Version, version_from_crate}, peripherals::{PeripheralsWrapper, PeripheralsExt}};
 use lc3_traits::control::load::{PageIndex, PAGE_SIZE_IN_WORDS};
 use lc3_traits::control::control::MAX_CALL_STACK_DEPTH;
-use lc3_traits::peripherals::{gpio::GpioPinArr, timers::TimerArr};
 use lc3_traits::{memory::Memory, peripherals::Peripherals};
 use lc3_traits::peripherals::{gpio::Gpio, input::Input, output::Output, timers::Timers};
 use lc3_traits::error::Error;
@@ -22,7 +21,6 @@ use core::any::TypeId;
 use core::convert::TryInto;
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
-use core::sync::atomic::AtomicBool;
 use core::ops::{Deref, DerefMut};
 use core::cell::Cell;
 
@@ -182,45 +180,6 @@ impl MachineState {
 }
 
 impl Default for MachineState {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[derive(Debug)]
-pub struct PeripheralInterruptFlags {
-    pub gpio: GpioPinArr<AtomicBool>, // No payload; just tell us if a rising edge has happened
-    pub gpio_bank_b: GpioPinArr<AtomicBool>,
-    pub gpio_bank_c: GpioPinArr<AtomicBool>,
-    pub timers: TimerArr<AtomicBool>, // No payload; timers don't actually expose counts anyways
-    pub input: AtomicBool, // No payload; check KBDR for the current character
-    pub output: AtomicBool, // Technically this has an interrupt, but I have no idea why; UPDATE: it interrupts when it's ready to accept more data
-                        // display: bool, // Unless we're exposing vsync/hsync or something, this doesn't need an interrupt
-}
-
-// TODO: move ^ to device support?
-
-impl PeripheralInterruptFlags {
-    pub const fn new() -> Self {
-        macro_rules! b {
-            () => {
-                AtomicBool::new(false)
-            };
-        }
-
-        // TODO: make this less gross..
-        Self {
-            gpio: GpioPinArr([b!(), b!(), b!(), b!(), b!(), b!(), b!(), b!()]),
-            gpio_bank_b: GpioPinArr([b!(), b!(), b!(), b!(), b!(), b!(), b!(), b!()]),
-            gpio_bank_c: GpioPinArr([b!(), b!(), b!(), b!(), b!(), b!(), b!(), b!()]),
-            timers: TimerArr([b!(), b!()]),
-            input: AtomicBool::new(false),
-            output: AtomicBool::new(false),
-        }
-    }
-}
-
-impl Default for PeripheralInterruptFlags {
     fn default() -> Self {
         Self::new()
     }

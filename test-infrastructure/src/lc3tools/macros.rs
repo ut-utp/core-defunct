@@ -11,7 +11,7 @@ macro_rules! lc3_sequence {
         #[test]
         fn $name() -> std::io::Result<()> { $crate::with_larger_stack::<std::io::Result<()>, _>(None, || {
             use $crate::{
-                Instruction, PeripheralInterruptFlags, MemoryShim, PeripheralsShim, insn
+                Instruction, MemoryShim, PeripheralsShim, insn
             };
 
             #[allow(unused_mut)]

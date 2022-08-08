@@ -95,7 +95,7 @@ pub fn fib_closed_form(n: Word) -> u64 {
 use self::lazy_static::lazy_static;
 
 use lc3_baseline_sim::interp::{Interpreter, InterpreterBuilder};
-pub use lc3_baseline_sim::interp::{InstructionInterpreter, PeripheralInterruptFlags};
+pub use lc3_baseline_sim::interp::InstructionInterpreter;
 use lc3_isa::util::MemoryDump;
 use lc3_shims::{memory::MemoryShim};
 use lc3_traits::control::{

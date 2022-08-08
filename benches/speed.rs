@@ -61,8 +61,6 @@ fn bench_fib(c: &mut Criterion) {
 
 #[allow(unused)]
 fn bench_fib_alt() {
-    let flags = PeripheralInterruptFlags::default();
-
     for num_iter in ITERS.iter() {
         let mut int = black_box(bare_interpreter(build_fib_memory_image(*num_iter)));
         int.reset();

@@ -16,8 +16,7 @@ pub use {
         },
     },
     lc3_baseline_sim::interp::{
-        PeripheralInterruptFlags, Interpreter,
-        InstructionInterpreterPeripheralAccess,
+        Interpreter, InstructionInterpreterPeripheralAccess,
         InstructionInterpreter
     },
     lc3_traits::peripherals::PeripheralsWrapper,

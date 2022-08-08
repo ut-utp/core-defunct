@@ -76,7 +76,7 @@ macro_rules! single_test_inner {
         use $crate::{
             Addr, Word, Reg, Instruction, insn, Reg::*,
             ShareablePeripheralsShim, MemoryShim, SourceShim, new_shim_peripherals_set,
-            PeripheralInterruptFlags, Interpreter, InstructionInterpreterPeripheralAccess,
+            Interpreter, InstructionInterpreterPeripheralAccess,
             PeripheralsWrapper,
         };
 
