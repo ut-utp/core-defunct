@@ -36,10 +36,10 @@ impl GpioBank {
 // referring to invalid/non-existent pin numbers isn't an error that peripheral
 // trait implementations have to deal with.
 //
-// This seems to make more since, if you consider that the peripherals are
-// exposed through a memory-mapped interface an invalid pin number isn't really
-// an error that can happen (you either hit a memory address that corresponds
-// to a peripheral or you hit an invalid memory address).
+// This seems to make more sense; consider that the peripherals are exposed
+// through a memory-mapped interface an invalid pin number isn't really an error
+// that can happen (you either hit a memory address that corresponds to a
+// peripheral or you hit an invalid memory address).
 //
 // This is currently a little wonky, but it'll be better once we write the macro
 // described in `control.rs`.
@@ -157,7 +157,7 @@ pub struct GpioReadErrors(pub GpioStateMismatches);
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct GpioWriteErrors(pub GpioStateMismatches);
 
-// TODO: impl Error on std
+// TODO: conditional (on std) Error impls
 
 
 // TODO: document all the weird cases
@@ -165,11 +165,22 @@ pub struct GpioWriteErrors(pub GpioStateMismatches);
 // Once a pin is set to output but before a write the pin is? 0? unknown? implementation defined?
 // Write to the register in input mode? Ignored
 // Read from the register in output mode? 0s? or do we cache the last written value?
+//
+// current approach:
+//  - pins are set to 0 on transition to output
+//  - writes to the register in input/interrupt mode error
+//  - reads from the output mode return the last written value
 
-/// GPIO access trait.
+
+/// GPIO access trait. todo: rewrite all of this
 ///
 /// Implementations of this trait must provide digital read, digital write, and rising
 /// edge trigger interrupt functionality for 8 GPIO pins which we'll call G0 - G7.
+///
+/// Implementors of this trait are encouraged to provide an implementation of
+/// [`Default`](core::default::Default), if possible. Implementors are also free
+/// (and encouraged!) to provide inherent methods on their implementation that
+/// allow for configuration of the peripheral.
 ///
 /// ### State
 /// The interpreter (user of this trait) will set the states of all the pins to
@@ -180,7 +191,7 @@ pub struct GpioWriteErrors(pub GpioStateMismatches);
 /// ([`get_state`](Gpio::get_state)) should be an infallible operation.
 ///
 /// Setting pin state ([`set_state`](Gpio::set_state)) is not infallible as
-/// implementations may change need to actually change the state of hardware peripherals
+/// implementations may need to actually change the state of hardware peripherals
 /// in order to, for example, register a rising-edge interrupt for a particular pin.
 /// Though implementors are encouraged to make this operation infallible if possible, we
 /// realize this isn't always possible and in the event that it isn't, we'd rather have
@@ -195,7 +206,7 @@ pub struct GpioWriteErrors(pub GpioStateMismatches);
 /// in input ([`GpioState::Input`]) or interrupt ([`GpioState::Interrupt`]) mode.
 ///
 /// ### Interrupts
-/// TODO: OUT OF DATE.
+/// TODO: OUT OF DATE. !!
 /// Registering interrupts (i.e. calling
 /// [`register_interrupt`](Gpio::register_interrupt)) does not automatically put a pin
 /// in [`interrupt`](GpioState::Interrupt) mode. Instead, this only updates the handler
@@ -287,14 +298,37 @@ pub trait Gpio {
         errors
     }
 
+
+    // should we have the interpreter track this state (i.e. when an interrupt is pending)?
+    //
+    // i think not; it's _conceivable_ that hardware would _want_ to do something
+    // weird here (even though the most likely desired behavior is just "interrupt pending
+    // until handled")
+    //
+    // we also don't want to have to deal with duplicated state, etc.
+    //
+    // we should, however, specify behavior for edge cases like "what happens if there's a pending interrupt
+    // that's not handled isn't handled before the user switches the mode to not-Interrupt mode?"
+    // (the answer is: `interrupt_occurred` should now return false).
+    //
+    //
+    // I actually think we should maybe update this interface to reflect that this is the behavior..
     fn interrupt_occurred(&self, pin: GpioPin) -> bool;
     fn reset_interrupt_flag(&mut self, pin: GpioPin);
+
+    // TODO: is there a reason why this method exists?
+    //
+    // I think we initially were reticient to bake in `AtomicBool` as the interrupt
+    // signaling mechanism but... I think it's fine to, actually.
+    //
+    // concern is the cortex-m0 I guess (and other weirder platforms..)
     #[inline]
     fn interrupts_enabled(&self, pin: GpioPin) -> bool {
         matches!(self.get_state(pin), GpioState::Interrupt)
     }
 }
 
+// TODO: is `TryFrom` the best way to expose this functionality?
 impl TryFrom<GpioPinArr<Result<bool, GpioReadError>>> for GpioReadErrors {
     type Error = ();
 
