@@ -161,8 +161,6 @@ macro_rules! peripherals {
             );
         )?)*
 
-        // impl Snapshot
-
         /* Define the Peripheral Set: */
         paste::paste! {
         peripherals!(@add_attrs:
@@ -191,7 +189,7 @@ macro_rules! peripherals {
                     #[doc = "An instance of a(n) [`" $req_peri_trait "`] implementation (**required**)."]
                     #[doc = "\n\n"]
                     #[doc = "Corresponds to [`" $nom "::" $req_peri_trait "`]."]
-                    $req_peri_name: $req_ty_short,
+                    pub $req_peri_name: $req_ty_short,
                 )*
 
                 $(
@@ -200,7 +198,7 @@ macro_rules! peripherals {
                     #[doc = "Defaults to [`" $opt_peri_def "`]."]
                     #[doc = "\n\n"]
                     #[doc = "Corresponds to [`" $nom "::" $opt_peri_ty_param_name "`]."]
-                    $opt_peri_name: $opt_ty_short,
+                    pub $opt_peri_name: $opt_ty_short,
                 )*
             }
         );}
@@ -307,6 +305,47 @@ macro_rules! peripherals {
                 optional_pending: ($(
                     ( $opt_peri_name: $opt_peri_trait ($opt_ty_short) as $opt_peri_ty_param_name )
                 )*)
+            }
+        }
+
+        /* Snapshot for the Peripheral Set: */
+        impl<
+            $($req_ty_short,)*
+            $($opt_ty_short,)*
+        > Snapshot for $set_ty<
+            $($req_ty_short,)*
+            $($opt_ty_short,)*
+        >
+        where
+            $($req_ty_short: Snapshot + $req_peri_trait,)*
+            $(
+                $opt_ty_short: Snapshot + OptionalPeripheral,
+                OptTy<$opt_ty_short>: $opt_peri_trait,
+            )*
+        {
+            type Snap = (
+                $(<$req_ty_short as Snapshot>::Snap,)*
+                $(<$opt_ty_short as Snapshot>::Snap,)*
+            );
+
+            // TODO: report which thing failed? make it part of the SnapshotError type?
+            type Err = SnapshotError;
+
+            fn record(&self) -> Result<Self::Snap, Self::Err> {
+                Ok((
+                    $( self.$req_peri_name.record().map_err(Into::into)?, )*
+                    $( self.$opt_peri_name.record().map_err(Into::into)?, )*
+                ))
+            }
+
+            fn restore(&mut self, (
+                $($req_peri_name,)*
+                $($opt_peri_name,)*
+            ): Self::Snap) -> Result<(), Self::Err> {
+                $( self.$req_peri_name.restore($req_peri_name).map_err(Into::into)?; )*
+                $( self.$opt_peri_name.restore($opt_peri_name).map_err(Into::into)?; )*
+
+                Ok(())
             }
         }
 
@@ -509,8 +548,6 @@ pub trait Peripherals = {
     },
 } with {
     /// TODO!
-    //
-    // TODO: doc spotlight the peripheral traits (also for PeripheralsWrapper)
     #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
     #[derive(serde::Serialize, serde::Deserialize)]
     set = struct PeripheralSet<...>;
@@ -626,72 +663,6 @@ struct LoopbackOutput<'a> {
     interrupts: bool,
 } */
 
-/*
-pub struct PeripheralSet<G, A, P, T, C, I, O>
-where
-    G: Gpio,
-    A: Adc,
-    P: Pwm,
-    T: Timers,
-    C: Clock,
-    I: Input,
-    O: Output,
-{
-    gpio: G,
-    adc: A,
-    pwm: P,
-    timers: T,
-    clock: C,
-    input: I,
-    output: O,
-}
-
-impl<G, A, P, T, C, I, O> Default for PeripheralSet<G, A, P, T, C, I, O>
-where
-    G: Default + Gpio,
-    A: Default + Adc,
-    P: Default + Pwm,
-    T: Default + Timers,
-    C: Default + Clock,
-    I: Default + Input,
-    O: Default + Output,
-{
-    fn default() -> Self {
-        Self {
-            gpio: G::default(),
-            adc: A::default(),
-            pwm: P::default(),
-            timers: T::default(),
-            clock: C::default(),
-            input: I::default(),
-            output: O::default(),
-        }
-    }
-}
-
-impl<G, A, P, T, C, I, O> PeripheralSet<G, A, P, T, C, I, O>
-where
-    G: Gpio,
-    A: Adc,
-    P: Pwm,
-    T: Timers,
-    C: Clock,
-    I: Input,
-    O: Output,
-{
-    pub fn new(gpio: G, adc: A, pwm: P, timers: T, clock: C, input: I, output: O) -> Self {
-        Self {
-            gpio,
-            adc,
-            pwm,
-            timers,
-            clock,
-            input,
-            output,
-        }
-    }
-}
-*/
 
 pub trait Bool: sealed::Sealed {
     const B: bool;
@@ -768,65 +739,3 @@ impl<T> OptionalPeripheral for Present<T> {
 }
 
 use crate::control::{Snapshot, SnapshotError};
-
-impl<'p, G, A, P, T, C, I, O, GB, GC> Snapshot for PeripheralSet<G, A, P, T, C, I, O, GB, GC>
-where
-    G: Snapshot + Gpio,
-    A: Snapshot + Adc,
-    P: Snapshot + Pwm,
-    T: Snapshot + Timers,
-    C: Snapshot + Clock,
-    I: Snapshot + Input,
-    O: Snapshot + Output,
-
-    GB: Snapshot + OptionalPeripheral,
-    OptTy<GB>: Gpio,
-    GC: Snapshot + OptionalPeripheral,
-    OptTy<GC>: Gpio,
-{
-    type Snap = (
-        <G as Snapshot>::Snap,
-        <A as Snapshot>::Snap,
-        <P as Snapshot>::Snap,
-        <T as Snapshot>::Snap,
-        <C as Snapshot>::Snap,
-        <I as Snapshot>::Snap,
-        <O as Snapshot>::Snap,
-        <GB as Snapshot>::Snap,
-        <GC as Snapshot>::Snap,
-    );
-
-    type Err = SnapshotError; // TODO: report which thing failed? make it part of the SnapshotError type?
-
-    fn record(&self) -> Result<Self::Snap, Self::Err> {
-        Ok((
-            self.gpio.record().map_err(Into::into)?,
-            self.adc.record().map_err(Into::into)?,
-            self.pwm.record().map_err(Into::into)?,
-            self.timers.record().map_err(Into::into)?,
-            self.clock.record().map_err(Into::into)?,
-            self.input.record().map_err(Into::into)?,
-            self.output.record().map_err(Into::into)?,
-
-            self.gpio_bank_b.record().map_err(Into::into)?,
-            self.gpio_bank_c.record().map_err(Into::into)?,
-        ))
-    }
-
-    fn restore(&mut self, snap: Self::Snap) -> Result<(), Self::Err> {
-        let (g, a, p, t, c, i, o, gb, gc) = snap;
-
-        self.gpio.restore(g).map_err(Into::into)?;
-        self.adc.restore(a).map_err(Into::into)?;
-        self.pwm.restore(p).map_err(Into::into)?;
-        self.timers.restore(t).map_err(Into::into)?;
-        self.clock.restore(c).map_err(Into::into)?;
-        self.input.restore(i).map_err(Into::into)?;
-        self.output.restore(o).map_err(Into::into)?;
-
-        self.gpio_bank_b.restore(gb).map_err(Into::into)?;
-        self.gpio_bank_c.restore(gc).map_err(Into::into)?;
-
-        Ok(())
-    }
-}
