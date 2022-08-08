@@ -18,7 +18,7 @@ use lc3_traits::control::rpc::{
 use lc3_traits::error::Error;
 use lc3_traits::peripherals::adc::{Adc, AdcPinArr, AdcReadError, AdcState};
 use lc3_traits::peripherals::clock::Clock;
-use lc3_traits::peripherals::gpio::{Gpio, GpioPinArr, GpioReadError, GpioState};
+use lc3_traits::peripherals::gpio::{Gpio, GpioPinArr, GpioReadError, GpioState, GpioBank};
 use lc3_traits::peripherals::pwm::{Pwm, PwmPinArr, PwmState};
 use lc3_traits::peripherals::timers::{Timers, TimerArr, TimerMode, TimerState};
 use lc3_traits::peripherals::Peripherals;
@@ -583,12 +583,22 @@ impl<'s, I: InstructionInterpreterPeripheralAccess, S: EventFutureSharedStatePor
         self.interp.get_error()
     }
 
-    fn get_gpio_states(&self) -> GpioPinArr<GpioState> {
-        Gpio::get_states(self.interp.get_gpio())
+    fn get_gpio_states(&self, bank: GpioBank) -> Option<GpioPinArr<GpioState>> {
+        use GpioBank::*;
+        match bank {
+            A => Some(Gpio::get_states(self.interp.get_gpio())),
+            B => self.interp.get_gpio_bank_b().map(|gp| gp.get_states()),
+            C => self.interp.get_gpio_bank_c().map(|gp| gp.get_states()),
+        }
     }
 
-    fn get_gpio_readings(&self) -> GpioPinArr<Result<bool, GpioReadError>> {
-        Gpio::read_all(self.interp.get_gpio())
+    fn get_gpio_readings(&self, bank: GpioBank) -> Option<GpioPinArr<Result<bool, GpioReadError>>> {
+        use GpioBank::*;
+        match bank {
+            A => Some(Gpio::read_all(self.interp.get_gpio())),
+            B => self.interp.get_gpio_bank_b().map(|gp| gp.read_all()),
+            C => self.interp.get_gpio_bank_c().map(|gp| gp.read_all()),
+        }
     }
 
     fn get_adc_states(&self) -> AdcPinArr<AdcState> {

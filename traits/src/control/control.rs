@@ -9,7 +9,7 @@
 
 use crate::error::Error;
 use crate::peripherals::adc::{AdcPinArr, AdcReadError, AdcState};
-use crate::peripherals::gpio::{GpioPinArr, GpioReadError, GpioState};
+use crate::peripherals::gpio::{GpioPinArr, GpioReadError, GpioState, GpioBank};
 use crate::peripherals::pwm::{PwmPinArr, PwmState};
 use crate::peripherals::timers::{TimerArr, TimerState, TimerMode};
 use super::{Capabilities, DeviceInfo, ProgramMetadata, Identifier};
@@ -263,8 +263,12 @@ pub trait Control {
 
     // I/O Access:
     // TODO!! Does the state/reading separation make sense?
-    fn get_gpio_states(&self) -> GpioPinArr<GpioState>;
-    fn get_gpio_readings(&self) -> GpioPinArr<Result<bool, GpioReadError>>;
+
+    /// Returns [`None`] only if the [`GpioBank`] specified is not present.
+    fn get_gpio_states(&self, bank: GpioBank) -> Option<GpioPinArr<GpioState>>;
+    /// Returns [`None`] only if the [`GpioBank`] specified is not present.
+    fn get_gpio_readings(&self, bank: GpioBank) -> Option<GpioPinArr<Result<bool, GpioReadError>>>;
+
     fn get_adc_states(&self) -> AdcPinArr<AdcState>;
     fn get_adc_readings(&self) -> AdcPinArr<Result<u8, AdcReadError>>;
     fn get_timer_modes(&self) -> TimerArr<TimerMode>;

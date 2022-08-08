@@ -359,8 +359,8 @@ where
 
                 (GetError => R::GetError(r)) with r = c.get_error();
 
-                (GetGpioStates => R::GetGpioStates(r)) with r = c.get_gpio_states();
-                (GetGpioReadings => R::GetGpioReadings(r)) with r = c.get_gpio_readings();
+                (GetGpioStates { bank } => R::GetGpioStates(r)) with r = c.get_gpio_states(bank);
+                (GetGpioReadings { bank } => R::GetGpioReadings(r)) with r = c.get_gpio_readings(bank);
 
                 (GetAdcStates => R::GetAdcStates(r)) with r = c.get_adc_states();
                 (GetAdcReadings => R::GetAdcReadings(r)) with r = c.get_adc_readings();

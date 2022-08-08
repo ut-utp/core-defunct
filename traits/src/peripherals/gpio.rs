@@ -7,6 +7,10 @@ use core::ops::{Deref, Index, IndexMut};
 
 use serde::{Deserialize, Serialize};
 
+#[rustfmt::skip]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(DisplayUsingDebug)]
+pub enum GpioBank { A, B, C }
 
 // Switched to using enums to identify peripheral pin numbers; this way
 // referring to invalid/non-existent pin numbers isn't an error that peripheral

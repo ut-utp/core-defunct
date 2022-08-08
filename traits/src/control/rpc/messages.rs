@@ -12,7 +12,7 @@ use crate::control::{ProgramMetadata, DeviceInfo, UnifiedRange, ProcessorMode, I
 use crate::error::Error as Lc3Error;
 use crate::peripherals::{
     adc::{AdcPinArr, AdcState, AdcReadError},
-    gpio::{GpioPinArr, GpioState, GpioReadError},
+    gpio::{GpioPinArr, GpioState, GpioReadError, GpioBank},
     pwm::{PwmPinArr, PwmState},
     timers::{TimerArr, TimerMode, TimerState},
 };
@@ -96,8 +96,8 @@ pub enum RequestMessage { // messages for everything but tick()
 
     GetError,
 
-    GetGpioStates,
-    GetGpioReadings,
+    GetGpioStates { bank: GpioBank },
+    GetGpioReadings { bank: GpioBank },
     GetAdcStates,
     GetAdcReadings,
     GetTimerModes,
@@ -170,8 +170,8 @@ pub enum ResponseMessage { // messages for everything but tick()
 
     GetError(Option<Lc3Error>),
 
-    GetGpioStates(GpioPinArr<GpioState>),
-    GetGpioReadings(GpioPinArr<Result<bool, GpioReadError>>),
+    GetGpioStates(Option<GpioPinArr<GpioState>>),
+    GetGpioReadings(Option<GpioPinArr<Result<bool, GpioReadError>>>),
     GetAdcStates(AdcPinArr<AdcState>),
     GetAdcReadings(AdcPinArr<Result<u8, AdcReadError>>),
     GetTimerModes(TimerArr<TimerMode>),
@@ -291,8 +291,8 @@ impl Clone for RequestMessage {
             GetState,
             Reset,
             GetError,
-            GetGpioStates,
-            GetGpioReadings,
+            GetGpioStates { bank },
+            GetGpioReadings { bank },
             GetAdcStates,
             GetAdcReadings,
             GetTimerModes,

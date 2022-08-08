@@ -21,7 +21,7 @@ use crate::control::{ProgramMetadata, DeviceInfo, UnifiedRange};
 use crate::error::Error as Lc3Error;
 use crate::peripherals::{
     adc::{AdcPinArr, AdcState, AdcReadError},
-    gpio::{GpioPinArr, GpioState, GpioReadError},
+    gpio::{GpioPinArr, GpioState, GpioReadError, GpioBank},
     pwm::{PwmPinArr, PwmState},
     timers::{TimerArr, TimerMode, TimerState},
 };
@@ -362,8 +362,8 @@ where
     fn get_error(&self) -> Option<Lc3Error> { ctrl!(self, GetError, R::GetError(r), r) }
 
     // I/O Access:
-    fn get_gpio_states(&self) -> GpioPinArr<GpioState> { ctrl!(self, GetGpioStates, R::GetGpioStates(r), r) }
-    fn get_gpio_readings(&self) -> GpioPinArr<Result<bool, GpioReadError>> { ctrl!(self, GetGpioReadings, R::GetGpioReadings(r), r) }
+    fn get_gpio_states(&self, bank: GpioBank) -> Option<GpioPinArr<GpioState>> { ctrl!(self, GetGpioStates { bank }, R::GetGpioStates(r), r) }
+    fn get_gpio_readings(&self, bank: GpioBank) -> Option<GpioPinArr<Result<bool, GpioReadError>>> { ctrl!(self, GetGpioReadings { bank }, R::GetGpioReadings(r), r) }
     fn get_adc_states(&self) -> AdcPinArr<AdcState> { ctrl!(self, GetAdcStates, R::GetAdcStates(r), r) }
     fn get_adc_readings(&self) -> AdcPinArr<Result<u8, AdcReadError>> { ctrl!(self, GetAdcReadings, R::GetAdcReadings(r), r) }
     fn get_timer_modes(&self) -> TimerArr<TimerMode> { ctrl!(self, GetTimerModes, R::GetTimerModes(r), r) }
