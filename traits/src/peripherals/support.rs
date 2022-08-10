@@ -425,7 +425,7 @@ macro_rules! peripherals {
                         rc::Rc,
                         sync::{Arc, Mutex, RwLock},
                     };
-                    use super::delegated_peripheral_impl_support::{
+                    use super::support::delegated_peripheral_impl_support::{
                         GetRefCell, GetRwLock, GetMutex, GetInner
                     };
 

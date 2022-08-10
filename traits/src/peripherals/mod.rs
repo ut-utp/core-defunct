@@ -31,7 +31,7 @@ use super::control::snapshot::{Snapshot, SnapshotError, SnapshotUsingClone};
 use crate::*;
 use lc3_isa::Word;
 use support::{
-    delegated_peripheral_impl_support::{self, *},
+    delegated_peripheral_impl_support::*,
     optional_peripheral_support::{
         Bool, NotPresent, OptPresent, OptTy, OptionalPeripheral, Present,
     },
