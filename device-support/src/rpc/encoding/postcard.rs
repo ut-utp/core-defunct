@@ -146,9 +146,6 @@ mod decode {
     // We can't provide full generality because there's no DeFlavor trait.
     // Unclear whether we can to better than the below (Cobs + AsMut). TODO.
 
-    // TODO: this cloning stuff is bad; can we change Decode to give a mutable
-    // reference to the encoded data (and switch back to AsMut).
-
     impl<F, Out> Decode<Out> for PostcardDecode<Out, Cobs<F>>
     where
         Out: Debug,
@@ -157,27 +154,13 @@ mod decode {
         F: IndexMut<usize, Output = u8>,
         Cobs<F>: SerFlavor,
         <Cobs<F> as SerFlavor>::Output: Debug,
-        <Cobs<F> as SerFlavor>::Output: AsRef<[u8]>
+        <Cobs<F> as SerFlavor>::Output: AsMut<[u8]>
     {
         type Encoded = <Cobs<F> as SerFlavor>::Output;
         type Err = postcard::Error;
 
         fn decode(&mut self, encoded: Self::Encoded) -> Result<Out, Self::Err> {
-            // This is bad and is a hack!
-            let mut fifo: Fifo<u8> = Fifo::new();
-            fifo.push_slice(encoded.as_ref()).unwrap();
-            // fifo.push_iter(&mut encoded.as_ref().iter()).unwrap();
-
-            // // TODO: remove this hack!
-            // match take_from_bytes_cobs(fifo.as_mut()) {
-            //     Ok((ref m, _)) => Ok(Out::clone(m)),
-            //     Err(e) => Err(e),
-            // }
-            // if let Some((m, _)) =  {
-            //     Ok(m.clone())
-            // }
-
-            take_from_bytes_cobs(fifo.as_mut())
+            take_from_bytes_cobs(encoded.as_mut())
                 .map(|(m, _)| m)
         }
     }
