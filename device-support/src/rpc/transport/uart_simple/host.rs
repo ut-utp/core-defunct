@@ -1,6 +1,7 @@
 //! UART transport for computers.
 
-use crate::util::Fifo;
+use crate::util::{fifo, Fifo};
+use super::SENTINEL_BYTE;
 
 use lc3_traits::control::rpc::Transport;
 use lc3_traits::control::{version_from_crate, Identifier, Version};
@@ -20,13 +21,13 @@ use std::{
 };
 
 // TODO: Debug impl
-pub struct HostUartTransport {
+pub struct HostUartTransport<const RECV_LEN: usize = { fifo::DEFAULT_CAPACITY }> {
     serial: RefCell<Box<dyn SerialPort>>, // TODO: get rid of RefCell/trait object?
-    internal_buffer: RefCell<Fifo<u8>>, // TODO: get rid of refcell?
-    error_count: AtomicU64,
+    internal_buffer: RefCell<Fifo<u8, RECV_LEN>>, // TODO: get rid of refcell?
+    recv_error_count: AtomicU64,
 }
 
-impl HostUartTransport {
+impl<const RECV_LEN: usize> HostUartTransport<RECV_LEN> {
     pub fn new<'a>(
         path: impl Into<Cow<'a, str>>,
         baud_rate: u32,
@@ -48,14 +49,14 @@ impl HostUartTransport {
 
         Ok(Self {
             serial: RefCell::new(serial),
-            internal_buffer: RefCell::new(Fifo::new_const()),
-            error_count: AtomicU64::new(0),
+            internal_buffer: RefCell::new(Fifo::new()),
+            recv_error_count: AtomicU64::new(0),
         })
     }
 
     // Just a helper that increments the error counter:
     fn err<T>(&self, t: T) -> T {
-        self.error_count.fetch_add(1, Ordering::Relaxed);
+        self.recv_error_count.fetch_add(1, Ordering::Relaxed);
         t
     }
 }
@@ -88,7 +89,10 @@ impl<const RECV_LEN: usize, SendFormat: super::ConsumeData> Transport<SendFormat
                         Ok(()) => break IoResult::Ok(()),
                         Err(e) => match e.kind() {
                             ErrorKind::WouldBlock => continue,
-                            _ => return Err(self.err(e)),
+                            _ => {
+                                // TODO: log! based logging here
+                                return Err(e)
+                            },
                         },
                     }
                 }
@@ -105,19 +109,19 @@ impl<const RECV_LEN: usize, SendFormat: super::ConsumeData> Transport<SendFormat
         block!(serial.flush())
     }
 
-    fn get(&self) -> Result<Fifo<u8>, Option<Error>> {
+    fn get(&self) -> Result<Fifo<u8, RECV_LEN>, Option<Error>> {
         let serial = self.serial.borrow_mut();
 
         // Ensure that we have bytes before "blocking" and reading in a whole message:
         if serial.bytes_to_read().map_err(|e| self.err(Some(e.into())))? != 0 {
             drop(serial);
-            self.blocking_get()
+            <Self as Transport<SendFormat, _>>::blocking_get(self)
         } else {
             Err(None)
         }
     }
 
-    fn blocking_get(&self) -> Result<Fifo<u8>, Option<Self::RecvErr>> { // TODO: &mut ?
+    fn blocking_get(&self) -> Result<Fifo<u8, RECV_LEN>, Option<Self::RecvErr>> { // TODO: &mut ?
         let mut serial = self.serial.borrow_mut();
         let mut buf = self.internal_buffer.borrow_mut();
 
@@ -129,9 +133,9 @@ impl<const RECV_LEN: usize, SendFormat: super::ConsumeData> Transport<SendFormat
             match serial.read(&mut temp_buf) {
                 Ok(1) => {
                     log::trace!("recv byte: {:#04X}", temp_buf[0]);
-                    if temp_buf[0] == 0 {
+                    if temp_buf[0] == SENTINEL_BYTE {
                         log::trace!("message over, returning.. ({} bytes)", buf.len());
-                        return Ok(core::mem::replace(&mut buf, Fifo::new()));
+                        return Ok(core::mem::replace::<Fifo::<_, RECV_LEN>>(&mut buf, Fifo::<_, RECV_LEN>::new()));
                     } else {
                         // TODO: don't panic here; see the note in uart_simple
                         buf.push(temp_buf[0]).unwrap()
@@ -155,5 +159,5 @@ impl<const RECV_LEN: usize, SendFormat: super::ConsumeData> Transport<SendFormat
         }
     }
 
-    fn num_get_errors(&self) -> u64 { self.error_count.load(Ordering::Relaxed) }
+    fn num_get_errors(&self) -> u64 { self.recv_error_count.load(Ordering::Relaxed) }
 }

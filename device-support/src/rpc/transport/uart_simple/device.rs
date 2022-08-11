@@ -13,29 +13,76 @@ use nb::block;
 
 use core::cell::RefCell;
 use core::fmt::Debug;
+use core::sync::atomic::{AtomicU32, Ordering};
 
 #[derive(Debug)]
-pub struct UartTransport<R: Read<u8>, W: Write<u8>>
+pub struct UartTransport<R: Read<u8>, W: Write<u8>, const RECV_LEN: usize = { fifo::DEFAULT_CAPACITY }>
 where
     <R as Read<u8>>::Error: Debug,
     <W as Write<u8>>::Error: Debug,
 {
-    read: RefCell<R>,
-    write: RefCell<W>,
-    internal_buffer: RefCell<Fifo<u8>>,
+    innards: RefCell<Innards<RECV_LEN, R, W>>,
+    recv_error_count: AtomicU32,
 }
 
-impl<R: Read<u8>, W: Write<u8>> UartTransport<R, W>
+// So that we only have _one_ RefCell to borrow.
+#[derive(Debug)]
+struct Innards<const RECV_LEN: usize, R, W> {
+    read: R,
+    write: W,
+    internal_buffer: Fifo<u8, RECV_LEN>,
+}
+
+impl<R: Read<u8>, W: Write<u8>, const RECV_LEN: usize> UartTransport<R, W, RECV_LEN>
 where
     <R as Read<u8>>::Error: Debug,
     <W as Write<u8>>::Error: Debug,
 {
     // Can't be const until bounds are allowed.
-    pub /*const*/ fn new(read: R, write: W) -> Self {
+    pub const fn new(read: R, write: W) -> Self {
         Self {
-            read: RefCell::new(read),
-            write: RefCell::new(write),
-            internal_buffer: RefCell::new(Fifo::new_const()),
+            innards: RefCell::new(Innards {
+                read: read,
+                write: write,
+                internal_buffer: Fifo::new(),
+            }),
+            recv_error_count: AtomicU32::new(0),
+        }
+    }
+
+    // Just a helper that increments the error counter:
+    fn err<T>(&self, t: T) -> T {
+        self.recv_error_count.fetch_add(1, Ordering::Relaxed);
+        t
+    }
+
+    fn recv_inner(&self, blocking: bool) -> Result<Fifo<u8, RECV_LEN>, Option<R::Error>> {
+        let mut this = self.innards.borrow_mut();
+        use nb::Error::*;
+
+        loop {
+            match this.read.read() {
+                Ok(word) => {
+                    if word == SENTINEL_BYTE {
+                        // 0 is the sentinel!
+                        break Ok(core::mem::replace(&mut this.internal_buffer, Fifo::<u8, RECV_LEN>::new()))
+                    } else {
+                        // TODO: don't panic here, just dump the buffer or
+                        // something.
+                        this.internal_buffer.push(word).unwrap()
+                    }
+                },
+                Err(WouldBlock) => {
+                    if blocking {
+                        continue
+                    } else {
+                        break Err(None)
+                    }
+                },
+                Err(Other(err)) => {
+                    break self.err(Err(Some(err)))
+                }
+            }
         }
     }
 }
@@ -52,13 +99,14 @@ where
     const VER: Version = {
         let ver = version_from_crate!();
 
-        let id = Identifier::new_from_str_that_crashes_on_invalid_inputs("simp");
+        let id = Identifier::new_from_str_that_crashes_on_invalid_inputs("ehal");
 
         Version::new(ver.major, ver.minor, ver.patch, Some(id))
     };
 
     fn send(&self, mut message: SendFormat) -> Result<(), W::Error> {
-        let mut write = self.write.borrow_mut();
+        let mut this = self.innards.borrow_mut();
+        let write = &mut this.write;
 
         message.consume(|byte| {
             block!(write.write(byte))
@@ -67,31 +115,15 @@ where
         block!(write.flush())
     }
 
-    fn get(&self) -> Result<Fifo<u8>, Option<R::Error>> {
-        let mut read = self.read.borrow_mut();
-        let mut buf = self.internal_buffer.borrow_mut();
+    fn get(&self) -> Result<Fifo<u8, RECV_LEN>, Option<R::Error>> {
+        self.recv_inner(false)
+    }
 
-        use nb::Error::*;
+    fn blocking_get(&self) -> Result<Fifo<u8, RECV_LEN>, Option<Self::RecvErr>> {
+        self.recv_inner(true)
+    }
 
-        loop {
-            match read.read() {
-                Ok(word) => {
-                    if word == 0 {
-                        // 0 is the sentinel!
-                        break Ok(core::mem::replace(&mut buf, Fifo::new()))
-                    } else {
-                        // TODO: don't panic here, just dump the buffer or
-                        // something.
-                        buf.push(word).unwrap()
-                    }
-                },
-                Err(WouldBlock) => {
-                    break Err(None)
-                },
-                Err(Other(err)) => {
-                    break Err(Some(err))
-                }
-            }
-        }
+    fn num_get_errors(&self) -> u64 {
+        self.recv_error_count.load(Ordering::Relaxed) as u64
     }
 }
