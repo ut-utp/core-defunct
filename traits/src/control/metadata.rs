@@ -280,6 +280,10 @@ impl Identifier {
         Self::new_from_str_that_crashes_on_invalid_inputs("    ")
     }
 
+    pub const fn as_array(&self) -> &[u8; 4] {
+        &self.0
+    }
+
     pub const fn new_that_crashes_on_invalid_inputs(
         name: [u8; Self::MAX_LEN],
     ) -> Self {
@@ -314,13 +318,19 @@ impl Identifier {
 
 impl Display for Identifier {
     fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(fmt, "{}", self.as_ref())
+        write!(fmt, "{}", AsRef::<str>::as_ref(&self))
     }
 }
 
 impl AsRef<str> for Identifier {
     fn as_ref(&self) -> &str {
         core::str::from_utf8(&self.0).unwrap()
+    }
+}
+
+impl AsRef<[u8]> for Identifier {
+    fn as_ref(&self) -> &[u8] {
+        self.as_array().as_ref()
     }
 }
 
