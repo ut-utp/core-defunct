@@ -13,7 +13,7 @@ use core::cell::RefMut;
 use core::fmt::Debug;
 use core::marker::PhantomData;
 use core::ops::{IndexMut, Index};
-use core::convert::{AsRef, AsMut};
+use core::convert::AsMut;
 
 // TODO: have be able to take inputs?
 // no: they're closures; just capture.
@@ -333,7 +333,7 @@ mod decode {
         type Encoded = <Cobs<F> as SerFlavor>::Output;
         type Err = postcard::Error;
 
-        fn decode(&mut self, encoded: Self::Encoded) -> Result<Out, Self::Err> {
+        fn decode(&mut self, mut encoded: Self::Encoded) -> Result<Out, Self::Err> {
             take_from_bytes_cobs(encoded.as_mut())
                 .map(|(m, _)| m)
         }

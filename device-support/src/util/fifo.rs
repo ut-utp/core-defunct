@@ -594,7 +594,7 @@ using_alloc! {
         }
 
         fn chunk(&self) -> &[u8] {
-            self.as_slice().0
+            self.as_slices().0
         }
 
         fn advance(&mut self, count: usize) {
