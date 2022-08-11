@@ -41,27 +41,28 @@ pub struct Fifo<T, const LEN: usize = DEFAULT_CAPACITY> {
     ending: Cur,
 }
 
-impl<T: Debug> Debug for Fifo<T> {
+impl<T: Debug, const L: usize> Debug for Fifo<T, L> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // write!(f, "Fifo<{}> {{ ", core::any::type_name::<T>())?;
         write!(f, "{} {{ ", core::any::type_name::<Self>())?;
 
-        let contents = self.as_slice();
+        let (a, b) = self.as_slice();
+        let contents = a.iter().chain(b.iter());
 
         if self.length() >= 15 {
-            for elem in contents.iter().take(7) {
+            for elem in contents.clone().take(7) {
                 elem.fmt(f)?;
                 write!(f, ", ")?;
             }
 
             write!(f, "...")?;
 
-            for elem in contents.iter().skip(self.length() - 7) {
+            for elem in contents.skip(self.length() - 7) {
                 write!(f, ", ")?;
                 elem.fmt(f)?;
             }
         } else {
-            let mut iter = contents.iter().take(self.length() - 1);
+            let mut iter = contents.take(self.length() - 1);
             for elem in &mut iter {
                 elem.fmt(f)?;
                 write!(f, ", ")?;
@@ -222,11 +223,11 @@ impl<T, const LEN: usize> Fifo<T, LEN> {
     /// Returns a mutable slice consisting of the data currently in the `Fifo`
     /// without removing it.
     #[inline]
-    pub fn as_mut_slice(&mut self) -> &mut [T] {
+    pub fn as_mut_slice(&mut self) -> (&mut [T], &mut [T]) {
         // starting == ending can either mean a full fifo or an empty one so
         // we use our length field to handle this case separately
         if Fifo::is_empty(self) {
-            &mut []
+            (&mut [], &mut [])
         } else {
             if self.ending > self.starting {
                 let s = &mut self.data
@@ -249,50 +250,70 @@ impl<T, const LEN: usize> Fifo<T, LEN> {
                 // same representation as types that just contain `T`. There's
                 // an assert for this at the bottom of this file.
                 #[allow(unsafe_code)]
-                unsafe {
+                let s = unsafe {
                     transmute(s)
-                }
+                };
+
+                (s, &mut [])
             } else if self.ending <= self.starting {
                 // Gotta do it in two parts then.
                 let s = &mut self.data[(self.starting as usize)..];
 
                 // Same as above.
                 #[allow(unsafe_code)]
-                unsafe {
+                let s = unsafe {
                     transmute(s)
-                }
+                };
+
+                let e = &mut self.data[..(self.ending as usize)];
+                #[allow(unsafe_code)]
+                let e = unsafe {
+                    transmute(e)
+                };
+
+                (s, e)
             } else {
                 unreachable!()
             }
         }
     }
 
-    /// Returns a slice consisting of the data currently in the `Fifo`without
+    /// Returns a slice consisting of the data currently in the `Fifo` without
     /// removing it.
     #[inline]
-    pub fn as_slice(&self) -> &[T] {
+    pub fn as_slice(&self) -> (&[T], &[T]) {
         // This contains the exact logic from as_mut_slice above.
         // TODO: is there a way to avoid duplicating this?
 
         if self.is_empty() {
-            &[]
+            (&[], &[])
         } else {
             if self.ending > self.starting {
-                let s = &self.data
+                let f = &self.data
                     [(self.starting as usize)..(self.ending as usize)];
 
                 #[allow(unsafe_code)]
-                unsafe {
-                    transmute(s)
-                }
+                let f = unsafe {
+                    transmute(f)
+                };
+
+                (f, &[])
             } else if self.ending <= self.starting {
                 // Gotta do it in two parts then.
                 let s = &self.data[(self.starting as usize)..];
 
                 #[allow(unsafe_code)]
-                unsafe {
+                let s = unsafe {
                     transmute(s)
-                }
+                };
+
+                let e = &self.data[..(self.ending as usize)];
+                #[allow(unsafe_code)]
+                let e = unsafe {
+                    transmute(e)
+                };
+
+                (s, e)
             } else {
                 unreachable!()
             }
