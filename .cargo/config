@@ -178,6 +178,7 @@ clippy-all = ["clippy", "--all", "--all-features", "--all-targets", "--",
 lint = ["clippy-all"]
 
 b = "build-all"
+ba = "build-all"
 c = "check-all"
 d = "docs-stable"
 f = "fmt-all"
