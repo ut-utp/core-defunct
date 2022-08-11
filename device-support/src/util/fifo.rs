@@ -46,7 +46,7 @@ impl<T: Debug, const L: usize> Debug for Fifo<T, L> {
         // write!(f, "Fifo<{}> {{ ", core::any::type_name::<T>())?;
         write!(f, "{} {{ ", core::any::type_name::<Self>())?;
 
-        let (a, b) = self.as_slice();
+        let (a, b) = self.as_slices();
         let contents = a.iter().chain(b.iter());
 
         if self.length() >= 15 {
@@ -223,7 +223,7 @@ impl<T, const LEN: usize> Fifo<T, LEN> {
     /// Returns a mutable slice consisting of the data currently in the `Fifo`
     /// without removing it.
     #[inline]
-    pub fn as_mut_slice(&mut self) -> (&mut [T], &mut [T]) {
+    pub fn as_mut_slices(&mut self) -> (&mut [T], &mut [T]) {
         // starting == ending can either mean a full fifo or an empty one so
         // we use our length field to handle this case separately
         if Fifo::is_empty(self) {
@@ -281,7 +281,7 @@ impl<T, const LEN: usize> Fifo<T, LEN> {
     /// Returns a slice consisting of the data currently in the `Fifo` without
     /// removing it.
     #[inline]
-    pub fn as_slice(&self) -> (&[T], &[T]) {
+    pub fn as_slices(&self) -> (&[T], &[T]) {
         // This contains the exact logic from as_mut_slice above.
         // TODO: is there a way to avoid duplicating this?
 
@@ -390,6 +390,18 @@ impl<T, const L: usize> Fifo<T, L> {
             Ok(())
         }
     }
+
+    // Not atomic!
+    fn push_any_iter<I: Iterator<Item = T>>(
+        &mut self,
+        iter: &mut I,
+    ) -> Result<(), ()> {
+        for i in iter {
+            self.push(i)?;
+        }
+
+        Ok(())
+    }
 }
 
 impl<'a, T: Clone + 'a, const L: usize> Fifo<T, L> {
@@ -443,31 +455,113 @@ impl<T: Clone, const L: usize> Fifo<T, L> {
     }
 }
 
-impl<T> Index<usize> for Fifo<T> {
+// Once const generics let us, we'd like to provide this for `N <= L`.
+impl<T, const L: usize> From<[T; L]> for Fifo<T, L> {
+    fn from(array: [T; L]) -> Self {
+        Self {
+            // SAFETY: these have the same layout and we _know_ all the elements
+            // in `array` are initialized.
+            // data: unsafe { core::mem::transmute(array) }, // Can't do this (TODO)
+            data: unsafe { core::mem::transmute_copy(&array) },
+            length: L,
+            starting: 0,
+            ending: 0,
+        }
+    }
+}
+
+impl<T: Clone, const L: usize> TryFrom<&[T]> for Fifo<T, L> {
+    type Error = (); // TODO: `TooBig`
+
+    fn try_from(slice: &[T]) -> Result<Self, Self::Error> {
+        let mut f = Self::new();
+        f.push_slice(slice)?;
+
+        Ok(f)
+    }
+}
+
+fn index<T, const L: usize>(idx: usize, fifo: &Fifo<T, L>) -> &T {
+    let (first, second) = fifo.as_slices();
+    if idx >= first.len() {
+        &second[idx - first.len()]
+    } else {
+        &first[idx]
+    }
+}
+
+impl<T, const L: usize> Index<usize> for Fifo<T, L> {
     type Output = T;
 
     #[inline]
     fn index(&self, idx: usize) -> &T {
-        &self.as_slice()[idx]
+        index(idx, self)
     }
 }
 
-impl<T> IndexMut<usize> for Fifo<T> {
+impl<'a, T, const L: usize> Index<usize> for &'a Fifo<T, L> {
+    type Output = T;
+
+    #[inline]
+    fn index(&self, idx: usize) -> &T {
+        index(idx, self)
+    }
+}
+
+impl<'a, T, const L: usize> Index<usize> for &'a mut Fifo<T, L> {
+    type Output = T;
+
+    #[inline]
+    fn index(&self, idx: usize) -> &T {
+        index(idx, self)
+    }
+}
+
+fn index_mut<T, const L: usize>(idx: usize, fifo: &mut Fifo<T, L>) -> &mut T {
+    let (first, second) = fifo.as_mut_slices();
+    if idx >= first.len() {
+        &mut second[idx - first.len()]
+    } else {
+        &mut first[idx]
+    }
+}
+
+impl<T, const L: usize> IndexMut<usize> for Fifo<T, L> {
     #[inline]
     fn index_mut(&mut self, idx: usize) -> &mut T {
-        &mut self.as_mut_slice()[idx]
+        index_mut(idx, self)
     }
 }
 
-impl<T> AsRef<[T]> for Fifo<T> {
+impl<'a, T, const L: usize> IndexMut<usize> for &'a mut Fifo<T, L> {
+    #[inline]
+    fn index_mut(&mut self, idx: usize) -> &mut T {
+        index_mut(idx, self)
+    }
+}
+
+impl<T, const L: usize> AsRef<[T]> for Fifo<T, L> {
     fn as_ref(&self) -> &[T] {
-        self.as_slice()
+        self.as_slices().0
     }
 }
 
 impl<T, const L: usize> AsMut<[T]> for Fifo<T, L> {
     fn as_mut(&mut self) -> &mut [T] {
-        self.as_mut_slice()
+        self.as_mut_slices().0
+    }
+}
+
+impl<T, const L: usize> Extend<T> for Fifo<T, L> {
+    fn extend<It: IntoIterator<Item = T>>(mut self: &mut Self, iter: It) {
+        <&mut Fifo<T, L>>::extend(&mut self, iter)
+    }
+}
+
+impl<T, const L: usize> Extend<T> for &mut Fifo<T, L> {
+    fn extend<It: IntoIterator<Item = T>>(&mut self, iter: It) {
+        let mut it = iter.into_iter();
+        self.push_any_iter(&mut it).unwrap();
     }
 }
 
@@ -500,7 +594,7 @@ using_alloc! {
         }
 
         fn chunk(&self) -> &[u8] {
-            self.as_slice()
+            self.as_slice().0
         }
 
         fn advance(&mut self, count: usize) {
