@@ -13,8 +13,8 @@ pub trait Transport<SendFormat, RecvFormat> {
     const ID: Identifier;
     const VER: Version;
 
+    // TODO: take a reference?
     fn send(&self, message: SendFormat) -> Result<(), Self::SendErr>;
-
 
     /// Note: implementations of this method must *not* block.
     ///

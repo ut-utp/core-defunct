@@ -195,12 +195,10 @@ where
     C: Control,
     // <C as Control>::EventFuture: Unpin,
 {
-    // When const functions can be in blanket impls, this can be made `const`.
-    //
     // Note: we take `decode` and `encode` as parameters here even though the
     // actual value is never used so that users don't have to resort to using
     // the turbofish syntax to specify what they want the encoding layer to be.
-    pub /*const*/ fn new(enc: E, dec: D, transport: T) -> Self {
+    pub const fn new(enc: E, dec: D, transport: T) -> Self {
         Self {
             // encoding,
             _encoded_formats: PhantomData,
@@ -294,7 +292,7 @@ where
 
         // TODO: we don't panic on decode failures here, but this is only a stopgap,
         // first pass solution.
-        while let Ok(m) = self.transport.get().and_then(|enc| self.dec.decode(&enc).map_err(|_| None).map(Into::into)) {
+        while let Ok(m) = self.transport.get().and_then(|enc| self.dec.decode(enc).map_err(|_| None).map(Into::into)) {
             num_processed_messages += 1;
 
             macro_rules! dev {

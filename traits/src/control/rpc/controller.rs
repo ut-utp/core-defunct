@@ -208,7 +208,7 @@ where
             .map_err(|e| e.map(TickError::TransportError))?;
 
         let message = self.dec.borrow_mut()
-            .decode(&encoded_message)
+            .decode(encoded_message)
             .map_err(|d| Some(TickError::DecodeError(d)))?; // TODO: do better?
 
         let message = message.into();

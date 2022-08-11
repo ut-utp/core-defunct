@@ -188,7 +188,7 @@ pub trait Decode<Message: Debug> {
     type Encoded: Debug;
     type Err: Debug;
 
-    fn decode(&mut self, encoded: &Self::Encoded) -> Result<Message, Self::Err>;
+    fn decode(&mut self, encoded: Self::Encoded) -> Result<Message, Self::Err>;
 }
 
 // In a softer world:
@@ -214,15 +214,15 @@ where
 
 impl<Encoded, Message> Decode<Message> for CoreConvert<Encoded>
 where
-    Encoded: Debug + Clone,
+    Encoded: Debug,
     Message: Debug + TryFrom<Encoded>,
     <Message as TryFrom<Encoded>>::Error: Debug,
 {
     type Encoded = Encoded;
     type Err = <Message as TryFrom<Encoded>>::Error;
 
-    fn decode(&mut self, encoded: &Self::Encoded) -> Result<Message, Self::Err> {
-        TryFrom::try_from(encoded.clone())
+    fn decode(&mut self, encoded: Self::Encoded) -> Result<Message, Self::Err> {
+        TryFrom::try_from(encoded)
     }
 }
 
@@ -301,13 +301,13 @@ impl<Message: Debug + Clone> Encode<Message> for Transparent<Message> {
     }
 }
 
-impl<Message: Debug + Clone> Decode<Message> for Transparent<Message> {
+impl<Message: Debug> Decode<Message> for Transparent<Message> {
     type Encoded = Message;
     type Err = Infallible;
 
     #[inline]
-    fn decode(&mut self, message: &Self::Encoded) -> Result<Message, Self::Err> {
-        Ok(message.clone())
+    fn decode(&mut self, message: Self::Encoded) -> Result<Message, Self::Err> {
+        Ok(message)
     }
 }
 
@@ -378,7 +378,7 @@ where
     type Encoded = <Enc as Encode<Message>>::Encoded;
     type Err = <Dec as Decode<Message>>::Err;
 
-    fn decode(&mut self, encoded: &Self::Encoded) -> Result<Message, Self::Err> {
+    fn decode(&mut self, encoded: Self::Encoded) -> Result<Message, Self::Err> {
         self.dec.decode(encoded)
         // <Dec as Decode<Message>>::decode(encoded)
     }
@@ -714,9 +714,9 @@ where
     type Encoded = <Inner as Decode<B>>::Encoded;
     type Err = <Outer as Decode<A>>::Err;
 
-    fn decode(&mut self, encoded: &Self::Encoded) -> Result<A, Self::Err> {
+    fn decode(&mut self, encoded: Self::Encoded) -> Result<A, Self::Err> {
         let b: B = <Inner as Decode<B>>::decode(&mut self.inner, encoded)?;
-        <Outer as Decode<A>>::decode(&mut self.outer, &b)
+        <Outer as Decode<A>>::decode(&mut self.outer, b)
     }
 }
 
@@ -949,9 +949,9 @@ where
     type Encoded = <Inner as Encode<B>>::Encoded;
     type Err = <Outer as Decode<A>>::Err;
 
-    fn decode(&mut self, message: &<Inner as Decode<B>>::Encoded) -> Result<A, <Outer as Decode<A>>::Err> {
+    fn decode(&mut self, message: <Inner as Decode<B>>::Encoded) -> Result<A, <Outer as Decode<A>>::Err> {
         let b: B = <Inner as Decode<B>>::decode(&mut self.inner, message)?;
-        <Outer as Decode<A>>::decode(&mut self.outer, &b)
+        <Outer as Decode<A>>::decode(&mut self.outer, b)
     }
 }
 
@@ -980,8 +980,8 @@ using_std! {
         type Encoded = String;
         type Err = serde_json::error::Error;
 
-        fn decode(&mut self, encoded: &Self::Encoded) -> Result<Message, Self::Err> {
-            serde_json::from_str(encoded)
+        fn decode(&mut self, encoded: Self::Encoded) -> Result<Message, Self::Err> {
+            serde_json::from_str(&encoded)
         }
     }
 }
@@ -1006,8 +1006,8 @@ mod tests {
                 type Encoded = $dest;
                 type Err = core::num::TryFromIntError;
 
-                fn decode(&mut self, e: &$dest) -> Result<$src, Self::Err> {
-                    core::convert::TryInto::try_into(*e)
+                fn decode(&mut self, e: $dest) -> Result<$src, Self::Err> {
+                    core::convert::TryInto::try_into(e)
                 }
             }
         };
@@ -1022,7 +1022,7 @@ mod tests {
     fn transparent() {
         fn check<T: Debug + Clone + Eq>(inp: T) {
             assert_eq!(inp, Transparent::default().encode(&inp.clone()));
-            assert_eq!(inp, Transparent::default().decode(&inp).unwrap());
+            assert_eq!(inp, Transparent::default().decode(inp.clone()).unwrap());
         }
 
         #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -1038,7 +1038,7 @@ mod tests {
     // blanket impl works.
     fn encoding_blanket_impl() {
         fn ser<M: Debug, E: Default + Encoding<M>>(m: M) -> <E as Encode<M>>::Encoded { E::default().encode(&m) }
-        fn de<M: Debug, E: Default + Encoding<M>>(e: <E as Encode<M>>::Encoded) -> Result<M, <E as Decode<M>>::Err> { E::default().decode(&e) }
+        fn de<M: Debug, E: Default + Encoding<M>>(e: <E as Encode<M>>::Encoded) -> Result<M, <E as Decode<M>>::Err> { E::default().decode(e) }
 
 
         let a: u16 = ser::<_, U8ToU16>(255u8);
@@ -1059,7 +1059,7 @@ mod tests {
     // `ChainedEncoding` types and functions work.
     fn chained_encoding() {
         fn ser<M: Debug, E: Encoding<M>>(mut e: E, m: M) -> <E as Encode<M>>::Encoded { e.encode(&m) }
-        fn de<M: Debug, E: Encoding<M>>(mut e: E, enc: <E as Encode<M>>::Encoded) -> Result<M, <E as Decode<M>>::Err> { e.decode(&enc) }
+        fn de<M: Debug, E: Encoding<M>>(mut e: E, enc: <E as Encode<M>>::Encoded) -> Result<M, <E as Decode<M>>::Err> { e.decode(enc) }
 
         let chain = ChainedEncoding::new(U8ToU16)
             .chain(U16ToU32)
@@ -1090,7 +1090,7 @@ mod tests {
     // This really does nothing at run time; if this function compiles, the
     // `ChainedDecode` types and functions work.
     fn chained_back_decode() {
-        fn de<M: Debug, E: Decode<M>>(mut e: E, enc: E::Encoded) -> Result<M, E::Err> { e.decode(&enc) }
+        fn de<M: Debug, E: Decode<M>>(mut e: E, enc: E::Encoded) -> Result<M, E::Err> { e.decode(enc) }
 
         let chain = ChainedDecode::new(U64ToU128)
             .chain_back(U32ToU64)
@@ -1118,7 +1118,7 @@ mod tests {
     // This really does nothing at run time; if this function compiles, the
     // `ChainedDecode` types and functions work.
     fn chained_decode() {
-        fn de<M: Debug, E: Decode<M>>(mut e: E, enc: E::Encoded) -> Result<M, E::Err> { e.decode(&enc) }
+        fn de<M: Debug, E: Decode<M>>(mut e: E, enc: E::Encoded) -> Result<M, E::Err> { e.decode(enc) }
 
         let chain = ChainedDecode::new(U8ToU16)
             .chain(U16ToU32)
@@ -1135,7 +1135,7 @@ mod tests {
         // This is basically the same test as `chained_encoding` except we
         // assemble the encode pipeline and the decode pipeline ourselves.
         fn ser<M: Debug, E: Encoding<M>>(mut e: E, m: M) -> <E as Encode<M>>::Encoded { e.encode(&m) }
-        fn de<M: Debug, E: Encoding<M>>(mut e: E, enc: <E as Encode<M>>::Encoded) -> Result<M, <E as Decode<M>>::Err> { e.decode(&enc) }
+        fn de<M: Debug, E: Encoding<M>>(mut e: E, enc: <E as Encode<M>>::Encoded) -> Result<M, <E as Decode<M>>::Err> { e.decode(enc) }
 
         fn check<M: Debug + Copy + PartialEq, E: Copy + Encoding<M>>(chain: E, m: M) where <E as Decode<M>>::Err: PartialEq {
             assert_eq!(Ok(m), de(chain, ser(chain, m)));

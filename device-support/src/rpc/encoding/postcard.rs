@@ -162,7 +162,7 @@ mod decode {
         type Encoded = <Cobs<F> as SerFlavor>::Output;
         type Err = postcard::Error;
 
-        fn decode(&mut self, encoded: &Self::Encoded) -> Result<Out, Self::Err> {
+        fn decode(&mut self, encoded: Self::Encoded) -> Result<Out, Self::Err> {
             // This is bad and is a hack!
             let mut fifo: Fifo<u8> = Fifo::new();
             fifo.push_slice(encoded.as_ref()).unwrap();
