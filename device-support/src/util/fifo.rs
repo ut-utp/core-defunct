@@ -16,22 +16,22 @@ use core::{
 pub(super) mod fifo_config {
     use core::mem::size_of;
 
-    pub const CAPACITY: usize = 256;
+    pub const DEFAULT_CAPACITY: usize = 256;
     pub type Cur = u16;
 
     // If this doesn't hold, the as in the next check isn't guaranteed not to
     // lose bits.
     sa::const_assert!(size_of::<Cur>() <= size_of::<usize>());
 
-    // `FifoConfig::CAPACITY` ∈ [1, Cur::MAX]
-    sa::const_assert!(CAPACITY <= Cur::max_value() as usize);
-    sa::const_assert!(CAPACITY >= 1);
+    // `FifoConfig::DEFAULT_CAPACITY` ∈ [1, Cur::MAX]
+    sa::const_assert!(DEFAULT_CAPACITY <= Cur::max_value() as usize);
+    sa::const_assert!(DEFAULT_CAPACITY >= 1);
 }
 
-pub use fifo_config::{Cur, CAPACITY};
+pub use fifo_config::{DEFAULT_CAPACITY, Cur};
 
-pub struct Fifo<T> {
-    data: [MaybeUninit<T>; CAPACITY],
+pub struct Fifo<T, const LEN: usize = DEFAULT_CAPACITY> {
+    data: [MaybeUninit<T>; LEN],
     length: usize,
     /// Points to the next slot that holds data.
     /// Valid when `length` > 0.
@@ -76,18 +76,27 @@ impl<T: Debug> Debug for Fifo<T> {
     }
 }
 
-impl<T> Default for Fifo<T> {
+impl<T, const L: usize> Default for Fifo<T, L> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T> Fifo<T> {
+impl<T, const LEN: usize> Fifo<T, LEN> {
     /// Creates an empty `Fifo`.
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
+        // If this doesn't hold, the as in the next check isn't guaranteed not to
+        // lose bits.
+        sa::const_assert!(size_of::<Cur>() <= size_of::<usize>());
+
+        // `LEN` ∈ [1, Cur::MAX]
+        assert!(LEN <= Cur::max_value() as usize);
+        assert!(LEN >= 1);
+
+
         // This is really a job for `MaybeUninit::uninit_array` but alas, it is
         // not yet stable (it needs const generics).
-        let data = MaybeUninit::<[MaybeUninit<T>; CAPACITY]>::uninit();
+        let data = MaybeUninit::<[MaybeUninit<T>; LEN]>::uninit();
 
         // This is safe because we can assume that _arrays_ have the same memory
         // representation as a literal composite of their elements (so an array
@@ -108,47 +117,9 @@ impl<T> Fifo<T> {
         }
     }
 
-    /// Creates a new `Fifo` and is const.
-    ///
-    /// This can only be const because `CAPACITY` is a constant (and not a
-    /// const generic parameter). Hopefully by the time const generics actually
-    /// land we'll have repeating const expressions or a const `assume_init`
-    /// function.
-    pub const fn new_const() -> Self {
-        // This isn't great. Past attempts are in the git history for posterity.
-        // I'm not convinced it's possible to do better without using
-        // `proc-macro-hack`.
-
-        macro_rules! repeat {
-            (($t:expr) => { $($rest:ident)* }) => {
-                [$(
-                    { #[allow(unused)] let $rest = 0; $t },
-                )*]
-            };
-        }
-
-        let data = repeat!((MaybeUninit::uninit()) => {
-            t t t t t t t t t t t t t t t t t t t t t t t t t t t t t t t t
-            t t t t t t t t t t t t t t t t t t t t t t t t t t t t t t t t
-            t t t t t t t t t t t t t t t t t t t t t t t t t t t t t t t t
-            t t t t t t t t t t t t t t t t t t t t t t t t t t t t t t t t
-            t t t t t t t t t t t t t t t t t t t t t t t t t t t t t t t t
-            t t t t t t t t t t t t t t t t t t t t t t t t t t t t t t t t
-            t t t t t t t t t t t t t t t t t t t t t t t t t t t t t t t t
-            t t t t t t t t t t t t t t t t t t t t t t t t t t t t t t t t
-        });
-
-        Self {
-            data,
-            length: 0,
-            starting: 0,
-            ending: 0,
-        }
-    }
-
     /// The maximum number of elements the `Fifo` can hold.
     pub const fn capacity(&self) -> usize {
-        CAPACITY
+        LEN
     }
 
     /// Whether the `Fifo` is empty or not.
@@ -158,7 +129,7 @@ impl<T> Fifo<T> {
 
     /// Whether the `Fifo` is full or not.
     pub const fn is_full(&self) -> bool {
-        self.length == CAPACITY
+        self.length == LEN
     }
 
     /// Number of elements currently in the `Fifo`.
@@ -168,7 +139,7 @@ impl<T> Fifo<T> {
 
     /// Number of open slots the `Fifo` currently has.
     pub const fn remaining(&self) -> usize {
-        CAPACITY - self.length
+        LEN - self.length
     }
 
     // A wheel function.
@@ -178,7 +149,7 @@ impl<T> Fifo<T> {
     const fn add(pos: Cur, num: Cur) -> Cur {
         // Note: usize is guaranteed to be ≥ to Cur in size so the cast is
         // guaranteed not to lose bits.
-        (((pos as usize) + (num as usize)) % CAPACITY) as Cur
+        (((pos as usize) + (num as usize)) % LEN) as Cur
     }
 
     /// Adds a value to the `Fifo`, if possible.
@@ -329,7 +300,7 @@ impl<T> Fifo<T> {
     }
 }
 
-impl<T: Clone> Fifo<T> {
+impl<T: Clone, const L: usize> Fifo<T, L> {
     /// Because we cannot take ownership of the slice, this is only available
     /// for `Clone` (and, thus, `Copy`) types.
     ///
@@ -351,7 +322,7 @@ impl<T: Clone> Fifo<T> {
     }
 }
 
-impl<T> Fifo<T> {
+impl<T, const L: usize> Fifo<T, L> {
     /// Like [`push_slice`] this function is 'atomic': it will either succeed
     /// (and in this case push the iterator in its entirety) or it will leave
     /// the `Fifo` unmodified.
@@ -359,7 +330,7 @@ impl<T> Fifo<T> {
     /// Because we want this property we need to know the length of the iterator
     /// beforehand and that's where [`ExactSizeIterator`] comes in. With a
     /// normal [`Iterator`] we can't know the length of the iterator until we've
-    /// consumed it, but `ExactSizeIterator`s just tell us.
+    /// consumed it, but `ExactSizeIterator`s just tells us.
     ///
     /// This particular function will require an iterator that transfers
     /// ownership of the values (i.e the kind you get when you call [`drain`] on
@@ -400,7 +371,7 @@ impl<T> Fifo<T> {
     }
 }
 
-impl<'a, T: Clone + 'a> Fifo<T> {
+impl<'a, T: Clone + 'a, const L: usize> Fifo<T, L> {
     /// The version of [`push_iter`] that doesn't need ownership of the `T`
     /// values your iterator is yielding.
     ///
@@ -420,15 +391,15 @@ impl<'a, T: Clone + 'a> Fifo<T> {
     }
 }
 
-impl<T: Clone> Fifo<T> {
+impl<T: Clone, const L: usize> Fifo<T, L> {
     /// Useful for generating arrays out of a `Clone`able (but not `Copy`able)
     /// value to pass into `Fifo::push_slice`.
-    pub fn array_init_using_clone(val: T) -> [T; CAPACITY] {
+    pub fn array_init_using_clone(val: T) -> [T; L] {
         // MaybeUninit is always properly initialized.
         // Note: this is _the_ use case for `MaybeUninit::uninit_array` which is
         // not yet stable (blocked on const-generics like all the shiny things).
         #[allow(unsafe_code)]
-        let mut inner: [MaybeUninit<T>; CAPACITY] =
+        let mut inner: [MaybeUninit<T>; L] =
             unsafe { MaybeUninit::uninit().assume_init() };
 
         for elem in &mut inner[..] {
@@ -436,8 +407,8 @@ impl<T: Clone> Fifo<T> {
         }
 
         debug_assert_eq!(
-            size_of::<[MaybeUninit<T>; CAPACITY]>(),
-            size_of::<[T; CAPACITY]>()
+            size_of::<[MaybeUninit<T>; L]>(),
+            size_of::<[T; L]>()
         );
 
         // Because we've initialized every element manually, this is safe.
@@ -473,14 +444,14 @@ impl<T> AsRef<[T]> for Fifo<T> {
     }
 }
 
-impl<T> AsMut<[T]> for Fifo<T> {
+impl<T, const L: usize> AsMut<[T]> for Fifo<T, L> {
     fn as_mut(&mut self) -> &mut [T] {
         self.as_mut_slice()
     }
 }
 
 // Use `Iterator::by_ref` to retain ownership of the iterator
-impl<T> Iterator for Fifo<T> { // /*&mut */
+impl<T, const L: usize> Iterator for Fifo<T, L> { // /*&mut */
     type Item = T;
 
     #[inline]
@@ -493,9 +464,9 @@ impl<T> Iterator for Fifo<T> { // /*&mut */
     }
 }
 
-impl<T> FusedIterator for Fifo<T> {}
+impl<T, const L: usize> FusedIterator for Fifo<T, L> {}
 
-impl<T> ExactSizeIterator for Fifo<T> {}
+impl<T, const L: usize> ExactSizeIterator for Fifo<T, L> {}
 
 using_alloc! {
     use core::convert::TryInto;
@@ -564,15 +535,15 @@ using_alloc! {
 // Note: if we switch to const generics for `CAPACITY`, move this to the
 // constructor.
 sa::assert_eq_size!(&mut [MaybeUninit<u8>], &mut [u8]);
-sa::assert_eq_size!([MaybeUninit<u8>; CAPACITY], [u8; CAPACITY]);
-sa::assert_eq_align!([MaybeUninit<u8>; CAPACITY], [u8; CAPACITY]);
+sa::assert_eq_size!([MaybeUninit<u8>; DEFAULT_CAPACITY], [u8; DEFAULT_CAPACITY]);
+sa::assert_eq_align!([MaybeUninit<u8>; DEFAULT_CAPACITY], [u8; DEFAULT_CAPACITY]);
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
 
-    const FIFO: Fifo<usize> = Fifo::new_const();
+    const FIFO: Fifo<usize> = Fifo::new();
 
     // A type that implements Clone (but not Copy!).
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -606,8 +577,8 @@ mod tests {
     #[test]
     fn new_with_values() {
         let c = Cloneable::new(78);
-        let arr = Fifo::array_init_using_clone(c.clone());
-        let mut fifo = Fifo::new();
+        let arr = <Fifo<_>>::array_init_using_clone(c.clone());
+        let mut fifo = <Fifo<_>>::new();
 
         assert_eq!(Ok(()), fifo.push_slice(&arr));
 
@@ -622,11 +593,11 @@ mod tests {
         assert_eq!(count, fifo.capacity());
     }
 
-    const BIG_SLICE: [u8; CAPACITY + 2] = [0; CAPACITY + 2];
+    const BIG_SLICE: [u8; DEFAULT_CAPACITY + 2] = [0; DEFAULT_CAPACITY + 2];
 
     #[test]
     fn push_slice_too_big() {
-        let mut fifo = Fifo::new();
+        let mut fifo = <Fifo<_>>::new();
 
         assert_eq!(0, fifo.length());
         assert_eq!(Err(()), fifo.push_slice(&BIG_SLICE));
@@ -636,7 +607,7 @@ mod tests {
     // Tests pushing cloneable values in an iterator
     #[test]
     fn push_iter_ref() {
-        let mut fifo = Fifo::new();
+        let mut fifo = <Fifo<_>>::new();
 
         macro_rules! ascii_string {
             ($($c:literal)*) => {
@@ -658,13 +629,13 @@ mod tests {
     // Tests pushing an owned iterator
     #[test]
     fn push_uncloneable() {
-        let mut arr = [0; CAPACITY];
-        for i in 0..CAPACITY {
+        let mut arr = [0; DEFAULT_CAPACITY];
+        for i in 0..DEFAULT_CAPACITY {
             arr[i] = i;
         }
 
         let mut iter = arr.iter().map(|i| Uncloneable::new(*i));
-        let mut fifo = Fifo::new();
+        let mut fifo = <Fifo<_>>::new();
 
         assert_eq!(Ok(()), fifo.push_iter(&mut iter));
 
@@ -707,7 +678,7 @@ mod tests {
 
     #[test]
     fn peek() {
-        let mut fifo = Fifo::new();
+        let mut fifo = <Fifo<_>>::new();
 
         assert_eq!(Ok(()), fifo.push(278));
         assert_eq!(Ok(()), fifo.push(513));
