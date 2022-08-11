@@ -10,7 +10,7 @@ use lc3_traits::control::rpc::{
 };
 use lc3_device_support::{
     rpc::{
-        transport::uart_host::{HostUartTransport, SerialPortBuilder},
+        transport::uart_simple::host::{HostUartTransport, SerialPortBuilder},
         encoding::{PostcardEncode, PostcardDecode, Cobs},
     },
     util::Fifo,
