@@ -356,5 +356,56 @@ impl<const L: usize> SerFlavor for Fifo<u8, L> {
     }
 }
 
+impl<const L: usize> SerFlavor for &mut Fifo<u8, L> {
+    type Output = Self;
+
+    fn try_push(&mut self, data: u8) -> postcard::Result<()> {
+        self.push(data).map_err(|()| postcard::Error::SerializeBufferFull)
+    }
+
+    fn finalize(self) -> postcard::Result<Self::Output> {
+        Ok(self)
+    }
+
+    fn try_extend(&mut self, data: &[u8]) -> postcard::Result<()> {
+        self.push_slice(data).map_err(|()| postcard::Error::SerializeBufferFull)
+    }
+}
+
+#[derive(Debug)]
+pub struct DynFifoBorrow<'f, const L: usize>(pub RefMut<'f, Fifo<u8, L>>);
+
+impl<'f, const L: usize> Index<usize> for DynFifoBorrow<'f, L> {
+    type Output = u8;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &(*self.0)[index]
+    }
+}
+
+impl<'f, const L: usize> IndexMut<usize> for DynFifoBorrow<'f, L> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut (*self.0)[index]
+    }
+}
+
+impl<const L: usize> SerFlavor for DynFifoBorrow<'_, L> {
+    type Output = Self;
+
+    fn try_push(&mut self, data: u8) -> postcard::Result<()> {
+        (*self.0).try_push(data)
+    }
+
+    fn finalize(self) -> postcard::Result<Self::Output> {
+        Ok(self)
+    }
+}
+
+impl<'f, const L: usize> Extend<u8> for DynFifoBorrow<'f, L> {
+    fn extend<It: IntoIterator<Item = u8>>(&mut self, iter: It) {
+        (*self.0).extend(iter)
+    }
+}
+
 pub use encode::*;
 pub use decode::*;

@@ -62,7 +62,7 @@ impl HostUartTransport {
 
 // TODO: on std especially we don't need to pass around buffers; we can be
 // zero-copy...
-impl Transport<Fifo<u8>, Fifo<u8>> for HostUartTransport {
+impl<const RECV_LEN: usize, SendFormat: super::ConsumeData> Transport<SendFormat, Fifo<u8, RECV_LEN>> for HostUartTransport<RECV_LEN> {
     type RecvErr = Error;
     type SendErr = Error;
 
@@ -77,7 +77,7 @@ impl Transport<Fifo<u8>, Fifo<u8>> for HostUartTransport {
         Version::new(ver.major, ver.minor, ver.patch, Some(id))
     };
 
-    fn send(&self, message: Fifo<u8>) -> IoResult<()> {
+    fn send(&self, mut message: SendFormat) -> IoResult<()> {
         let mut serial = self.serial.borrow_mut();
 
         // TODO: is this still what we want?
@@ -98,7 +98,10 @@ impl Transport<Fifo<u8>, Fifo<u8>> for HostUartTransport {
         // serial.write(message.as_slice()).map(|_| ())?;
         // serial.flush()
 
-        block!(serial.write(message.as_slice()).map(|_| ())).unwrap();
+        message.consume_slice(|slice| {
+            block!(serial.write(slice).map(|_| ()))
+        }).unwrap();
+
         block!(serial.flush())
     }
 

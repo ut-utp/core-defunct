@@ -858,6 +858,7 @@
 //!      → encode
 //!         → drain the buffer by busy waiting on uart.tx
 
+const SENTINEL_BYTE: u8 = 0;
 
 pub mod encoding;
 pub mod transport;

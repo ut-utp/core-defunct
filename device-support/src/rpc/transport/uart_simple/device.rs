@@ -2,7 +2,8 @@
 //!
 //! This does not use interrupts or DMA and does not attempt to be zero-copy.
 
-use crate::util::Fifo;
+use super::{ConsumeData, SENTINEL_BYTE};
+use crate::util::{Fifo, fifo};
 
 use lc3_traits::control::rpc::Transport;
 use lc3_traits::control::{Identifier, Version, version_from_crate};
@@ -39,7 +40,7 @@ where
     }
 }
 
-impl<R: Read<u8>, W: Write<u8>> Transport<Fifo<u8>, Fifo<u8>> for UartTransport<R, W>
+impl<const RECV_LEN: usize, R: Read<u8>, W: Write<u8>, SendFormat: ConsumeData> Transport<SendFormat, Fifo<u8, RECV_LEN>> for UartTransport<R, W, RECV_LEN>
 where
     <R as Read<u8>>::Error: Debug,
     <W as Write<u8>>::Error: Debug,
@@ -56,12 +57,12 @@ where
         Version::new(ver.major, ver.minor, ver.patch, Some(id))
     };
 
-    fn send(&self, message: Fifo<u8>) -> Result<(), W::Error> {
+    fn send(&self, mut message: SendFormat) -> Result<(), W::Error> {
         let mut write = self.write.borrow_mut();
 
-        for byte in message {
-            block!(write.write(byte))?
-        }
+        message.consume(|byte| {
+            block!(write.write(byte))
+        })?;
 
         block!(write.flush())
     }
