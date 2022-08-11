@@ -9,9 +9,10 @@ use postcard::ser_flavors::{Flavor as SerFlavor, Cobs};
 use postcard::serialize_with_flavor;
 use postcard::take_from_bytes_cobs;
 
+use core::cell::RefMut;
 use core::fmt::Debug;
 use core::marker::PhantomData;
-use core::ops::IndexMut;
+use core::ops::{IndexMut, Index};
 use core::convert::{AsRef, AsMut};
 
 // TODO: have be able to take inputs?
@@ -19,6 +20,179 @@ use core::convert::{AsRef, AsMut};
 
 mod encode {
     use super::*;
+
+    /* trait GiveFlavor {
+        type Output<'a>: SerFlavor;
+
+        fn give<'a>(&'a mut self) -> Self::Output<'a>;
+    }
+    */
+    // pub trait GiveFlavorLifetime<'this, Implicit = &'this Self> {
+    //     type Output;
+    // }
+    // pub trait GiveFlavor
+    // where
+    //     Self: for<'this> GiveFlavorLifetime<'this, &'this Self>,
+    // {
+    //     fn give<'a>(&'a mut self) -> <Self as GiveFlavorLifetime<'a>>::Output;
+    // }
+
+    // impl<'f, O, F: FnMut() -> O> GiveFlavorLifetime<'f> for F {
+    //     type Output = O;
+    // }
+    // impl<O, F: FnMut() -> O> GiveFlavor for F {
+    //     fn give(&mut self) -> O { (self)() }
+    // }
+
+    // struct FifoBorrow<'f, const L: usize>(&'f mut Fifo<u8, L>);
+    // impl<'this, 'f, const L: usize> GiveFlavorLifetime<'this, &'this Self> for FifoBorrow<'f, L>
+    // where
+    // {
+    //     type Output = Cobs<&'this mut Fifo<u8, L>>;
+    // }
+    // impl<'f, const L: usize> GiveFlavor for FifoBorrow<'f, L> {
+    //     fn give(&mut self) -> <Self as GiveFlavorLifetime<'_>>::Output {
+    //         Cobs::try_new(self.0).unwrap()
+    //     }
+    // }
+
+    // #[derive(Debug, Default)]
+    // pub struct PostcardEncode<'f, Inp: ?Sized, Func>
+    // // where
+    // //     Inp: ?Sized + Debug + Serialize,
+    // //     F: SerFlavor,
+    // //     <F as SerFlavor>::Output: Debug,
+    // //     Func: FnMut() -> F,
+    // {
+    //     flavor_ctor_func: Func,
+    //     _i: PhantomData<(&'f (), Inp)>,
+    // }
+
+    // impl<'f, Inp, Func> PostcardEncode<'f, Inp, Func>
+    // where
+    //     Inp: ?Sized + Debug + Serialize,
+    //     Func: GiveFlavor,
+    //     for<'a> <Func as GiveFlavorLifetime<'a>>::Output: SerFlavor,
+    //     for<'a> <<Func as GiveFlavorLifetime<'a>>::Output as SerFlavor>::Output: Debug,
+    // {
+    //     pub const fn new(flavor_ctor_func: Func) -> Self {
+    //         Self {
+    //             flavor_ctor_func,
+    //             _i: PhantomData,
+    //         }
+    //     }
+    // }
+
+    // impl PostcardEncode<'_, (), ()> {
+    //     pub /*const*/ fn with_cobs<'f, Inp, FlavGiv>(mut inner_flavor_func: FlavGiv) -> PostcardEncode<'f, Inp, impl GiveFlavor>
+    //     where
+    //         Inp: ?Sized + Debug + Serialize,
+    //         FlavGiv: GiveFlavor,
+    //         for<'a> <FlavGiv as GiveFlavorLifetime<'a>>::Output: SerFlavor,
+    //         for<'a> <FlavGiv as GiveFlavorLifetime<'a>>::Output: IndexMut<usize, Output = u8>,
+    //         for<'a> <<FlavGiv as GiveFlavorLifetime<'a>>::Output as SerFlavor>::Output: Debug,
+    //     {
+    //         // Ok(PostcardEncode::new(Cobs::try_new(inner_flavor)?))
+
+    //         PostcardEncode::new(move || Cobs::try_new(inner_flavor_func.give()).unwrap())
+    //     }
+    // }
+
+    // // TODO: remove `I` here; it's too strict!
+    // impl PostcardEncode<'_, (), ()> {
+    //     pub /*const*/ fn with_cobs<'a, Inp, I, Func>(mut inner_flavor_func: Func) -> PostcardEncode<'a, Inp, impl FnMut() -> Cobs<I>>
+    //     where
+    //         Inp: ?Sized + Debug + Serialize,
+    //         I: SerFlavor,
+    //         I: IndexMut<usize, Output = u8>,
+    //         <I as SerFlavor>::Output: Debug,
+    //         Func: GiveFlavor<Output = I>,
+    //     {
+    //         // Ok(PostcardEncode::new(Cobs::try_new(inner_flavor)?))
+
+    //         PostcardEncode::new(move || Cobs::try_new(inner_flavor_func.give()).unwrap())
+    //     }
+    // }
+
+    // impl<'a, Inp> PostcardEncode<Inp, Cobs<Slice<'a>>>
+    // where
+    //     Inp: ?Sized + Debug + Serialize,
+    // {
+    //     pub /*const*/ fn with_slice(buffer: &'a mut [u8]) -> postcard::Result<Self> {
+    //         Ok(PostcardEncode::new(Cobs::try_new(Slice::new(buffer))?))
+    //     }
+    // }
+
+    // pub type PostcardFifoCobs<Inp> = PostcardEncode<Inp, Cobs<Fifo<u8>>>;
+
+    // impl PostcardEncode<'_, (), ()> {
+        // pub /*const*/ fn with_cobs_fifo_func<'fifo, Inp, Func, const L: usize>(
+        //     fifo: &'fifo mut Fifo<u8, L>,
+        // ) -> PostcardEncode<
+        //     Inp,
+        //     Cobs<&'fifo mut Fifo<u8, L>>,
+        //     impl FnMut() -> Cobs<&'fifo mut Fifo<u8, L>> + 'fifo,
+        // >
+        // where
+        //     Inp: ?Sized + Debug + Serialize + 'fifo,
+        //     Func: 'fifo,
+        //     Func: FnMut() -> &'fifo mut Fifo<u8, L>,
+        // {
+        //     let borrow = FifoBorrow(fifo);
+        //     PostcardEncode::<Inp, _, _>::with_cobs(borrow)
+        // }
+
+        // pub /*const*/ fn with_cobs_fifo<Inp, const L: usize>(
+        //     fifo: &mut Fifo<u8, L>,
+        // ) -> PostcardEncode<
+        //     Inp,
+        //     FifoBorrow<'_, L>,
+        // >
+        // where
+        //     Inp: ?Sized + Debug + Serialize,
+        // {
+        //     let borrow = FifoBorrow(fifo);
+        //     PostcardEncode::<Inp, _>::new(borrow)
+        // }
+
+        // // The invariance of lifetimes behind mutable references keeps us from
+        // // offerring the API we want to here; i.e. having a function yield
+        // // mutable references to underlying Fifo that outlives the function.
+        // //
+        // // The issue is that if we shorten the lifetime of the `&mut Fifo` that
+        // // we yield, someone can replace the underlying instance with
+
+        // pub /*const*/ fn with_cobs_fifo_func<'fifo, Inp, Func, const L: usize>(
+        //     fifo_func: Func,
+        // ) -> PostcardEncode<
+        //     Inp,
+        //     Cobs<&'fifo mut Fifo<u8, L>>,
+        //     impl FnMut() -> Cobs<&'fifo mut Fifo<u8, L>> + 'fifo,
+        // >
+        // where
+        //     Inp: ?Sized + Debug + Serialize + 'fifo,
+        //     Func: 'fifo,
+        //     Func: FnMut() -> &'fifo mut Fifo<u8, L>,
+        // {
+
+        //     PostcardEncode::with_cobs::<Inp, _, _>(fifo_func)
+        // }
+    // }
+
+    // impl<'f, Inp, Func> Encode<Inp> for PostcardEncode<'f, Inp, Func>
+    // where
+    //     Inp: Debug + Serialize,
+    //     Func: GiveFlavor + 'f,
+    //     for<'a> <Func as GiveFlavorLifetime<'a>>::Output: SerFlavor,
+    //     for<'a> <<Func as GiveFlavorLifetime<'a>>::Output as SerFlavor>::Output: Debug,
+    // {
+    //     type Encoded = <<Func as GiveFlavorLifetime<'f>>::Output as SerFlavor>::Output;
+
+    //     fn encode(&mut self, message: &Inp) -> Self::Encoded {
+    //         serialize_with_flavor(message, self.flavor_ctor_func.give())
+    //             .expect("a successful encode")
+    //     }
+    // }
 
     #[derive(Debug, Default)]
     pub struct PostcardEncode<Inp, F, Func>
@@ -166,7 +340,7 @@ mod decode {
     }
 }
 
-impl SerFlavor for Fifo<u8> {
+impl<const L: usize> SerFlavor for Fifo<u8, L> {
     type Output = Self;
 
     fn try_push(&mut self, data: u8) -> postcard::Result<()> {
