@@ -14,9 +14,10 @@ sa::const_assert!(fifo::DEFAULT_CAPACITY >= (3 * size_of::<ResponseMessage>()));
 
 // pub mod multiplexed;
 pub mod uart_simple;
+pub mod multiplexed;
 
-using_std! {
-    #[cfg_attr(all(docs, not(doctest)), doc(cfg(all(feature = "host_transport", not(target_arch = "wasm32")))))]
-    #[cfg(all(feature = "host_transport", not(target_arch = "wasm32")))]
-    pub mod uart_host;
-}
+// TODO: maybe look into stripping all of this out in favor of `Read`/`Write`
+// trait based abstractions (using `not_io` for no_std)?
+//
+// or at least at splitting the transport (stream of bytes) from the framing
+// properly
