@@ -290,6 +290,8 @@ where
             }
         }
 
+        // TODO: add logging facade based logging here...
+
         // TODO: we don't panic on decode failures here, but this is only a stopgap,
         // first pass solution.
         while let Ok(m) = self.transport.get().and_then(|enc| self.dec.decode(enc).map_err(|_| None).map(Into::into)) {

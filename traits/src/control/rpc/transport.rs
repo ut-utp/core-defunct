@@ -47,8 +47,8 @@ pub trait Transport<SendFormat, RecvFormat> {
         self.get()
     }
 
-    // Number of invalid/discarded messages.
-    fn num_get_errors(&self) -> u64 { 0 }
+    /// Number of invalid/discarded messages.
+    fn num_get_errors(&self) -> u64 { 0 } // TODO: expose in `Control` somehow?
 }
 
 using_std! {
