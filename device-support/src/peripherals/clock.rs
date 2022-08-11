@@ -1,68 +1,81 @@
 use lc3_isa::Word;
-use lc3_traits::peripherals::clock::*;
+use lc3_traits::peripherals::clock::Clock;
 
-extern crate embedded_time;
-use embedded_time as hal_time;
-use hal_time::duration::{Generic, Milliseconds};
-use hal_time::fixed_point::FixedPoint;
-use hal_time::TimeInt;
+use embedded_time::{
+    duration::{Generic, Milliseconds},
+    fixed_point::FixedPoint,
+    Clock as HalClock,
+};
+use num_traits::{AsPrimitive, WrappingSub};
 
-use core::convert::TryFrom;
-use core::hash::Hash;
-use core::marker::PhantomData;
-
-pub struct GenericClock<T, U>
+// Note to implementors: we reccomend that your clock have a period that's
+// a multiple of `65536` (aka 2^16) so it doesn't overflow to 0 at seemingly
+// random times within the simulator.
+//
+// We assume the clock counts up.
+pub struct GenericClock<C>
 where
-    T: hal_time::clock::Clock<T = U>,
-    U: TimeInt + Hash + Into<u16>,
+    C: HalClock,
+    C::T: AsPrimitive<Word>,
 {
-    clock_unit: T,
-    base_ref: u16,
-    phantom: PhantomData<U>,
+    clock: C,
+    base_ref: Generic<C::T>,
 }
 
-impl<T, U> Default for GenericClock<T, U>
+impl<C: HalClock> GenericClock<C>
 where
-    T: hal_time::clock::Clock<T = U>,
-    U: TimeInt + Hash + Into<u16>,
+    C::T: AsPrimitive<Word> + From<Word>,
 {
-    fn default() -> Self {
-        unimplemented!()
-    }
-}
-
-impl<T, U> GenericClock<T, U>
-where
-    T: hal_time::clock::Clock<T = U>,
-    U: TimeInt + Hash + Into<u16>,
-{
-    pub fn new(hal_clock: T) -> Self {
+    pub fn new(hal_clock: C) -> Self {
         Self {
-            clock_unit: hal_clock,
-            base_ref: 0,
-            phantom: PhantomData,
+            base_ref: hal_clock.try_now().unwrap().duration_since_epoch(),
+            clock: hal_clock,
         }
     }
 }
 
-impl<T, U> Clock for GenericClock<T, U>
+impl<C: HalClock> Clock for GenericClock<C>
 where
-    T: hal_time::clock::Clock<T = U>,
-    U: TimeInt + Hash + Into<u16>,
+    C::T: AsPrimitive<Word> + From<Word>,
 {
     //just unwrap since the utp clock trait is currently infallible
     //can't really do anything on error. so will just crash on clock error
     fn get_milliseconds(&self) -> Word {
-        let instant = self.clock_unit.try_now().unwrap();
-        let generic_duration: Generic<U> = instant.duration_since_epoch(); //duration since start
-                                                                           //let hal_milliseconds = U::try_int//generic_duration.0;
-        let hal_milliseconds =
-            Milliseconds::<U>::try_from(generic_duration).unwrap();
-        let milliseconds = hal_milliseconds.integer();
-        milliseconds.into().wrapping_add(self.base_ref)
+        let now = self.clock.try_now().unwrap();
+
+        // We specifically want to use wrapping sub here but _after_ the
+        // conversion to milliseconds (which is why we store `base_ref` as a
+        // `Generic` and not in milliseconds).
+        let ticks_now = now.duration_since_epoch();
+        let ticks_elapsed =
+            ticks_now.integer().wrapping_sub(&self.base_ref.integer());
+
+        // Convert back into `Generic` to calculate the number of milliseconds:
+        let ticks_elapsed =
+            Generic::new(ticks_elapsed, *ticks_now.scaling_factor());
+        let millis_elapsed: Milliseconds<C::T> =
+            ticks_elapsed.try_into().unwrap();
+        let millis_elapsed = millis_elapsed.integer();
+
+        // Bound to [0, u16::MAX]:
+        let millis_elapsed =
+            millis_elapsed % From::<u32>::from((Word::MAX as u32) + 1);
+        millis_elapsed.as_()
     }
 
     fn set_milliseconds(&mut self, ms: Word) {
-        self.base_ref = ms;
+        let ms = Milliseconds::<C::T>::new(ms.into());
+        let ms: Generic<C::T> = ms.into();
+
+        let now = self.clock.try_now().unwrap().duration_since_epoch();
+
+        let ms_ticks = ms.integer();
+        let now_ticks = ms.integer();
+
+        let base_ticks = now_ticks.wrapping_sub(&ms_ticks);
+
+        self.base_ref = Generic::new(base_ticks, *now.scaling_factor());
     }
 }
+
+// TODO: tests using `std-embedded-time`
